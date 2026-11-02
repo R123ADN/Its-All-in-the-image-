@@ -8216,9 +8216,16 @@ function topUpFinishes() {
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) { const s = JSON.parse(raw); if (s && s.DB && s.DB.v === 3) { DB = s.DB; Object.assign(UI, s.UI || {}); if (DB.settings.company === 'Easy Cab Builder Ltd') Object.assign(DB.settings, { company: 'Its All In The Image Limited', phone: '0161 223 7159', address: 'Unit 7 A, B and C, Trans Pennine Trading Estate, Gorrells Way', city: 'Rochdale, Lancashire', postcode: 'OL11 2PX' }); topUpCatalogue(); topUpFinishes(); return; } }
+    if (raw) { const s = JSON.parse(raw); if (s && s.DB && s.DB.v === 3) { DB = s.DB; Object.assign(UI, s.UI || {}); if (DB.settings.company === 'Easy Cab Builder Ltd') Object.assign(DB.settings, { company: 'Its All In The Image Limited', phone: '0161 223 7159', address: 'Unit 7 A, B and C, Trans Pennine Trading Estate, Gorrells Way', city: 'Rochdale, Lancashire', postcode: 'OL11 2PX' }); topUpCatalogue(); topUpFinishes(); ensureDefaultAdmin(); return; } }
   } catch (e) { }
   DB = seed();
+  ensureDefaultAdmin();
+}
+/* Default Super Admin, so staff can always get in, including on data saved before this existed. */
+const DEFAULT_ADMIN = { email: 'admin@easycabbuilder.co.uk', password: 'Admin@1234' };
+function ensureDefaultAdmin() {
+  if (DB.users.some(u => u.email.toLowerCase() === DEFAULT_ADMIN.email)) return;
+  DB.users.unshift({ id: 'u-admin', name: 'Administrator', email: DEFAULT_ADMIN.email, role: 'Super Admin', active: true, password: DEFAULT_ADMIN.password });
 }
 let saveT = null;
 /* The login lives in its own tiny key, written immediately, so a refresh never
@@ -8512,6 +8519,7 @@ function loginView() {
     ${e.login ? `<p class="err-msg">${esc(e.login)}</p>` : ''}
     <label class="check"><input type="checkbox" name="remember" ${cr.email || !Object.keys(cr).length ? 'checked' : ''}> Remember me on this device</label>
     <button class="btn btn-primary btn-lg" id="li-btn">Log in</button>
+    <button type="button" class="btn btn-ghost btn-lg" data-act="guestLogin">Continue as guest</button>
     <p class="muted" style="text-align:center">New to Easy Cab Builder? <a style="font-weight:800;cursor:pointer;color:var(--ink)" data-act="go" data-to="signup">Create Account</a></p>
   </form>`, 'I price a full kitchen on site while I measure. The customer sees the number before I leave the house.');
 }
@@ -8531,6 +8539,15 @@ SUB.login = f => {
     if (next === 'c-builder') startQuote(); else go(next && next.startsWith('c-') ? next : 'c-dash');
     toast('Welcome back, ' + c.contact.split(' ')[0]);
   }, 450);
+};
+A.guestLogin = () => {
+  let c = DB.customers.find(x => x.id === 'c-guest');
+  if (!c) { c = { id: 'c-guest', name: 'Guest', username: 'guest', contact: 'Guest', email: 'guest@easycabbuilder.co.uk', phone: '', company: 'Guest', address: '', city: '', postcode: '', discount: 0, active: true, created: now(), password: 'guest-' + uid('g') }; DB.customers.push(c); }
+  c.active = true;
+  UI.session.customerId = c.id; UI.errors = {};
+  const next = UI.afterLogin; UI.afterLogin = null; save();
+  if (next === 'c-builder') startQuote(); else go(next && next.startsWith('c-') ? next : 'c-dash');
+  toast('Continuing as guest');
 };
 function forgotView() {
   return authShell(`<form class="auth-form" data-submit="forgot" novalidate>
@@ -8588,9 +8605,9 @@ function adminLoginView() {
     <div class="row"><a data-act="go" data-to="home">${logo(true)}</a><span class="spacer"></span><button class="btn btn-sm" style="color:#D5D2C8" data-act="go" data-to="home">${ic('arrowL', 16)} Website</button></div>
     <form class="auth-form card" data-submit="adminLogin" novalidate style="margin:auto;padding:32px;color:var(--ink)">
       <div><span class="eyebrow">Staff only</span><h1 style="margin-top:10px;font-size:28px">Easy Cab Builder Admin</h1><p class="muted" style="margin-top:6px">Manage quotes, customers, pricing and the product catalogue.</p></div>
-      <div class="demo-note">${ic('info', 18)}<span>Signed in as Super Admin: <b>sarah@easycabbuilder.co.uk</b>, password <b class="mono">admin1234</b>.</span></div>
-      <div class="field"><label class="lbl" for="al-email">Work email</label><input class="input ${e.admin ? 'err' : ''}" id="al-email" name="email" type="email" value="sarah@easycabbuilder.co.uk"></div>
-      <div class="field"><label class="lbl" for="al-pw">Password</label><input class="input ${e.admin ? 'err' : ''}" id="al-pw" name="password" type="password" value="admin1234"></div>
+      <div class="demo-note">${ic('info', 18)}<span>Default admin: <b>admin@easycabbuilder.co.uk</b>, password <b class="mono">Admin@1234</b>.</span></div>
+      <div class="field"><label class="lbl" for="al-email">Work email</label><input class="input ${e.admin ? 'err' : ''}" id="al-email" name="email" type="email" value="admin@easycabbuilder.co.uk"></div>
+      <div class="field"><label class="lbl" for="al-pw">Password</label><input class="input ${e.admin ? 'err' : ''}" id="al-pw" name="password" type="password" value="Admin@1234"></div>
       ${e.admin ? `<p class="err-msg">${esc(e.admin)}</p>` : ''}
       <button class="btn btn-primary btn-lg">Sign in to Admin</button>
     </form></div></div>`;
@@ -10675,6 +10692,7 @@ function submitDesign() {
    Boot
    ========================================================= */
 load();
+save(); // persist seed data and the default admin to this browser's localStorage on first visit
 restoreSession();
 if (UI.route.startsWith('a-') && !UI.session.adminId) UI.route = 'admin-login';
 render();
