@@ -8973,8 +8973,10 @@ function baseArt(w, d, h, hinge, vd, opts) {
   q([P(T, y0 + T, vd), P(w - T, y0 + T, vd), P(w - T, y0 + T, d), P(T, y0 + T, d)], baseShade(col, 0.04));              // floor
   const ym = (y0 + y1) / 2, zs = d - 22;
   const shelf = (xa, xb) => {
-    q([P(xa, ym, vd), P(xb, ym, vd), P(xb, ym, zs), P(xa, ym, zs)], baseShade(col, 0.12));                             // shelf
-    q([P(xa, ym, zs), P(xb, ym, zs), P(xb, ym - T, zs), P(xa, ym - T, zs)], baseShade(col, -0.05));
+    const ys = o.robe ? y1 - T - 300 : ym;                 // a robe keeps its shelf near the top, above the hanging rail
+    q([P(xa, ys, vd), P(xb, ys, vd), P(xb, ys, zs), P(xa, ys, zs)], baseShade(col, 0.12));                             // shelf
+    q([P(xa, ys, zs), P(xb, ys, zs), P(xb, ys - T, zs), P(xa, ys - T, zs)], baseShade(col, -0.05));
+    if (o.robe) ln(P(xa, ys - 80, (vd + zs) / 2), P(xb, ys - 80, (vd + zs) / 2), '#8f969b', 9);                         // hanging rail
   };
   if (!o.drawers) shelf(T, w - T);
   if (!single && !o.drawers) {    // over 600 wide: two centre posts, each 70 deep x 18 thick, back to back so the doors close squarely
@@ -9036,7 +9038,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     dim(P(w, y1, d), P(w, y1, 0), off, 0, d + 'mm');         // depth runs along the top edge of the side panel, clear of the legs
   }
   const xs = pts.map(p => p.x), ys = pts.map(p => p.y), x0 = Math.min(...xs), x1 = Math.max(...xs), yy0 = Math.min(...ys), yy1 = Math.max(...ys), pad = Math.max(x1 - x0, yy1 - yy0) * 0.06;
-  return `<svg viewBox="${(x0 - pad).toFixed(0)} ${(yy0 - pad).toFixed(0)} ${(x1 - x0 + 2 * pad).toFixed(0)} ${(yy1 - yy0 + 2 * pad).toFixed(0)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Base unit ${w} by ${d} by ${h} millimetres" style="width:100%;height:100%">${out.join('')}</svg>`;
+  return `<svg viewBox="${(x0 - pad).toFixed(0)} ${(yy0 - pad).toFixed(0)} ${(x1 - x0 + 2 * pad).toFixed(0)} ${(yy1 - yy0 + 2 * pad).toFixed(0)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${o.robe ? 'Hanging robe' : 'Base unit'} ${w} by ${d} by ${h} millimetres" style="width:100%;height:100%">${out.join('')}</svg>`;
 }
 function baseCard() {
   const list = baseWidths(), it = list.find(i => i.w === BASE.w) || list.find(i => i.w === 600) || list[0];
@@ -9085,6 +9087,57 @@ function baseDetails() {
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
   <div style="max-width:620px">${panel(baseArt(w, d, BASE_H, 'left', BASE.v, { doors: false, dims: true }), 380)}</div>`;
+}
+/* Bedroom > Single Hanging Robe: same card as the bases, 300 to 1200 wide,
+   2150 high, with a hanging rail under a top shelf. Widths come from the catalogue. */
+const ROBE = { w: 600, hinge: 'left', d: 600, v: 50 };
+const ROBE_H = 2150;
+const BEDROOM_OPTS = [{ id: 'robes', name: 'Single Hanging Robe', desc: 'Hanging rail and top shelf. Pick the width from 300 to 1200.', icon: 'cube' }];
+const robeWidths = () => DB.items.filter(i => i.active !== false && /^(SR|DR)\d+B$/.test(i.code) && i.w >= 300 && i.w <= 1200).sort((a, b) => a.w - b.w);
+function robeCard() {
+  const list = robeWidths(), it = list.find(i => i.w === ROBE.w) || list[0];
+  if (!it) return '';
+  const w = +it.w, single = w <= 600, hinge = ROBE.hinge === 'right' ? 'right' : 'left';
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="robeDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="rc" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', ROBE_H)}${chip('W', w)}${chip('D', ROBE.d)}${chip('Void', ROBE.v)}</div>
+    <div style="height:380px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, ROBE.d, ROBE_H, hinge, ROBE.v, { robe: true })}</div>
+    <div class="row"><div><h3 style="margin:0">Single Hanging Robe</h3><span class="mono">${esc(it.code)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="robeMore">More Details ${ic('chevR', 14)}</button></div>
+    <div class="muted">Width:</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x.w === w)}" data-act="robeW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
+    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary" style="flex:1;${sel(hinge === hd)}" data-act="robeHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
+    <div class="row" style="gap:10px">${num('d', 'Depth (mm)', ROBE.d)}${num('v', 'Void (mm)', ROBE.v)}</div>
+  </article>`;
+}
+function robeDetails() {
+  const list = robeWidths(), it = list.find(i => i.w === ROBE.w) || list[0];
+  if (!it) return '';
+  const w = +it.w, posts = w > 600, d = ROBE.d;
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="robeDim" data-k="${k}"></label>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Hanging Robes</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(baseArt(w, d, ROBE_H, 'left', ROBE.v, { doors: false, robe: true }), 460)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', esc(it.code))}${row('Width', w + ' mm')}${row('Height (with legs)', (ROBE_H + 150) + ' mm')}${row('Height (without legs)', ROBE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', ROBE.v + ' mm')}${row('Leg height', '150 mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${w}MM SINGLE HANGING ROBE</h1>
+      <span class="mono">${esc(it.code)}</span>
+      <p class="muted" style="margin:0">${w}mm wide robe with a hanging rail and top shelf.</p>
+      <div class="muted">Available widths:</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${x.w === w ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="robeW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + esc(it.code))}${row('HANGING RAIL', 'Quantity: 1')}${row('TOP SHELF', 'Quantity: 1')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', ROBE.v)}</div>
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(baseArt(w, d, ROBE_H, 'left', ROBE.v, { doors: false, dims: true, robe: true }), 560)}</div>`;
 }
 /* Kitchen > Drawer Packs: same card as the bases, with a drawer system choice
    (Antaro or Legrabox) instead of door hinges. */
@@ -9147,6 +9200,13 @@ function dpDetails() {
 function cOrders() {
   if (UI.orderCat === 'drawerdetails') return dpDetails();
   if (UI.orderCat === 'basedetails') return baseDetails();
+  if (UI.orderCat === 'robedetails') return robeDetails();
+  if (UI.orderCat === 'robes') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Bedroom</button>
+  <div class="page-head"><div><h1>Hanging Robes</h1><p>Choose a width from 300 to 1200, then the door hand.</p></div></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${robeCard()}</div>`;
+  if (UI.orderCat === 'bedroom') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
+  <div class="page-head"><div><h1>Bedroom</h1><p>Choose a type of cabinet.</p></div></div>
+  <div class="grid2">${BEDROOM_OPTS.map(o => `<button class="card card-pad stack" style="text-align:left;cursor:pointer" data-act="kitchenOpt" data-id="${o.id}"><span class="row">${ic(o.icon, 22)}<b style="font-size:17px">${o.name}</b></span><span class="muted">${o.desc}</span></button>`).join('')}</div>`;
   if (UI.orderCat === 'bases') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Bases</h1><p>Choose a width, then the door hand or drawer type.</p></div></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}</div>`;
@@ -9164,7 +9224,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
@@ -9176,10 +9236,16 @@ A.baseMore = () => { UI.orderCat = 'basedetails'; render(); window.scrollTo(0, 0
 A.baseW = t => { BASE.w = +t.dataset.w; baseRefresh(); };
 A.baseHinge = t => { BASE.hinge = t.dataset.h; baseRefresh(); };
 CH.baseDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = BASE[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), BASE.d - 200); BASE[k] = v; baseRefresh(); };
+const robeRefresh = () => { const el = $('#rc'); if (el) el.outerHTML = robeCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.robeMore = () => { UI.orderCat = 'robedetails'; render(); window.scrollTo(0, 0); };
+A.robeW = t => { ROBE.w = +t.dataset.w; robeRefresh(); };
+A.robeHinge = t => { ROBE.hinge = t.dataset.h; robeRefresh(); };
+CH.robeDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = ROBE[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), ROBE.d - 200); ROBE[k] = v; robeRefresh(); };
 A.orders = () => { UI.orderCat = null; go('c-orders'); };
 A.cabRoom = t => {
   UI.orderRoom = t.dataset.id;
   if (t.dataset.id === 'Kitchen') { UI.orderCat = 'kitchen'; render(); window.scrollTo(0, 0); return; }
+  if (t.dataset.id === 'Bedroom') { UI.orderCat = 'bedroom'; render(); window.scrollTo(0, 0); return; }
   UI.orderCat = null; A.createQuote();
 };
 
