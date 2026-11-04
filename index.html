@@ -8959,7 +8959,7 @@ const baseShade = (hex, t) => {
 /* A shaded isometric base unit on legs: door open to show the shelf, handle on
    the opening edge, and the back panel set in by the void. */
 function baseArt(w, d, h, hinge, vd, opts) {
-  const o = Object.assign({ doors: true, dims: false }, opts), T = 18, LEG = 150, y0 = LEG, y1 = LEG + h, single = w <= 600;
+  const o = Object.assign({ doors: true, dims: false }, opts), T = 18, LEG = 150, y0 = LEG, y1 = LEG + h, single = w <= 600 && !o.pair;
   const FL = single && hinge === 'right' && o.doors ? -1 : 1, TH = 108 * Math.PI / 180, col = o.col || ocHex();
   const pts = [], out = [];
   // mostly a front view: the front stays square-on, depth recedes up and to the right
@@ -8983,8 +8983,8 @@ function baseArt(w, d, h, hinge, vd, opts) {
     q([P(xa, ys, zs), P(xb, ys, zs), P(xb, ys - T, zs), P(xa, ys - T, zs)], baseShade(col, -0.05));
     if (o.robe) ln(P(xa, ys - 80, (vd + zs) / 2), P(xb, ys - 80, (vd + zs) / 2), '#8f969b', 9);                         // hanging rail
   };
-  const bare = !o.drawers || o.drawers.h;                  // a drawerline unit still has its shelf and centre posts
-  if (bare) shelf(T, w - T);
+  const bare = (!o.drawers || o.drawers.h) && !o.bins && !o.trays;     // a drawerline unit still has its shelf and centre posts; a bin unit has neither
+  if (bare && !o.noShelf) shelf(T, w - T);
   if (!single && o.divider) {     // drawerline over 600: one 18mm divider, base to top and front to back, carrying the runners of the two drawers
     const cm = w / 2 - T / 2, cx = w / 2 + T / 2, yd = o.drawers && o.drawers.h ? y1 - o.drawers.h + 28 : y0 + T;   // hangs from the top down to the drawer box floor, where the runners sit
     q([P(cm, yd, vd), P(cm, yd, d), P(cm, y1, d), P(cm, y1, vd)], baseShade(col, -0.02));                              // side facing the left drawer
@@ -8997,12 +8997,39 @@ function baseArt(w, d, h, hinge, vd, opts) {
     q([P(cm, y0 + T, d), P(c1, y0 + T, d), P(c1, yp, d), P(cm, yp, d)], baseShade(col, 0.14));
     q([P(c1, y0 + T, zp), P(c1, y0 + T, d), P(c1, yp, d), P(c1, yp, zp)], baseShade(col, 0.04));                       // side facing the right door
   }
+  if (o.bins) {                   // pull-out bins: columns side by side, each column a front-to-back stack of buckets sized by litres
+    const cols = o.bins, cw = (w - 2 * T - 20) / cols.length, out = o.doors ? BIN_PULL : 0, zB = d + out - (o.doors ? T + 14 : 70), zA = o.doors ? zB - 400 : vd + 30;   // with the door on, the bins ride out behind it
+    if (o.doors) [T + 6, w - T - 6].forEach(x => ln(P(x, y0 + T + 90, vd + 30), P(x, y0 + T + 90, zB), '#8a9198', 6));      // runners
+    cols.forEach((items, ci) => {
+      const xl = T + 10 + ci * cw + 4, xr = T + 10 + (ci + 1) * cw - 4, tot = items.reduce((a, b) => a + b, 0); let z = zA;
+      items.slice().reverse().forEach(l => {
+        const dz = (zB - zA) * l / tot, z0 = z, z1 = z + dz - 8, yb = y0 + T + 6, yt = yb + (l >= 35 ? 380 : l >= 25 ? 340 : 280); z += dz;
+        q([P(xl, yb, z0), P(xr, yb, z0), P(xr, yt, z0), P(xl, yt, z0)], '#4d5257');                                       // back wall
+        q([P(xl, yb, z0), P(xl, yt, z0), P(xl, yt, z1), P(xl, yb, z1)], '#5c6268');                                       // left wall, inside
+        q([P(xl, yb, z0), P(xr, yb, z0), P(xr, yb, z1), P(xl, yb, z1)], '#3f4348');                                       // floor
+        q([P(xl, yb, z1), P(xr, yb, z1), P(xr, yt, z1), P(xl, yt, z1)], '#777e85');                                       // front wall
+        q([P(xr, yb, z0), P(xr, yb, z1), P(xr, yt, z1), P(xr, yt, z0)], '#8a9198');                                       // right wall, outside
+        q([P(xl, yt, z1 - 14), P(xr, yt, z1 - 14), P(xr, yt, z1), P(xl, yt, z1)], '#a3aab0');                             // rim
+      });
+    });
+  }
+  if (o.trays) {                  // slim pull-out: three shallow wire trays on one runner frame
+    const xl = T + 10, xr = w - T - 10, zA = vd + 30, zB = d - 70;
+    [0, 1, 2].forEach(i => {
+      const yb = y0 + T + 70 + i * 230, yt = yb + 55;
+      q([P(xl, yb, zA), P(xr, yb, zA), P(xr, yt, zA), P(xl, yt, zA)], '#8d949a');                                      // back
+      q([P(xl, yb, zA), P(xr, yb, zA), P(xr, yb, zB), P(xl, yb, zB)], '#6e757b');                                      // floor
+      q([P(xl, yb, zB), P(xr, yb, zB), P(xr, yt, zB), P(xl, yt, zB)], '#b4bbc1');                                      // front
+      q([P(xr, yb, zA), P(xr, yb, zB), P(xr, yt, zB), P(xr, yt, zA)], '#c9ced2');                                      // right
+    });
+  }
   q([P(w, y0, 0), P(w, y0, d), P(w, y1, d), P(w, y1, 0)], baseShade(col, 0.08));                                        // right side
   // a base unit has no full top: just one flat front top rail (160 deep, 18 thick) and the edges of the side panels
   const vRail = o.rail === 'vertical', rf = vRail ? T : 160, topCol = baseShade(col, 0.28);   // a vertical top rail stands on edge: 70 high, 18 thick
   q([P(0, y1, 0), P(T, y1, 0), P(T, y1, d), P(0, y1, d)], topCol);                                                         // side panel edges
   q([P(w - T, y1, 0), P(w, y1, 0), P(w, y1, d), P(w - T, y1, d)], topCol);
   q([P(T, y1, d - rf), P(w - T, y1, d - rf), P(w - T, y1, d), P(T, y1, d)], topCol);                                       // front rail, top
+  if (o.fullTop) q([P(T, y1, 0), P(w - T, y1, 0), P(w - T, y1, d), P(T, y1, d)], topCol);                                  // a Belfast sink base keeps a full top panel
   q([P(0, y0, d), P(T, y0, d), P(T, y1, d), P(0, y1, d)], baseShade(col, 0.1));                                         // front frame
   q([P(w - T, y0, d), P(w, y0, d), P(w, y1, d), P(w - T, y1, d)], baseShade(col, 0.1));
   q([P(T, y1 - (vRail ? 70 : T), d), P(w - T, y1 - (vRail ? 70 : T), d), P(w - T, y1, d), P(T, y1, d)], baseShade(col, 0.1));
@@ -9043,7 +9070,12 @@ function baseArt(w, d, h, hinge, vd, opts) {
     const ymid = (yb + yt) / 2, hh = Math.min(100, (yt - yb) * 0.15);
     ln(at(1 - m / 2, ymid - hh), at(1 - m / 2, ymid + hh), '#3a3631', 4);                                            // handle in the middle of the opening-edge stile, halfway up the door
   };
-  if (o.doors) { if (single) door(0, 1, w - 4); else { door(0, 1, w / 2 - 3); door(w, -1, w / 2 - 3, 150 * Math.PI / 180); } }   // the right door swings wider so it opens clear of the right half
+  if (o.doors && o.bins) {        // a bin unit's door is fixed to the pull-out frame and slides out with the bins
+    const zf = d + BIN_PULL, yb = y0 + 3, yt = y1 - 3, m = 55;
+    q([P(3, yb, zf), P(w - 3, yb, zf), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(col, 0.24), 1.3);                    // door face
+    q([P(3 + m, yb + 75, zf), P(w - 3 - m, yb + 75, zf), P(w - 3 - m, yt - 75, zf), P(3 + m, yt - 75, zf)], baseShade(col, 0.08), 1);   // shaker panel
+    q([P(3, yt, zf - T), P(w - 3, yt, zf - T), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(col, 0.32));                  // top edge
+  } else if (o.doors) { if (single) door(0, 1, w - 4); else { door(0, 1, w / 2 - 3); door(w, -1, w / 2 - 3, 150 * Math.PI / 180); } }   // the right door swings wider so it opens clear of the right half
   if (o.dims) {                                            // technical drawing: overall width, height and depth
     const ink = '#3b4a52', fs = 34, off = 70;
     const dim = (a, b, dx, dy, label) => {
@@ -9236,6 +9268,192 @@ A.dlHinge = t => { DL.hinge = t.dataset.h; dlRefresh(); };
 A.dlDrawers = t => { DL.drawers = t.dataset.k; dlRefresh(); };
 A.dlSys = t => { DL.sys = t.dataset.sys; dlRefresh(); };
 CH.dlDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = DL[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), DL.d - 200); DL[k] = v; dlRefresh(); };
+/* Kitchen > All Bases: Highline Bin Unit, a pull-out bin cabinet. The width sets the
+   bin layouts: 600 has two (2 x 45L, or 2 x 25L + 2 x 15L), 500 has 2 x 35L, 400 and 300 have 1 x 25L. */
+const BIN = { w: 600, opt: 0, d: 570, v: 50 };           // pull-outs are fixed at 570 deep with a 50 void
+const BIN_WIDTHS = [300, 400, 500, 600];
+const BIN_OPTS = {
+  300: [{ label: '1 x 25L', cols: [[25]] }],
+  400: [{ label: '1 x 25L', cols: [[25]] }],
+  500: [{ label: '2 x 35L', cols: [[35], [35]] }],
+  600: [{ label: '2 x 45L', cols: [[45], [45]] }, { label: '2 x 25L + 2 x 15L', cols: [[25, 15], [25, 15]] }]
+};
+const binCode = w => 'BHL' + w + 'BS';                // BHL + width + BS, e.g. BHL600BS
+const BIN_PULL = 300;                                            // how far the door and bins slide out in the card picture
+const binOpt = () => { const l = BIN_OPTS[BIN.w]; return l[BIN.opt] || l[0]; };
+const binArt = (extra) => baseArt(BIN.w, BIN.d, BASE_H, 'left', BIN.v, Object.assign({ bins: binOpt().cols }, extra));
+const binPick = sel => `<div class="muted">Bin layout:</div><div class="row" style="gap:6px;flex-wrap:wrap">${BIN_OPTS[BIN.w].map((x, i) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(binOpt() === x)}" data-act="binOpt" data-i="${i}">${binOpt() === x ? '&#9745;' : '&#9744;'} ${x.label}</button>`).join('')}</div>`;
+function binCard() {
+  const w = BIN.w;
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="binDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="bn" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', w)}${chip('D', BIN.d)}${chip('Void', BIN.v)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${binArt({ doors: true })}</div>
+    <div class="row"><div><h3 style="margin:0">Highline Bin Unit</h3><span class="mono">${binCode(w)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="binMore">More Details ${ic('chevR', 14)}</button></div>
+    <div class="muted">Width:</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${BIN_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="binW" data-w="${x}">${x}</button>`).join('')}</div>
+    ${binPick(sel)}
+    ${bkRow('bin')}
+  </article>`;
+}
+function binDetails() {
+  const w = BIN.w, d = BIN.d;
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="binDim" data-k="${k}"></label>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Bases</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(binArt({ doors: false }), 320)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', binCode(w))}${row('Width', w + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', BIN.v + ' mm')}${row('Leg height', '150 mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${w}MM HIGHLINE BIN UNIT</h1>
+      <span class="mono">${binCode(w)}</span>
+      <p class="muted" style="margin:0">${w}mm wide pull-out bin unit, ${binOpt().label}.</p>
+      <div class="muted">Available widths:</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${BIN_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="binW" data-w="${x}">${x}</button>`).join('')}</div>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + binCode(w))}${row('BINS', binOpt().label)}${row('LEGS', 'Quantity: 4 x legs')}${row('PLINTH CLIPS', 'Quantity: 2 x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      ${binPick(sel)}
+      ${ocDetail(null)}
+      ${bkRow('bin')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(binArt({ doors: false, dims: true }), 380)}</div>`;
+}
+/* Slim pull-out unit: 150 or 300 wide, code BHL + width + SPO. */
+const SPO = { w: 300, d: 570, v: 50 };
+const SPO_WIDTHS = [150, 300];
+const spoCode = w => 'BHL' + w + 'SPO';
+const spoArt = extra => baseArt(SPO.w, SPO.d, BASE_H, 'left', SPO.v, Object.assign({ trays: true }, extra));
+function spoCard() {
+  const w = SPO.w;
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="spoDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="sp" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', w)}${chip('D', SPO.d)}${chip('Void', SPO.v)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${spoArt({ doors: true })}</div>
+    <div class="row"><div><h3 style="margin:0">Highline Slim Pull-out Unit</h3><span class="mono">${spoCode(w)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="spoMore">More Details ${ic('chevR', 14)}</button></div>
+    <div class="muted">Width:</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${SPO_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="spoW" data-w="${x}">${x}</button>`).join('')}</div>
+    ${bkRow('spo')}
+  </article>`;
+}
+function spoDetails() {
+  const w = SPO.w, d = SPO.d;
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="spoDim" data-k="${k}"></label>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Bases</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(spoArt({ doors: false }), 320)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', spoCode(w))}${row('Width', w + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', SPO.v + ' mm')}${row('Leg height', '150 mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${w}MM HIGHLINE SLIM PULL-OUT UNIT</h1>
+      <span class="mono">${spoCode(w)}</span>
+      <div class="muted">Available widths:</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${SPO_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="spoW" data-w="${x}">${x}</button>`).join('')}</div>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + spoCode(w))}${row('LEGS', 'Quantity: 4 x legs')}${row('PLINTH CLIPS', 'Quantity: 2 x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      ${ocDetail(null)}
+      ${bkRow('spo')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(spoArt({ doors: false, dims: true }), 380)}</div>`;
+}
+const spoRefresh = () => { if (UI.orderCat === 'spodetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#sp'); if (el) el.outerHTML = spoCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.spoMore = () => { UI.orderCat = 'spodetails'; render(); window.scrollTo(0, 0); };
+A.spoW = t => { SPO.w = +t.dataset.w; spoRefresh(); };
+CH.spoDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = SPO[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), SPO.d - 200); SPO[k] = v; spoRefresh(); };
+const binRefresh = () => { if (UI.orderCat === 'bindetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#bn'); if (el) el.outerHTML = binCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.binMore = () => { UI.orderCat = 'bindetails'; render(); window.scrollTo(0, 0); };
+A.binW = t => { BIN.w = +t.dataset.w; BIN.opt = 0; binRefresh(); };
+A.binOpt = t => { BIN.opt = +t.dataset.i; binRefresh(); };
+CH.binDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = BIN[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), BIN.d - 200); BIN[k] = v; binRefresh(); };
+/* Kitchen > All Bases: Belfast Sink Base Unit, 455 high with a full top. 600 can be a
+   single or a double door (double takes the centre post); 700 and 800 are always double. */
+const BEL = { w: 600, h: 455, doors: 'single', hinge: 'left', d: 560, v: 50 };
+const BEL_HEIGHTS = { 600: [455, 495], 800: [495] };            // the codes on offer: 600BFS455, 600BFS495, 800BFS495
+const BEL_WIDTHS = [600, 800];
+const belPair = () => BEL.w > 600 || BEL.doors === 'double';
+const belCode = (w, h) => w + 'BFS' + h;                         // width + BFS + height
+const belHeightPick = sel => `<div class="muted">Height:</div><div class="row" style="gap:6px">${BEL_HEIGHTS[BEL.w].map(x => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(BEL.h === x)}" data-act="belH" data-h="${x}">${BEL.h === x ? '&#9745;' : '&#9744;'} ${x}</button>`).join('')}</div>`;
+const belArt = extra => baseArt(BEL.w, BEL.d, BEL.h, BEL.hinge === 'right' ? 'right' : 'left', BEL.v, Object.assign({ fullTop: true, pair: belPair() }, extra));
+function belPick(sel) {
+  const lbl = (on, t) => `${on ? '&#9745;' : '&#9744;'} ${t}`;
+  if (BEL.w === 600) {
+    return `<div class="muted">Doors:</div><div class="row" style="gap:6px">${['single', 'double'].map(k => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(BEL.doors === k)}" data-act="belDoors" data-k="${k}">${lbl(BEL.doors === k, k[0].toUpperCase() + k.slice(1) + ' door' + (k === 'double' ? 's' : ''))}</button>`).join('')}</div>
+    ${BEL.doors === 'single' ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(BEL.hinge === hd)}" data-act="belHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Double doors, so it takes two centre posts (70 x 18mm).</p>'}`;
+  }
+  return '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>';
+}
+function belCard() {
+  const w = BEL.w;
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="belDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="bl" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', BEL.h)}${chip('W', w)}${chip('D', BEL.d)}${chip('Void', BEL.v)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${belArt({ doors: true })}</div>
+    <div class="row"><div><h3 style="margin:0">Belfast Sink Base Unit</h3><span class="mono">${belCode(w, BEL.h)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="belMore">More Details ${ic('chevR', 14)}</button></div>
+    <div class="muted">Width:</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${BEL_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="belW" data-w="${x}">${x}</button>`).join('')}</div>
+    ${BEL_HEIGHTS[w].length > 1 ? belHeightPick(sel) : ''}
+    ${belPick(sel)}
+    <div class="row" style="gap:10px">${num('d', 'Depth (mm)', BEL.d)}${num('v', 'Void (mm)', BEL.v)}</div>
+    ${bkRow('bel')}
+  </article>`;
+}
+function belDetails() {
+  const w = BEL.w, d = BEL.d, posts = belPair();
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="belDim" data-k="${k}"></label>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Bases</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(belArt({ doors: false }), 320)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', belCode(w, BEL.h))}${row('Width', w + ' mm')}${row('Height (with legs)', (BEL.h + 150) + ' mm')}${row('Height (without legs)', BEL.h + ' mm')}${row('Depth', d + ' mm')}${row('Void', BEL.v + ' mm')}${row('Leg height', '150 mm')}${row('Top', 'Full top')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${w}MM BELFAST SINK BASE UNIT</h1>
+      <span class="mono">${belCode(w, BEL.h)}</span>
+      <p class="muted" style="margin:0">${w}mm wide Belfast sink base unit with a full top.</p>
+      <div class="muted">Available widths:</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${BEL_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="belW" data-w="${x}">${x}</button>`).join('')}</div>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + belCode(w, BEL.h))}${row('DOORS', posts ? 'Double doors' : 'Single door, ' + BEL.hinge + ' hinge')}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('SHELF', 'Quantity: 1 x shelf')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      ${BEL_HEIGHTS[w].length > 1 ? belHeightPick(sel) : ''}
+      ${belPick(sel)}
+      ${ocDetail(null)}
+      <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', BEL.v)}</div>
+      ${bkRow('bel')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(belArt({ doors: false, dims: true }), 380)}</div>`;
+}
+const belRefresh = () => { if (UI.orderCat === 'beldetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#bl'); if (el) el.outerHTML = belCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.belMore = () => { UI.orderCat = 'beldetails'; render(); window.scrollTo(0, 0); };
+A.belW = t => { BEL.w = +t.dataset.w; if (!BEL_HEIGHTS[BEL.w].includes(BEL.h)) BEL.h = BEL_HEIGHTS[BEL.w][0]; belRefresh(); };
+A.belH = t => { BEL.h = +t.dataset.h; belRefresh(); };
+A.belDoors = t => { BEL.doors = t.dataset.k; belRefresh(); };
+A.belHinge = t => { BEL.hinge = t.dataset.h; belRefresh(); };
+CH.belDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = BEL[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), BEL.d - 200); BEL[k] = v; belRefresh(); };
 /* Cabinet colour for New Orders. Only price Group 1 (cheaper) and Group 2 (dearer)
    are offered. The choice drives the picture and the price shown, and follows the
    customer from the room pages into More Details, where it can be changed. */
@@ -9265,6 +9483,12 @@ A.bkAdd = t => {
   if (key === 'base') {
     const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
     l = { name: 'Highline Base Unit', code: it.code, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? BASE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+  } else if (key === 'bel') {
+    l = { name: 'Belfast Sink Base Unit', code: belCode(BEL.w, BEL.h), w: BEL.w, d: BEL.d, v: BEL.v, opt: (belPair() ? 'Double doors' : BEL.hinge.toUpperCase() + ' door hinge') + ', full top, 1 shelf' };
+  } else if (key === 'spo') {
+    l = { name: 'Highline Slim Pull-out Unit', code: spoCode(SPO.w), w: SPO.w, d: SPO.d, v: SPO.v, opt: 'Slim pull-out' };
+  } else if (key === 'bin') {
+    l = { name: 'Highline Bin Unit', code: binCode(BIN.w), w: BIN.w, d: BIN.d, v: BIN.v, opt: 'Pull-out bins, ' + binOpt().label };
   } else if (key === 'dl') {
     l = { name: 'Drawerline Single Base Unit', code: dlCode(DL.w), w: DL.w, d: DL.d, v: DL.v, opt: (DL.w <= 600 ? DL.hinge.toUpperCase() + ' door hinge' : 'Pair of doors') + ', ' + (dlDouble() ? 'double ' : 'single ') + DL.sys + ' drawer' };
   } else if (key === 'sink') {
@@ -9419,6 +9643,9 @@ function cOrders() {
   if (UI.orderCat === 'robedetails') return robeDetails();
   if (UI.orderCat === 'sinkdetails') return sinkDetails();
   if (UI.orderCat === 'dldetails') return dlDetails();
+  if (UI.orderCat === 'bindetails') return binDetails();
+  if (UI.orderCat === 'spodetails') return spoDetails();
+  if (UI.orderCat === 'beldetails') return belDetails();
   if (UI.orderCat === 'robes') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Bedroom</button>
   <div class="page-head"><div><h1>Hanging Robes</h1><p>Choose a width from 300 to 1200, then the door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -9430,7 +9657,7 @@ function cOrders() {
   if (UI.orderCat === 'bases') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Bases</h1><p>Choose a width, then the door hand or drawer type.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${dlCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${dlCard()}${binCard()}${spoCard()}${belCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -9447,7 +9674,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', sinkdetails: 'bases', dldetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
