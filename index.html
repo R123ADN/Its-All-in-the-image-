@@ -9590,8 +9590,7 @@ function mtmDetails() {
 const mtmRefresh = () => { if (UI.orderCat === 'mtmdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#mt'); if (el) el.outerHTML = mtmCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 A.mtmMore = () => { UI.orderCat = 'mtmdetails'; render(); window.scrollTo(0, 0); };
 A.mtmTop = t => { MTM.top = t.dataset.v; mtmRefresh(); };
-A.mtmBack = t => { MTM.back = t.dataset.v; mtmRefresh(); };
-CH.mtmDim = t => { const k = t.dataset.k, [lo, hi] = MTM_LIM[k]; let v = Math.round(+t.value); if (!isFinite(v)) v = MTM[k]; MTM[k] = Math.min(hi, Math.max(lo, v)); mtmRefresh(); };
+A.mtmBack = t => { MTM.back = t.dataset.v; mtmRefresh(); };CH.mtmDim = t => { const k = t.dataset.k, [lo, hi] = MTM_LIM[k]; let v = Math.round(+t.value); if (!isFinite(v)) v = MTM[k]; MTM[k] = Math.min(hi, Math.max(lo, v)); mtmRefresh(); };
 /* Cabinet colour for New Orders. Only price Group 1 (cheaper) and Group 2 (dearer)
    are offered. The choice drives the picture and the price shown, and follows the
    customer from the room pages into More Details, where it can be changed. */
