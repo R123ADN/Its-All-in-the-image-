@@ -7586,7 +7586,7 @@ const ICONS = {
   star: '<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1.1 6.2L12 17.4 6.4 20.3l1.1-6.2L3 9.7l6.2-.9z"/>'
 };
 const ic = (n, s = 18, sw = 1.8) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
-const logo = (light) => `<span class="brand"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="${light ? '#F2EFE8' : 'currentColor'}"/><rect x="7" y="7" width="18" height="7.5" rx="1.6" fill="#B07F52"/><rect x="7" y="17.5" width="8" height="7.5" rx="1.6" fill="#8E9C73"/><rect x="17" y="17.5" width="8" height="7.5" rx="1.6" fill="#8E9C73"/><rect x="13.5" y="10" width="5" height="1.4" rx=".7" fill="${light ? '#1B1E1A' : 'var(--bg)'}"/></svg><b><span class="easy">Easy</span> Cab <i>Builder</i></b></span>`;
+const logo = (light) => `<span class="brand"><img src="its-logo.png" alt="Its All In The Image" width="34" height="34" style="width:34px;height:34px;object-fit:contain;border-radius:8px;background:#fff;flex:none"><b><span class="easy">Easy</span> Cab <i>Builder</i></b></span>`;
 
 /* ---------- reference constants (from PriceList workbook) ---------- */
 const GROUPS = { 1: 'Plain', 2: 'Woodgrain', 3: 'Structure' };
@@ -8985,11 +8985,17 @@ function baseArt(w, d, h, hinge, vd, opts) {
   };
   const bare = !o.drawers || o.drawers.h;                  // a drawerline unit still has its shelf and centre posts
   if (bare) shelf(T, w - T);
+  if (!single && o.divider) {     // drawerline over 600: one 18mm divider, base to top and front to back, carrying the runners of the two drawers
+    const cm = w / 2 - T / 2, cx = w / 2 + T / 2, yd = o.drawers && o.drawers.h ? y1 - o.drawers.h + 28 : y0 + T;   // hangs from the top down to the drawer box floor, where the runners sit
+    q([P(cm, yd, vd), P(cm, yd, d), P(cm, y1, d), P(cm, y1, vd)], baseShade(col, -0.02));                              // side facing the left drawer
+    q([P(cm, yd, d), P(cx, yd, d), P(cx, y1, d), P(cm, y1, d)], baseShade(col, 0.14));                                 // front edge
+    q([P(cm, y1, vd), P(cx, y1, vd), P(cx, y1, d), P(cm, y1, d)], baseShade(col, 0.28));                               // top edge
+  }
   if (!single && (bare || o.posts)) {    // over 600 wide: two centre posts, each 70 deep x 18 thick, back to back so the doors close squarely
-    const c0 = w / 2 - T, cm = w / 2, c1 = w / 2 + T, zp = d - 70;
-    q([P(c0, y0 + T, d), P(cm, y0 + T, d), P(cm, y1 - T, d), P(c0, y1 - T, d)], baseShade(col, 0.14));                 // front faces
-    q([P(cm, y0 + T, d), P(c1, y0 + T, d), P(c1, y1 - T, d), P(cm, y1 - T, d)], baseShade(col, 0.14));
-    q([P(c1, y0 + T, zp), P(c1, y0 + T, d), P(c1, y1 - T, d), P(c1, y1 - T, zp)], baseShade(col, 0.04));               // side facing the right door
+    const c0 = w / 2 - T, cm = w / 2, c1 = w / 2 + T, zp = d - 70, yp = o.divider && o.drawers && o.drawers.h ? y1 - o.drawers.h + 28 : y1 - T;   // under a drawerline divider the posts stop at the drawer runners
+    q([P(c0, y0 + T, d), P(cm, y0 + T, d), P(cm, yp, d), P(c0, yp, d)], baseShade(col, 0.14));                         // front faces
+    q([P(cm, y0 + T, d), P(c1, y0 + T, d), P(c1, yp, d), P(cm, yp, d)], baseShade(col, 0.14));
+    q([P(c1, y0 + T, zp), P(c1, y0 + T, d), P(c1, yp, d), P(c1, yp, zp)], baseShade(col, 0.04));                       // side facing the right door
   }
   q([P(w, y0, 0), P(w, y0, d), P(w, y1, d), P(w, y1, 0)], baseShade(col, 0.08));                                        // right side
   // a base unit has no full top: just one flat front top rail (160 deep, 18 thick) and the edges of the side panels
@@ -9170,11 +9176,11 @@ CH.sinkDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!is
    Antaro, Legrabox or Merivo drawer system. Code is BDL + width. */
 const DL = { w: 600, hinge: 'left', sys: 'Antaro', d: 560, v: 50, drawers: 'single' };
 const DL_WIDTHS = [300, 400, 450, 500, 600, 800, 900, 1000, 1200];
-const dlDouble = () => DL.w > 600 && DL.drawers === 'double';       // wide units can take two drawers side by side
+const dlDouble = () => DL.w > 600;                                   // over 600 wide it always has two drawers side by side
 const dlDrawer = () => ({ fronts: [1], open: [170], h: 200, cols: dlDouble() ? 2 : 1 });
 const dlCode = w => 'BDL' + w;
-const dlArt = (w, extra) => baseArt(w, DL.d, BASE_H, DL.hinge === 'right' ? 'right' : 'left', DL.v, Object.assign({ drawers: dlDrawer() }, extra));
-const dlDrawerPick = sel => DL.w > 600 ? `<div class="muted">Drawers:</div><div class="row" style="gap:6px">${['single', 'double'].map(k => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(DL.drawers === k)}" data-act="dlDrawers" data-k="${k}">${DL.drawers === k ? '&#9745;' : '&#9744;'} ${k[0].toUpperCase() + k.slice(1)} drawer</button>`).join('')}</div>` : '';
+const dlArt = (w, extra) => baseArt(w, DL.d, BASE_H, DL.hinge === 'right' ? 'right' : 'left', DL.v, Object.assign({ drawers: dlDrawer(), divider: true }, extra));
+const dlDrawerPick = () => '';
 function dlCard() {
   const w = DL.w, single = w <= 600, hinge = DL.hinge === 'right' ? 'right' : 'left';
   const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
@@ -9186,8 +9192,7 @@ function dlCard() {
     <div class="row"><div><h3 style="margin:0">Drawerline Single Base Unit</h3><span class="mono">${dlCode(w)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="dlMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${DL_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="dlW" data-w="${x}">${x}</button>`).join('')}</div>
-    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(hinge === hd)}" data-act="dlHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
-    ${dlDrawerPick(sel)}
+    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(hinge === hd)}" data-act="dlHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors, two drawers side by side and a centre divider (18mm) for the drawer runners.</p>'}
     <div class="muted">Drawer type:</div>
     <div class="row" style="gap:6px">${DP_SYSTEMS.map(x => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 4px;font-size:12px;white-space:nowrap;${sel(DL.sys === x)}" data-act="dlSys" data-sys="${x}">${DL.sys === x ? '&#9745;' : '&#9744;'} ${x}</button>`).join('')}</div>
     <div class="row" style="gap:10px">${num('d', 'Depth (mm)', DL.d)}${num('v', 'Void (mm)', DL.v)}</div>
@@ -9214,8 +9219,7 @@ function dlDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${DL_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="dlW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + dlCode(w))}${row('DRAWER TYPE', DL.sys)}${row('DRAWERS', dlDouble() ? 'Double: 2 drawers side by side' : 'Single drawer')}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
-      ${dlDrawerPick(sel)}
+      <div>${row('CABINET', 'Code: ' + dlCode(w))}${row('DRAWER TYPE', DL.sys)}${row('DRAWERS', dlDouble() ? 'Double: 2 drawers side by side' : 'Single drawer')}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm) below the drawers, plus 1 x centre divider, full depth (18 mm), from the top down to the drawer runners' : 'None')}</div>
       <div class="row" style="gap:6px">${DP_SYSTEMS.map(x => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(DL.sys === x)}" data-act="dlSys" data-sys="${x}">${DL.sys === x ? '&#9745;' : '&#9744;'} ${x}</button>`).join('')}</div>
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', DL.v)}</div>
@@ -9223,7 +9227,7 @@ function dlDetails() {
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
-  <div style="max-width:620px">${panel(dlArt(w, { doors: false, dims: true, posts: true, drawers: { fronts: [] } }), 380)}</div>`;
+  <div style="max-width:620px">${panel(dlArt(w, { doors: false, dims: true, posts: true, drawers: { fronts: [], h: 200 } }), 380)}</div>`;
 }
 const dlRefresh = () => { if (UI.orderCat === 'dldetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#dl'); if (el) el.outerHTML = dlCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 A.dlMore = () => { UI.orderCat = 'dldetails'; render(); window.scrollTo(0, 0); };
