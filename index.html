@@ -8983,7 +8983,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     q([P(xa, ys, zs), P(xb, ys, zs), P(xb, ys - T, zs), P(xa, ys - T, zs)], baseShade(col, -0.05));
     if (o.robe) ln(P(xa, ys - 80, (vd + zs) / 2), P(xb, ys - 80, (vd + zs) / 2), '#8f969b', 9);                         // hanging rail
   };
-  const bare = (!o.drawers || o.drawers.h) && !o.bins && !o.trays;     // a drawerline unit still has its shelf and centre posts; a bin unit has neither
+  const bare = (!o.drawers || o.drawers.h) && !o.bins && !o.trays && !o.wine;     // a drawerline unit still has its shelf and centre posts; a bin unit has neither
   if (bare && !o.noShelf) shelf(T, w - T);
   if (!single && o.divider) {     // drawerline over 600: one 18mm divider, base to top and front to back, carrying the runners of the two drawers
     const cm = w / 2 - T / 2, cx = w / 2 + T / 2, yd = o.drawers && o.drawers.h ? y1 - o.drawers.h + 28 : y0 + T;   // hangs from the top down to the drawer box floor, where the runners sit
@@ -9012,6 +9012,24 @@ function baseArt(w, d, h, hinge, vd, opts) {
         q([P(xl, yt, z1 - 14), P(xr, yt, z1 - 14), P(xr, yt, z1), P(xl, yt, z1)], '#a3aab0');                             // rim
       });
     });
+  }
+  if (o.wine) {                   // wine rack: a grid of bottle slots (rows x cols), or two cells each crossed by an X
+    const W = o.wine, xl = T, xr = w - T, yb = y0 + T, yt = y1 - T, rows = W.x ? 2 : 5, rh = (yt - yb) / rows, ycol = baseShade(col, 0.1);
+    const pts2 = a => a.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+    const SW = 46;                                                                                                       // front width of an X arm
+    const diag = (xa, ya, xb, yb2) => {                                                                                // one diagonal panel: a faint full-depth shadow behind a bold front strip
+      out.push(`<polygon points="${pts2([P(xa, ya + SW, vd), P(xb, yb2 + SW, vd), P(xb, yb2 + SW, d), P(xa, ya + SW, d)])}" fill="${baseShade(col, -0.1)}" opacity="0.28"/>`);
+      q([P(xa, ya, d), P(xb, yb2, d), P(xb, yb2 + SW, d), P(xa, ya + SW, d)], baseShade(col, 0.2), 1.3);
+    };
+    for (let i = 1; i < rows; i++) { const ys = yb + i * rh;                                                           // shelves, full depth
+      q([P(xl, ys, vd), P(xr, ys, vd), P(xr, ys, d), P(xl, ys, d)], baseShade(col, 0.14));
+      q([P(xl, ys - T, d), P(xr, ys - T, d), P(xr, ys, d), P(xl, ys, d)], ycol); }
+    if (W.x) for (let i = 0; i < rows; i++) { const ya = yb + i * rh + (i ? T : 0), yz = yb + (i + 1) * rh - (i < rows - 1 ? T : 0) - SW;
+      diag(xl, ya, xr, yz); diag(xl, yz, xr, ya); }                                                                      // the two arms of the X, crossing in the middle of each cell
+    if (!W.x) for (let j = 1; j < W.cols; j++) { const xv = xl + j * (xr - xl) / W.cols - T / 2;                      // upright divider(s), drawn last so they show in every row
+      for (let i = 0; i < rows; i++) { const ys = yb + i * rh;                                                         // the divider's seam running back along each shelf, so both columns stay visible
+        q([P(xv, ys, vd), P(xv + T, ys, vd), P(xv + T, ys, d), P(xv, ys, d)], baseShade(col, 0.24), 1); }
+      q([P(xv, yb, d), P(xv + T, yb, d), P(xv + T, yt, d), P(xv, yt, d)], baseShade(col, 0.16)); }          // front edge of the divider, full height
   }
   if (o.trays) {                  // slim pull-out: three shallow wire trays on one runner frame
     const xl = T + 10, xr = w - T - 10, zA = vd + 30, zB = d - 70;
@@ -9454,6 +9472,59 @@ A.belH = t => { BEL.h = +t.dataset.h; belRefresh(); };
 A.belDoors = t => { BEL.doors = t.dataset.k; belRefresh(); };
 A.belHinge = t => { BEL.hinge = t.dataset.h; belRefresh(); };
 CH.belDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = BEL[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), BEL.d - 200); BEL[k] = v; belRefresh(); };
+/* Kitchen > All Bases: Base Wine Rack, one cabinet with four options at the bottom:
+   150 and 300 (rows of bottle slots), 500 and 600 (X racks). Always 720 high, 570 deep. */
+const WINE = { opt: 0, d: 570, v: 50 };
+const WINE_OPTS = [
+  { code: 'BWR150', w: 150, cols: 1, x: false, label: '150 Wine Rack' },
+  { code: 'BWR300', w: 300, cols: 2, x: false, label: '300 Wine Rack' },
+  { code: 'BWRX500', w: 500, cols: 1, x: true, label: '500 X Wine Rack' },
+  { code: 'BWRX600', w: 600, cols: 1, x: true, label: '600 X Wine Rack' }
+];
+const wineOpt = () => WINE_OPTS[WINE.opt] || WINE_OPTS[0];
+const wineArt = extra => { const o = wineOpt(); return baseArt(o.w, WINE.d, BASE_H, 'left', WINE.v, Object.assign({ doors: false, wine: { cols: o.cols, x: o.x } }, extra)); };
+const winePick = sel => `<div class="muted">Options:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${WINE_OPTS.map((x, i) => `<button class="btn btn-secondary btn-sm" style="min-width:0;font-size:12px;white-space:nowrap;${sel(WINE.opt === i)}" data-act="wineOpt" data-i="${i}">${WINE.opt === i ? '&#9745;' : '&#9744;'} ${x.label}</button>`).join('')}</div>`;
+function wineCard() {
+  const o = wineOpt();
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="wn" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', o.w)}${chip('D', WINE.d)}${chip('Void', WINE.v)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${wineArt()}</div>
+    <div class="row"><div><h3 style="margin:0">Base Wine Rack</h3><span class="mono">${o.code}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="wineMore">More Details ${ic('chevR', 14)}</button></div>
+    ${winePick(sel)}
+    ${bkRow('wine')}
+  </article>`;
+}
+function wineDetails() {
+  const o = wineOpt(), w = o.w, d = WINE.d;
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Bases</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(wineArt(), 320)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', o.code)}${row('Width', w + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', WINE.v + ' mm')}${row('Leg height', '150 mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${w}MM BASE ${o.x ? 'X ' : ''}WINE RACK</h1>
+      <span class="mono">${o.code}</span>
+      <p class="muted" style="margin:0">${w} Base ${o.x ? 'X ' : ''}Wine Rack ${BASE_H} High ${d} Deep.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + o.code)}${row('RACK', o.x ? 'Two X cells' : '5 rows x ' + o.cols + ' column' + (o.cols > 1 ? 's' : ''))}${row('LEGS', 'Quantity: 4 x legs')}${row('PLINTH CLIPS', 'Quantity: 2 x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      ${winePick(sel)}
+      ${ocDetail(null)}
+      ${bkRow('wine')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(wineArt({ dims: true }), 380)}</div>`;
+}
+const wineRefresh = () => { if (UI.orderCat === 'winedetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#wn'); if (el) el.outerHTML = wineCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.wineMore = () => { UI.orderCat = 'winedetails'; render(); window.scrollTo(0, 0); };
+A.wineOpt = t => { WINE.opt = +t.dataset.i; wineRefresh(); };
 /* Cabinet colour for New Orders. Only price Group 1 (cheaper) and Group 2 (dearer)
    are offered. The choice drives the picture and the price shown, and follows the
    customer from the room pages into More Details, where it can be changed. */
@@ -9483,6 +9554,9 @@ A.bkAdd = t => {
   if (key === 'base') {
     const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
     l = { name: 'Highline Base Unit', code: it.code, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? BASE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+  } else if (key === 'wine') {
+    const o = wineOpt();
+    l = { name: 'Base ' + (o.x ? 'X ' : '') + 'Wine Rack', code: o.code, w: o.w, d: WINE.d, v: WINE.v, opt: o.label };
   } else if (key === 'bel') {
     l = { name: 'Belfast Sink Base Unit', code: belCode(BEL.w, BEL.h), w: BEL.w, d: BEL.d, v: BEL.v, opt: (belPair() ? 'Double doors' : BEL.hinge.toUpperCase() + ' door hinge') + ', full top, 1 shelf' };
   } else if (key === 'spo') {
@@ -9646,6 +9720,7 @@ function cOrders() {
   if (UI.orderCat === 'bindetails') return binDetails();
   if (UI.orderCat === 'spodetails') return spoDetails();
   if (UI.orderCat === 'beldetails') return belDetails();
+  if (UI.orderCat === 'winedetails') return wineDetails();
   if (UI.orderCat === 'robes') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Bedroom</button>
   <div class="page-head"><div><h1>Hanging Robes</h1><p>Choose a width from 300 to 1200, then the door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -9657,7 +9732,7 @@ function cOrders() {
   if (UI.orderCat === 'bases') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Bases</h1><p>Choose a width, then the door hand or drawer type.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${dlCard()}${binCard()}${spoCard()}${belCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${dlCard()}${binCard()}${spoCard()}${belCard()}${wineCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -9674,7 +9749,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
