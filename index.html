@@ -7525,6 +7525,7 @@ const addMin = (iso, m) => new Date(new Date(iso).getTime() + m * 60000).toISOSt
 /* ---------- icons ---------- */
 const ICONS = {
   home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',
+  basket: '<path d="M3 4h2.5l2.2 10.2a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.76L20 8H6.2"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/>',
   file: '<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   worktop: '<path d="M3 11h18v3H3z"/><path d="M5 14v6M19 14v6"/>',
@@ -7590,6 +7591,9 @@ const logo = (light) => `<span class="brand"><svg width="30" height="30" viewBox
 /* ---------- reference constants (from PriceList workbook) ---------- */
 const GROUPS = { 1: 'Plain', 2: 'Woodgrain', 3: 'Structure' };
 const GROUP_KEY = { 1: 'plain', 2: 'wood', 3: 'struct' };
+/* Customer-facing price groups: the website's Group 1 is the board chart's Group 1,
+   and its Group 2 is the chart's Group 3. The chart's own Group 2 isn't offered. */
+const webGroup = g => g === 1 ? 'Group 1' : g === 3 ? 'Group 2' : GROUPS[g];
 const STATUSES = ['Draft', 'Submitted', 'Under Review', 'Revision Required', 'Approved', 'Rejected', 'Completed'];
 const ST_CLASS = { 'Draft': 'st-draft', 'Submitted': 'st-submitted', 'Under Review': 'st-review', 'Revision Required': 'st-revision', 'Approved': 'st-approved', 'Rejected': 'st-rejected', 'Completed': 'st-completed' };
 const ST_COLOR = { 'Draft': 'var(--muted)', 'Submitted': 'var(--info)', 'Under Review': 'var(--warn)', 'Revision Required': 'var(--oak)', 'Approved': 'var(--ok)', 'Rejected': 'var(--bad)', 'Completed': 'var(--olive)' };
@@ -8627,7 +8631,7 @@ SUB.adminLogin = f => {
    ========================================================= */
 const pad5 = n => String(n).padStart(5, '0');
 function custView(r, p) {
-  const views = { 'c-dash': cDash, 'c-orders': cOrders, 'c-quotes': cQuotes, 'c-quote': cQuote, 'c-builder': cBuilder, 'c-designs': cDesigns, 'c-profile': cProfile, 'c-settings': cSettings, 'c-success': cSuccess, 'c-design': cDesignReq };
+  const views = { 'c-dash': cDash, 'c-orders': cOrders, 'c-basket': cBasket, 'c-quotes': cQuotes, 'c-quote': cQuote, 'c-builder': cBuilder, 'c-designs': cDesigns, 'c-profile': cProfile, 'c-settings': cSettings, 'c-success': cSuccess, 'c-design': cDesignReq };
   const content = (views[r] || cDash)(p);
   const c = me();
   const act = r === 'c-quote' || r === 'c-success' ? 'c-quotes' : r;
@@ -8656,6 +8660,7 @@ function custTop() {
     <button class="btn btn-ghost btn-icon menu-btn" data-act="nav" aria-label="Open menu">${ic('menu', 20)}</button>
     <form class="search input-wrap" data-submit="csearch" role="search">${ic('search', 16)}<input class="input" name="q" id="c-search" placeholder="Search quotes, references, projects" value="${esc((UI.filters.cq || {}).s || '')}"></form>
     <span class="spacer"></span>
+    <button class="btn btn-ghost btn-icon bell" data-act="go" data-to="c-basket" aria-label="Basket, ${basketCount()} units" style="position:relative">${ic('basket', 20)}${basketCount() ? `<span class="dot" style="background:#d32f2f">${basketCount()}</span>` : ''}</button>
     <div class="dd-wrap"><button class="btn btn-ghost btn-icon bell" data-act="dd" data-dd="notif" aria-label="Notifications">${ic('bell', 20)}${unread ? `<span class="dot">${unread}</span>` : ''}</button>
       ${UI.open === 'notif' ? `<div class="dd"><div class="dd-h">Notifications<span class="spacer"></span>${unread ? `<button class="btn btn-ghost btn-sm" data-act="readAll" data-to="${c.id}">Mark all read</button>` : ''}</div><div class="dd-list">${notifList(c.id, 'c-quote')}</div></div>` : ''}</div>
     <div class="dd-wrap"><button class="user-chip" data-act="dd" data-dd="user"><span class="av">${initials(c.contact)}</span><span class="txt" style="text-align:left"><b>${esc(c.contact)}</b><small>${esc(c.company)}</small></span>${ic('chevD', 16)}</button>
@@ -9053,8 +9058,9 @@ function baseCard() {
     <div class="row"><div><h3 style="margin:0">Highline Base Unit</h3><span class="mono">HLB${w}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="baseMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x.w === w)}" data-act="baseW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
-    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary" style="flex:1;${sel(hinge === hd)}" data-act="baseHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
+    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(hinge === hd)}" data-act="baseHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
     <div class="row" style="gap:10px">${num('d', 'Depth (mm)', BASE.d)}${num('v', 'Void (mm)', BASE.v)}</div>
+    ${bkRow('base')}
   </article>`;
 }
 
@@ -9084,6 +9090,7 @@ function baseDetails() {
       <div>${row('CABINET', 'Code: HLB' + w)}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('CABINET COMPONENT', posts ?'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
       ${ocDetail(it)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', BASE.v)}</div>
+      ${bkRow('base')}
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
@@ -9109,6 +9116,43 @@ function ocDetail(it) {
   const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
   return `${ocSelect()}<div>${row('CABINET COLOUR', `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${c.hex};border:1px solid #0003;vertical-align:-1px"></span> ${esc(c.name)} · ${esc(c.code)}`)}${row('PRICE GROUP', 'Group ' + ocGroup(c) + (c.group === 1 ? ' (lower price)' : ' (higher price)'))}${it ? row('PRICE (EX VAT)', GBP(ocPrice(it))) : ''}</div>`;
 }
+/* Basket for New Orders. No prices yet: it records what was picked, in which colour. */
+const basketCount = () => (UI.basket || []).reduce((n, l) => n + l.qty, 0);
+const bkRow = key => `<div class="row" style="gap:8px;margin-top:4px"><input class="input" id="bk-qty-${key.replace(':', '-')}" type="number" min="1" step="1" value="1" style="width:76px;flex:none" aria-label="Quantity"><button class="btn btn-primary" style="flex:1" data-act="bkAdd" data-k="${key}">${ic('basket', 16)} Add to basket</button></div>`;
+A.bkAdd = t => {
+  const key = t.dataset.k, qi = $('#bk-qty-' + key.replace(':', '-')), qty = Math.max(1, Math.round(+(qi && qi.value)) || 1), col = orderColour();
+  let l;
+  if (key === 'base') {
+    const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
+    l = { name: 'Highline Base Unit', code: it.code, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? BASE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+  } else if (key === 'robe') {
+    const it = robeWidths().find(i => i.w === ROBE.w) || robeWidths()[0]; if (!it) return;
+    l = { name: 'Single Hanging Robe', code: it.code, w: +it.w, d: ROBE.d, v: ROBE.v, opt: +it.w <= 600 ? ROBE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+  } else {
+    const id = key.slice(3), tp = dpType(id), s = DPK[id]; if (!tp) return;
+    l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers' };
+  }
+  Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? webGroup(col.group) : '' });
+  const sig = x => [x.code, x.w, x.d, x.v, x.opt, x.colourId].join('|');
+  UI.basket = UI.basket || [];
+  const same = UI.basket.find(x => sig(x) === sig(l));
+  if (same) same.qty += qty; else UI.basket.push(Object.assign(l, { id: uid('bk'), qty }));
+  save(); renderTopbarOnly(); toast(`${qty} × ${l.name} ${l.w}mm added to basket`);
+  if (qi) qi.value = 1;
+};
+A.bkQty = t => { const l = (UI.basket || []).find(x => x.id === t.dataset.id); if (!l) return; l.qty = Math.max(1, l.qty + (+t.dataset.d)); save(); const y = window.scrollY; render(); window.scrollTo(0, y); };
+A.bkDel = t => { UI.basket = (UI.basket || []).filter(x => x.id !== t.dataset.id); save(); render(); };
+A.bkClear = () => confirmBox('Empty the basket?', 'Every item will be removed from your basket.', 'Empty basket', () => { UI.basket = []; save(); render(); }, true);
+function cBasket() {
+  const list = UI.basket || [];
+  const body = !list.length ? `<div class="empty">${ic('basket', 22)}<p>Your basket is empty. Add cabinets from New Orders.</p><button class="btn btn-primary" data-act="orders">Go to New Orders</button></div>` :
+    `<div class="stack">${list.map(l => `<article class="card card-pad"><div class="row" style="gap:12px;flex-wrap:wrap"><div style="min-width:0;flex:1"><b style="font-size:16px">${esc(l.name)}</b> <span class="mono">${esc(l.code)}</span>
+      <div class="muted">${l.w}mm wide · ${l.d}mm deep · void ${l.v}mm · ${esc(l.opt)}</div><div class="muted">Colour: ${esc(l.colour)}${l.group ? ' (' + l.group + ')' : ''}</div></div>
+      <div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="-1" aria-label="Fewer">−</button><b style="min-width:28px;text-align:center">${l.qty}</b><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="1" aria-label="More">+</button>
+      <button class="btn btn-ghost btn-sm" data-act="bkDel" data-id="${l.id}" aria-label="Remove">${ic('trash', 16)}</button></div></div></article>`).join('')}
+    <div class="row"><span class="muted">${basketCount()} unit${basketCount() === 1 ? '' : 's'} in the basket. Prices will be added later.</span><span class="spacer"></span><button class="btn btn-ghost" data-act="bkClear">Empty basket</button></div></div>`;
+  return `<div class="page-head"><div><h1>Basket</h1><p>The cabinets you have added from New Orders.</p></div></div>${body}`;
+}
 CH.orderColour = t => { UI.orderColour = t.value; save(); const y = window.scrollY; render(); window.scrollTo(0, y); };
 /* Bedroom > Single Hanging Robe: same card as the bases, 300 to 1200 wide,
    2150 high, with a hanging rail under a top shelf. Widths come from the catalogue. */
@@ -9129,8 +9173,9 @@ function robeCard() {
     <div class="row"><div><h3 style="margin:0">Single Hanging Robe</h3><span class="mono">${esc(it.code)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="robeMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x.w === w)}" data-act="robeW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
-    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary" style="flex:1;${sel(hinge === hd)}" data-act="robeHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
+    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(hinge === hd)}" data-act="robeHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
     <div class="row" style="gap:10px">${num('d', 'Depth (mm)', ROBE.d)}${num('v', 'Void (mm)', ROBE.v)}</div>
+    ${bkRow('robe')}
   </article>`;
 }
 function robeDetails() {
@@ -9157,6 +9202,7 @@ function robeDetails() {
       <div>${row('CABINET', 'Code: ' + esc(it.code))}${row('HANGING RAIL', 'Quantity: 1')}${row('TOP SHELF', 'Quantity: 1')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
       ${ocDetail(it)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', ROBE.v)}</div>
+      ${bkRow('robe')}
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
@@ -9190,6 +9236,7 @@ function dpCard(id) {
     <div class="muted">Drawer type:</div>
     <div class="row" style="gap:8px">${DP_SYSTEMS.map(x => `<button class="btn btn-secondary" style="flex:1;${sel(s.sys === x)}" data-act="dpSys" data-id="${id}" data-sys="${x}">${s.sys === x ? '&#9745;' : '&#9744;'} ${x}</button>`).join('')}</div>
     <div class="row" style="gap:10px">${num('d', 'Depth (mm)', s.d)}${num('v', 'Void (mm)', s.v)}</div>
+    ${bkRow('dp:' + id)}
   </article>`;
 }
 function dpDetails() {
@@ -9216,6 +9263,7 @@ function dpDetails() {
       <div class="row" style="gap:8px">${DP_SYSTEMS.map(x => `<button class="btn btn-secondary" style="flex:1;${s.sys === x ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="dpSys" data-id="${id}" data-sys="${x}">${s.sys === x ? '&#9745;' : '&#9744;'} ${x}</button>`).join('')}</div>
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', s.d)}${num('v', 'Void (mm)', s.v)}</div>
+      ${bkRow('dp:' + id)}
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
@@ -9468,11 +9516,12 @@ function cbxList(kind) {
   const d = UI.draft, q = (UI.cbxQ || '').toLowerCase().trim(), g = UI.cbxG || '';
   const src = kind === 'worktop' ? DB.worktopColours : (kind === 'cab' || kind === 'edge' || kind === 'edge08') ? DB.cabColours : DB.doorColours;
   const cur = kind === 'worktop' ? (d.worktop || 'none') : kind === 'cab' ? d.cabColour : kind === 'edge' ? (d.edging || 'match') : kind === 'edge08' ? (d.edging08 || 'match') : (d.doorColour || 'match');
-  const list = src.filter(c => c.active && (!g || String(c.group) === g) && (!q || (c.name + ' ' + c.code).toLowerCase().includes(q)));
+  const web = kind === 'cab' || kind === 'edge' || kind === 'edge08';   // cabinet and edging colours: website Group 1 and Group 2 only
+  const list = src.filter(c => c.active && (!web || c.group === 1 || c.group === 3) && (!g || String(c.group) === g) && (!q || (c.name + ' ' + c.code).toLowerCase().includes(q)));
   const opts = [];
   if (kind === 'worktop' && !q) { opts.push({ id: 'none', name: 'No worktop', code: 'Cabinets only, no worktop', bg: 'repeating-linear-gradient(45deg,var(--surface-2) 0 5px,var(--surface-3) 5px 10px)', tag: 'Default' }); }
   if ((kind === 'door' || kind === 'edge' || kind === 'edge08') && !q && !g) { const cab = cabCol(d.cabColour); opts.push({ id: 'match', name: 'Match cabinet colour', code: cab ? cab.name + ' · ' + cab.code : 'Uses the cabinet colour', bg: cab ? swatchBg(cab) : 'repeating-linear-gradient(45deg,var(--surface-2) 0 5px,var(--surface-3) 5px 10px)', tag: 'Default' }); }
-  list.forEach(c => opts.push({ id: c.id, name: c.name, code: c.code + (c.adj ? ' · +' + c.adj + '%' : ''), bg: swatchBg(c), tag: kind === 'worktop' ? (c.finish === 'wood' ? 'Timber' : c.finish === 'gloss' ? 'Polished' : 'Matt') : GROUPS[c.group] }));
+  list.forEach(c => opts.push({ id: c.id, name: c.name, code: c.code + (c.adj ? ' · +' + c.adj + '%' : ''), bg: swatchBg(c), tag: kind === 'worktop' ? (c.finish === 'wood' ? 'Timber' : c.finish === 'gloss' ? 'Polished' : 'Matt') : web ? webGroup(c.group) : GROUPS[c.group] }));
   UI.cbxOpts = opts.map(o => o.id);
   if (UI.cbxHi >= opts.length) UI.cbxHi = Math.max(0, opts.length - 1);
   if (!opts.length) return `<div class="empty" style="padding:24px">${ic('palette', 22)}<p>No colours match “${esc(UI.cbxQ)}”.</p></div>`;
@@ -9489,7 +9538,7 @@ function cbxInner(kind) {
   }
   if (kind === 'edge' || kind === 'edge08') {
     const d = UI.draft, f = kind === 'edge' ? 'edging' : 'edging08', open = UI.cbx === kind, m = !d[f] || d[f] === 'match';
-    const shown = m ? cabCol(d.cabColour) : (byId('cabColours', d[f]) || cabCol(d.cabColour)), n = DB.cabColours.filter(c => c.active).length;
+    const shown = m ? cabCol(d.cabColour) : (byId('cabColours', d[f]) || cabCol(d.cabColour)), n = DB.cabColours.filter(c => c.active && (c.group === 1 || c.group === 3)).length;
     const title = m ? 'Match cabinet colour' : shown ? shown.name : 'Select an edging colour';
     const sub = m ? (shown ? shown.name + ' · ' + shown.code : 'Choose a cabinet colour first') : shown ? shown.code : n + ' edging colours';
     return `<button type="button" class="cbx-btn" data-act="cbxToggle" data-k="${kind}" aria-haspopup="listbox" aria-expanded="${open}" id="cbx-btn-${kind}">
@@ -9513,18 +9562,18 @@ function cbxInner(kind) {
   const d = UI.draft, open = UI.cbx === kind, st = byId('doorStyles', d.doorStyle);
   const disabled = kind === 'door' && (!st || st.none);
   const src = kind === 'cab' ? DB.cabColours : DB.doorColours;
-  const n = src.filter(c => c.active).length;
+  const n = src.filter(c => c.active && (kind !== 'cab' || c.group === 1 || c.group === 3)).length;
   const match = kind === 'door' && (!d.doorColour || d.doorColour === 'match');
   const shown = kind === 'cab' ? cabCol(d.cabColour) : match ? cabCol(d.cabColour) : byId('doorColours', d.doorColour);
   const err = kind === 'cab' && UI.errors.cabColour;
   const title = disabled ? 'No doors' : match ? 'Match cabinet colour' : shown ? shown.name : 'Select a cabinet colour';
-  const sub = disabled ? (st ? 'Cabinet Only is selected' : 'Choose a door style to pick a door colour') : match ? (shown ? shown.name + ' · ' + shown.code : 'Choose a cabinet colour first') : shown ? `${shown.code} · ${GROUPS[shown.group]}` : `${n} colours · search by name or code`;
-  const gchip = (v, l) => `<button type="button" class="chip ${(UI.cbxG || '') === v ? 'on' : ''}" data-act="cbxGroup" data-v="${v}">${l}<span class="n">${src.filter(c => c.active && (!v || String(c.group) === v)).length}</span></button>`;
+  const sub = disabled ? (st ? 'Cabinet Only is selected' : 'Choose a door style to pick a door colour') : match ? (shown ? shown.name + ' · ' + shown.code : 'Choose a cabinet colour first') : shown ? `${shown.code} · ${kind === 'cab' ? webGroup(shown.group) : GROUPS[shown.group]}` : `${n} colours · search by name or code`;
+  const gchip = (v, l) => `<button type="button" class="chip ${(UI.cbxG || '') === v ? 'on' : ''}" data-act="cbxGroup" data-v="${v}">${l}<span class="n">${src.filter(c => c.active && (kind !== 'cab' || c.group === 1 || c.group === 3) && (!v || String(c.group) === v)).length}</span></button>`;
   return `<button type="button" class="cbx-btn ${err ? 'err' : ''}" data-act="cbxToggle" data-k="${kind}" aria-haspopup="listbox" aria-expanded="${open}" ${disabled ? 'disabled' : ''} id="cbx-btn-${kind}">
       <i class="cbx-sw" style="background:${!disabled && shown ? swatchBg(shown) : 'repeating-linear-gradient(45deg,var(--surface-2) 0 6px,var(--surface-3) 6px 12px)'}"></i>
       <span class="cbx-t"><b>${esc(title)}</b><small>${esc(sub)}</small></span>${ic('chevD', 18)}</button>
     ${open ? `<div class="cbx-panel"><div class="cbx-search input-wrap">${ic('search', 16)}<input class="input" id="cbx-q" data-in="cbxQ" placeholder="Search ${n} colours by name or code, e.g. U708" value="${esc(UI.cbxQ || '')}" autocomplete="off" aria-label="Search colours"></div>
-      <div class="chips cbx-groups">${gchip('', 'All')}${gchip('1', 'Plain')}${gchip('2', 'Woodgrain')}${gchip('3', 'Structure')}</div>
+      <div class="chips cbx-groups">${kind === 'cab' ? `${gchip('', 'All')}${gchip('1', 'Group 1')}${gchip('3', 'Group 2')}` : `${gchip('', 'All')}${gchip('1', 'Plain')}${gchip('2', 'Woodgrain')}${gchip('3', 'Structure')}`}</div>
       <div class="cbx-list" id="cbxList" role="listbox">${cbxList(kind)}</div></div>` : ''}`;
 }
 function redrawCbx() { ['cab', 'style', 'door', 'edge', 'edge08', 'drawer', 'worktop'].forEach(k => { const el = document.getElementById('cbx-' + k); if (el) el.innerHTML = cbxInner(k); }); const q = $('#cbx-q'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
@@ -9551,7 +9600,7 @@ function finishSections() {
     <div class="field"><span class="lbl">Door colour <span class="opt">optional</span></span><div class="cbx" id="cbx-door">${cbxInner('door')}</div>
       <span class="hint">${!st ? 'Only needed when a door style is selected.' : st.none ? 'Not needed. Cabinet Only is selected, so no doors are added.' : 'Leave on “Match cabinet colour”, or choose a contrasting door colour.'}</span></div>
   </div>
-    ${cab ? `<div class="door-note">${ic('info', 16)}<span><b>${esc(cab.name)}</b> (${esc(cab.code)}) is in the <b>${GROUPS[cab.group]}</b> price group, so items are priced from the ${GROUPS[cab.group]} column. A Base 600 costs ${GBP(sample ? sample[GROUP_KEY[cab.group]] : 0)} ex VAT in this finish.</span></div>` : ''}
+    ${cab ? `<div class="door-note">${ic('info', 16)}<span><b>${esc(cab.name)}</b> (${esc(cab.code)}) is in the <b>${webGroup(cab.group)}</b> price group${cab.group === 3 ? ' (higher price)' : cab.group === 1 ? ' (lower price)' : ''}, so items are priced from the ${GROUPS[cab.group]} column. A Base 600 costs ${GBP(sample ? sample[GROUP_KEY[cab.group]] : 0)} ex VAT in this finish.</span></div>` : ''}
     <div class="fin-row finish-options-row"><div class="field"><span class="lbl">Edging colour</span><div class="cbx" id="cbx-edge">${cbxInner('edge')}</div><span class="hint">Same colours as the cabinets. No extra charge.</span></div><div class="field"><label class="lbl" for="edging-type">Edging type</label><select class="select" id="edging-type" data-chg="edgingType"><option value="2mm" ${d.edgingType !== '0.8mm' ? 'selected' : ''}>2mm</option><option value="0.8mm" ${d.edgingType === '0.8mm' ? 'selected' : ''}>0.8mm</option></select></div>
     <div class="field"><span class="lbl">Type of drawers <span class="opt">optional</span></span><div class="cbx" id="cbx-drawer">${cbxInner('drawer')}</div>
       ${e.drawerType ? `<span class="err-msg">${e.drawerType}</span>` : '<span class="hint">Optional: choose a drawer system if needed. No extra charge.</span>'}</div>
