@@ -8992,13 +8992,13 @@ function baseArt(w, d, h, hinge, vd, opts) {
   }
   q([P(w, y0, 0), P(w, y0, d), P(w, y1, d), P(w, y1, 0)], baseShade(col, 0.08));                                        // right side
   // a base unit has no full top: just one flat front top rail (160 deep, 18 thick) and the edges of the side panels
-  const rf = 160, topCol = baseShade(col, 0.28);
+  const vRail = o.rail === 'vertical', rf = vRail ? T : 160, topCol = baseShade(col, 0.28);   // a vertical top rail stands on edge: 70 high, 18 thick
   q([P(0, y1, 0), P(T, y1, 0), P(T, y1, d), P(0, y1, d)], topCol);                                                         // side panel edges
   q([P(w - T, y1, 0), P(w, y1, 0), P(w, y1, d), P(w - T, y1, d)], topCol);
   q([P(T, y1, d - rf), P(w - T, y1, d - rf), P(w - T, y1, d), P(T, y1, d)], topCol);                                       // front rail, top
   q([P(0, y0, d), P(T, y0, d), P(T, y1, d), P(0, y1, d)], baseShade(col, 0.1));                                         // front frame
   q([P(w - T, y0, d), P(w, y0, d), P(w, y1, d), P(w - T, y1, d)], baseShade(col, 0.1));
-  q([P(T, y1 - T, d), P(w - T, y1 - T, d), P(w - T, y1, d), P(T, y1, d)], baseShade(col, 0.1));
+  q([P(T, y1 - (vRail ? 70 : T), d), P(w - T, y1 - (vRail ? 70 : T), d), P(w - T, y1, d), P(T, y1, d)], baseShade(col, 0.1));
   q([P(T, y0, d), P(w - T, y0, d), P(w - T, y0 + T, d), P(T, y0 + T, d)], baseShade(col, 0.1));
   if (o.drawers) {                // drawer pack: stacked fronts, the pulled-out ones show their metal-sided box
     const dr = o.drawers, yb = y0 + 4, yt = y1 - 4, zone = dr.internal ? (yt - yb) * 0.26 : 0, avail = yt - yb - zone;
@@ -9096,6 +9096,68 @@ function baseDetails() {
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
   <div style="max-width:620px">${panel(baseArt(w, d, BASE_H, 'left', BASE.v, { doors: false, dims: true }), 380)}</div>`;
 }
+/* Kitchen > All Bases: Single Sink Base Unit, 500 to 1200 wide, same card as the bases. */
+const SINK = { w: 600, hinge: 'left', d: 560, v: 50, rail: 'horizontal', liner: false };
+const SINK_WIDTHS = [500, 600, 700, 800, 900, 1000, 1200];
+const sinkCode = w => 'BHL' + w + 'S';                // BHL + cabinet width + S, e.g. BHL800S
+function sinkCard() {
+  const w = SINK.w, single = w <= 600, hinge = SINK.hinge === 'right' ? 'right' : 'left';
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="sinkDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="sk" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', w)}${chip('D', SINK.d)}${chip('Void', SINK.v)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, SINK.d, BASE_H, hinge, SINK.v, { rail: SINK.rail })}</div>
+    <div class="row"><div><h3 style="margin:0">Single Sink Base Unit</h3><span class="mono">${sinkCode(w)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="sinkMore">More Details ${ic('chevR', 14)}</button></div>
+    <div class="muted">Width:</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${SINK_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="sinkW" data-w="${x}">${x}</button>`).join('')}</div>
+    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(hinge === hd)}" data-act="sinkHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
+    <div class="muted">Front top rail:</div>
+    <div class="row" style="gap:6px">${['horizontal', 'vertical'].map(r => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(SINK.rail === r)}" data-act="sinkRail" data-r="${r}">${SINK.rail === r ? '&#9745;' : '&#9744;'} ${r[0].toUpperCase() + r.slice(1)}</button>`).join('')}</div>
+    <div class="row"><button class="btn btn-secondary btn-sm" style="flex:1;font-size:12px;${sel(SINK.liner)}" data-act="sinkLiner">${SINK.liner ? '&#9745;' : '&#9744;'} Sink liner</button></div>
+    <div class="row" style="gap:10px">${num('d', 'Depth (mm)', SINK.d)}${num('v', 'Void (mm)', SINK.v)}</div>
+    ${bkRow('sink')}
+  </article>`;
+}
+function sinkDetails() {
+  const w = SINK.w, d = SINK.d, posts = w > 600, vert = SINK.rail === 'vertical';
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="sinkDim" data-k="${k}"></label>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const railTxt = vert ? `Vertical, ${w} x 70 mm` : 'Horizontal, ' + w + ' x 160 mm';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Bases</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(baseArt(w, d, BASE_H, 'left', SINK.v, { doors: false, rail: SINK.rail }), 320)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', sinkCode(w))}${row('Width', w + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', SINK.v + ' mm')}${row('Leg height', '150 mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${w}MM SINGLE SINK BASE UNIT</h1>
+      <span class="mono">${sinkCode(w)}</span>
+      <p class="muted" style="margin:0">${w}mm wide single sink base unit.</p>
+      <div class="muted">Available widths:</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${SINK_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="sinkW" data-w="${x}">${x}</button>`).join('')}</div>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + sinkCode(w))}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('FRONT TOP RAIL', railTxt)}${row('SINK LINER', SINK.liner ? 'Included' : 'Not included')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div class="muted">Front top rail:</div>
+      <div class="row" style="gap:6px">${['horizontal', 'vertical'].map(r => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(SINK.rail === r)}" data-act="sinkRail" data-r="${r}">${SINK.rail === r ? '&#9745;' : '&#9744;'} ${r[0].toUpperCase() + r.slice(1)}</button>`).join('')}<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(SINK.liner)}" data-act="sinkLiner">${SINK.liner ? '&#9745;' : '&#9744;'} Sink liner</button></div>
+      ${ocDetail(null)}
+      <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', SINK.v)}</div>
+      ${bkRow('sink')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(baseArt(w, d, BASE_H, 'left', SINK.v, { doors: false, dims: true, rail: SINK.rail }), 380)}</div>`;
+}
+A.sinkMore = () => { UI.orderCat = 'sinkdetails'; render(); window.scrollTo(0, 0); };
+const sinkRefresh = () => { if (UI.orderCat === 'sinkdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#sk'); if (el) el.outerHTML = sinkCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.sinkW = t => { SINK.w = +t.dataset.w; sinkRefresh(); };
+A.sinkRail = t => { SINK.rail = t.dataset.r; sinkRefresh(); };
+A.sinkLiner = () => { SINK.liner = !SINK.liner; sinkRefresh(); };
+A.sinkHinge = t => { SINK.hinge = t.dataset.h; sinkRefresh(); };
+CH.sinkDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = SINK[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), SINK.d - 200); SINK[k] = v; sinkRefresh(); };
 /* Cabinet colour for New Orders. Only price Group 1 (cheaper) and Group 2 (dearer)
    are offered. The choice drives the picture and the price shown, and follows the
    customer from the room pages into More Details, where it can be changed. */
@@ -9125,6 +9187,8 @@ A.bkAdd = t => {
   if (key === 'base') {
     const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
     l = { name: 'Highline Base Unit', code: it.code, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? BASE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+  } else if (key === 'sink') {
+    l = { name: 'Single Sink Base Unit', code: sinkCode(SINK.w), w: SINK.w, d: SINK.d, v: SINK.v, opt: (SINK.w <= 600 ? SINK.hinge.toUpperCase() + ' door hinge' : 'Pair of doors') + ', ' + SINK.rail + ' front top rail' + (SINK.liner ? ', sink liner' : '') };
   } else if (key === 'robe') {
     const it = robeWidths().find(i => i.w === ROBE.w) || robeWidths()[0]; if (!it) return;
     l = { name: 'Single Hanging Robe', code: it.code, w: +it.w, d: ROBE.d, v: ROBE.v, opt: +it.w <= 600 ? ROBE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
@@ -9215,7 +9279,7 @@ const DP_TYPES = [
   { id: 'p2i1', name: '2 Pan Drawer + 1 Internal Drawer Unit', code: 'D2I1', fronts: [0.5, 0.5], internal: true, internalPull: 160 },
   { id: 'd4', name: '4 Drawer Base Unit', code: 'D4', fronts: [0.17, 0.17, 0.33, 0.33], open: [170, 120, 70, 0] }
 ];
-const DP_SYSTEMS = ['Antaro', 'Legrabox'];
+const DP_SYSTEMS = ['Antaro', 'Legrabox', 'Merivo'];
 const DP_WIDTHS = Array.from({ length: 19 }, (_, i) => 300 + i * 50);          // 300 to 1200 in 50s
 const DPK = {}; DP_TYPES.forEach(t => DPK[t.id] = { w: 600, sys: 'Antaro', d: 570, v: 50 });
 const dpType = id => DP_TYPES.find(t => t.id === id);
@@ -9234,7 +9298,7 @@ function dpCard(id) {
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${DP_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="dpW" data-id="${id}" data-w="${x}">${x}</button>`).join('')}</div>
     <div class="muted">Drawer type:</div>
-    <div class="row" style="gap:8px">${DP_SYSTEMS.map(x => `<button class="btn btn-secondary" style="flex:1;${sel(s.sys === x)}" data-act="dpSys" data-id="${id}" data-sys="${x}">${s.sys === x ? '&#9745;' : '&#9744;'} ${x}</button>`).join('')}</div>
+    <div class="row" style="gap:6px">${DP_SYSTEMS.map(x => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 4px;font-size:12px;white-space:nowrap;${sel(s.sys === x)}" data-act="dpSys" data-id="${id}" data-sys="${x}">${s.sys === x ? '&#9745;' : '&#9744;'} ${x}</button>`).join('')}</div>
     <div class="row" style="gap:10px">${num('d', 'Depth (mm)', s.d)}${num('v', 'Void (mm)', s.v)}</div>
     ${bkRow('dp:' + id)}
   </article>`;
@@ -9273,6 +9337,7 @@ function cOrders() {
   if (UI.orderCat === 'drawerdetails') return dpDetails();
   if (UI.orderCat === 'basedetails') return baseDetails();
   if (UI.orderCat === 'robedetails') return robeDetails();
+  if (UI.orderCat === 'sinkdetails') return sinkDetails();
   if (UI.orderCat === 'robes') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Bedroom</button>
   <div class="page-head"><div><h1>Hanging Robes</h1><p>Choose a width from 300 to 1200, then the door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -9284,7 +9349,7 @@ function cOrders() {
   if (UI.orderCat === 'bases') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Bases</h1><p>Choose a width, then the door hand or drawer type.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -9301,7 +9366,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', sinkdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
