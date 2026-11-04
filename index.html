@@ -8973,15 +8973,19 @@ function baseArt(w, d, h, hinge, vd, opts) {
     ln(P(x, y0, z), P(x, 14, z), '#1d1d1d', 20);
     out.push(`<ellipse cx="${f.x.toFixed(1)}" cy="${f.y.toFixed(1)}" rx="30" ry="15" fill="#0e0e0e"/><ellipse cx="${f.x.toFixed(1)}" cy="${(f.y - 9).toFixed(1)}" rx="24" ry="10" fill="#2a2a2a"/>`);
   });
-  q([P(T, y0 + T, vd), P(w - T, y0 + T, vd), P(w - T, y1 - T, vd), P(T, y1 - T, vd)], baseShade(col, -0.22));          // back panel, set in by the void
+  const yBack = o.backH != null ? Math.min(y1 - T, y0 + T + o.backH) : y1 - T;                                          // a custom back can be shorter than the cabinet, sitting on the floor
+  q([P(T, y0 + T, vd), P(w - T, y0 + T, vd), P(w - T, yBack, vd), P(T, yBack, vd)], o.backCol || baseShade(col, -0.22));   // back panel, set in by the void
   q([P(T, y0 + T, vd), P(T, y0 + T, d), P(T, y1 - T, d), P(T, y1 - T, vd)], baseShade(col, -0.1));                      // inside of the left side
   q([P(T, y0 + T, vd), P(w - T, y0 + T, vd), P(w - T, y0 + T, d), P(T, y0 + T, d)], baseShade(col, 0.04));              // floor
   const ym = (y0 + y1) / 2, zs = d - 22;
   const shelf = (xa, xb) => {
-    const ys = o.robe ? y1 - T - 300 : ym;                 // a robe keeps its shelf near the top, above the hanging rail
-    q([P(xa, ys, vd), P(xb, ys, vd), P(xb, ys, zs), P(xa, ys, zs)], baseShade(col, 0.12));                             // shelf
-    q([P(xa, ys, zs), P(xb, ys, zs), P(xb, ys - T, zs), P(xa, ys - T, zs)], baseShade(col, -0.05));
-    if (o.robe) ln(P(xa, ys - 80, (vd + zs) / 2), P(xb, ys - 80, (vd + zs) / 2), '#8f969b', 9);                         // hanging rail
+    // a robe keeps its shelf near the top, above the hanging rail; a made-to-measure unit spaces o.shelfN shelves evenly
+    const ysList = o.shelfN != null ? Array.from({ length: o.shelfN }, (_, i) => y0 + T + (y1 - y0 - 2 * T) * (i + 1) / (o.shelfN + 1)) : [o.robe ? y1 - T - 300 : ym];
+    ysList.forEach(ys => {
+      q([P(xa, ys, vd), P(xb, ys, vd), P(xb, ys, zs), P(xa, ys, zs)], baseShade(col, 0.12));                           // shelf
+      q([P(xa, ys, zs), P(xb, ys, zs), P(xb, ys - T, zs), P(xa, ys - T, zs)], baseShade(col, -0.05));
+      if (o.robe) ln(P(xa, ys - 80, (vd + zs) / 2), P(xb, ys - 80, (vd + zs) / 2), '#8f969b', 9);                       // hanging rail
+    });
   };
   const bare = (!o.drawers || o.drawers.h) && !o.bins && !o.trays && !o.wine;     // a drawerline unit still has its shelf and centre posts; a bin unit has neither
   if (bare && !o.noShelf) shelf(T, w - T);
@@ -9482,7 +9486,7 @@ const WINE_OPTS = [
   { code: 'BWRX600', w: 600, cols: 1, x: true, label: '600 X Wine Rack' }
 ];
 const wineOpt = () => WINE_OPTS[WINE.opt] || WINE_OPTS[0];
-const wineArt = extra => { const o = wineOpt(); return baseArt(o.w, WINE.d, BASE_H, 'left', WINE.v, Object.assign({ doors: false, wine: { cols: o.cols, x: o.x } }, extra)); };
+const wineArt = extra => { const o = wineOpt(); return baseArt(o.w, WINE.d, BASE_H, 'left', WINE.v, Object.assign({ doors: false, fullTop: true, wine: { cols: o.cols, x: o.x } }, extra)); };
 const winePick = sel => `<div class="muted">Options:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${WINE_OPTS.map((x, i) => `<button class="btn btn-secondary btn-sm" style="min-width:0;font-size:12px;white-space:nowrap;${sel(WINE.opt === i)}" data-act="wineOpt" data-i="${i}">${WINE.opt === i ? '&#9745;' : '&#9744;'} ${x.label}</button>`).join('')}</div>`;
 function wineCard() {
   const o = wineOpt();
@@ -9513,7 +9517,7 @@ function wineDetails() {
       <span class="mono">${o.code}</span>
       <p class="muted" style="margin:0">${w} Base ${o.x ? 'X ' : ''}Wine Rack ${BASE_H} High ${d} Deep.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + o.code)}${row('RACK', o.x ? 'Two X cells' : '5 rows x ' + o.cols + ' column' + (o.cols > 1 ? 's' : ''))}${row('LEGS', 'Quantity: 4 x legs')}${row('PLINTH CLIPS', 'Quantity: 2 x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + o.code)}${row('RACK', o.x ? 'Two X cells' : '5 rows x ' + o.cols + ' column' + (o.cols > 1 ? 's' : ''))}${row('TOP', 'Full top')}${row('LEGS', 'Quantity: 4 x legs')}${row('PLINTH CLIPS', 'Quantity: 2 x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${winePick(sel)}
       ${ocDetail(null)}
       ${bkRow('wine')}
@@ -9525,6 +9529,69 @@ function wineDetails() {
 const wineRefresh = () => { if (UI.orderCat === 'winedetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#wn'); if (el) el.outerHTML = wineCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 A.wineMore = () => { UI.orderCat = 'winedetails'; render(); window.scrollTo(0, 0); };
 A.wineOpt = t => { WINE.opt = +t.dataset.i; wineRefresh(); };
+/* Kitchen > All Bases: Made to Measure base (MTM Base), last in the list. The customer sets
+   width, height, depth, number of shelves, full top or top rail, and fixed, loose or custom
+   back. Everything shows in the 3D picture. */
+const MTM = { w: 600, h: 720, d: 570, shelves: 1, top: 'rail', back: 'fixed', v: 50, backH: 400 };
+const MTM_CODE = 'MTM Base';
+const MTM_LIM = { w: [150, 1200], h: [300, 900], d: [200, 800], shelves: [0, 8], v: [0, 100], backH: [50, 864] };
+const mtmBackH = () => Math.min(MTM.backH, MTM.h - 36);              // the custom back can't be taller than the space between the top and bottom panels
+const mtmArt = extra => baseArt(MTM.w, MTM.d, MTM.h, 'left', MTM.back === 'fixed' ? 0 : MTM.v, Object.assign({ doors: false, fullTop: MTM.top === 'full', shelfN: MTM.shelves, backH: MTM.back === 'custom' ? mtmBackH() : null }, extra));
+const MTM_BACKS = [['fixed', 'Fixed back'], ['loose', 'Loose back'], ['custom', 'Custom back']];
+function mtmControls(sel) {
+  const num = (k, label, v, unit) => `<label class="field" style="flex:1;min-width:110px"><span class="lbl">${label}</span><input class="input" type="number" min="${MTM_LIM[k][0]}" max="${MTM_LIM[k][1]}" step="1" value="${v}" data-chg="mtmDim" data-k="${k}"></label>`;
+  const opt = (act, key, val, text, on) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${val}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  return `<div class="row" style="gap:10px;flex-wrap:wrap">${num('w', 'Width (mm)', MTM.w)}${num('h', 'Height (mm)', MTM.h)}${num('d', 'Depth (mm)', MTM.d)}</div>
+    <div class="row" style="gap:10px;flex-wrap:wrap">${num('shelves', 'Number of shelves', MTM.shelves)}${MTM.back === 'fixed' ? '' : num('v', 'Void (mm)', MTM.v)}</div>
+    <div class="muted">Top:</div>
+    <div class="row" style="gap:6px">${opt('mtmTop', 'top', 'full', 'Full top', MTM.top === 'full')}${opt('mtmTop', 'top', 'rail', 'Top rail', MTM.top === 'rail')}</div>
+    <div class="muted">Back:</div>
+    <div class="row" style="gap:6px">${MTM_BACKS.map(([k, t]) => opt('mtmBack', 'back', k, t, MTM.back === k)).join('')}</div>
+    ${MTM.back === 'custom' ? num('backH', 'Back height (mm)', mtmBackH()) : ''}`;
+}
+const mtmBackText = () => MTM.back === 'fixed' ? 'Fixed back' : MTM.back === 'loose' ? 'Loose back, ' + MTM.v + ' mm void' : 'Custom back, ' + mtmBackH() + ' mm high, ' + MTM.v + ' mm void';
+function mtmCard() {
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="mt" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', MTM.h)}${chip('W', MTM.w)}${chip('D', MTM.d)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${mtmArt()}</div>
+    <div class="row"><div><h3 style="margin:0">Made to Measure (MTM) Base Unit</h3><span class="mono">${MTM_CODE}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="mtmMore">More Details ${ic('chevR', 14)}</button></div>
+    ${mtmControls(sel)}
+    ${bkRow('mtm')}
+  </article>`;
+}
+function mtmDetails() {
+  const w = MTM.w, posts = w > 600;
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Bases</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(mtmArt(), 340)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', MTM_CODE)}${row('Width', w + ' mm')}${row('Height (with legs)', (MTM.h + 150) + ' mm')}${row('Height (without legs)', MTM.h + ' mm')}${row('Depth', MTM.d + ' mm')}${row('Leg height', '150 mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">MADE TO MEASURE BASE UNIT</h1>
+      <span class="mono">${MTM_CODE}</span>
+      <p class="muted" style="margin:0">${w} x ${MTM.h} x ${MTM.d} mm, built to your sizes.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + MTM_CODE)}${row('SHELVES', 'Quantity: ' + MTM.shelves + ' x shelf' + (MTM.shelves === 1 ? '' : 's'))}${row('TOP', MTM.top === 'full' ? 'Full top' : 'Top rail')}${row('BACK', mtmBackText())}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      ${mtmControls(sel)}
+      ${ocDetail(null)}
+      ${bkRow('mtm')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(mtmArt({ dims: true }), 400)}</div>`;
+}
+const mtmRefresh = () => { if (UI.orderCat === 'mtmdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#mt'); if (el) el.outerHTML = mtmCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.mtmMore = () => { UI.orderCat = 'mtmdetails'; render(); window.scrollTo(0, 0); };
+A.mtmTop = t => { MTM.top = t.dataset.v; mtmRefresh(); };
+A.mtmBack = t => { MTM.back = t.dataset.v; mtmRefresh(); };
+CH.mtmDim = t => { const k = t.dataset.k, [lo, hi] = MTM_LIM[k]; let v = Math.round(+t.value); if (!isFinite(v)) v = MTM[k]; MTM[k] = Math.min(hi, Math.max(lo, v)); mtmRefresh(); };
 /* Cabinet colour for New Orders. Only price Group 1 (cheaper) and Group 2 (dearer)
    are offered. The choice drives the picture and the price shown, and follows the
    customer from the room pages into More Details, where it can be changed. */
@@ -9554,6 +9621,8 @@ A.bkAdd = t => {
   if (key === 'base') {
     const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
     l = { name: 'Highline Base Unit', code: it.code, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? BASE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+  } else if (key === 'mtm') {
+    l = { name: 'Made to Measure Base Unit', code: MTM_CODE, w: MTM.w, h: MTM.h, d: MTM.d, v: MTM.back === 'fixed' ? 0 : MTM.v, opt: MTM.h + ' high, ' + MTM.shelves + ' shelf' + (MTM.shelves === 1 ? '' : 's') + ', ' + (MTM.top === 'full' ? 'full top' : 'top rail') + ', ' + mtmBackText().toLowerCase() };
   } else if (key === 'wine') {
     const o = wineOpt();
     l = { name: 'Base ' + (o.x ? 'X ' : '') + 'Wine Rack', code: o.code, w: o.w, d: WINE.d, v: WINE.v, opt: o.label };
@@ -9589,7 +9658,7 @@ function cBasket() {
   const list = UI.basket || [];
   const body = !list.length ? `<div class="empty">${ic('basket', 22)}<p>Your basket is empty. Add cabinets from New Orders.</p><button class="btn btn-primary" data-act="orders">Go to New Orders</button></div>` :
     `<div class="stack">${list.map(l => `<article class="card card-pad"><div class="row" style="gap:12px;flex-wrap:wrap"><div style="min-width:0;flex:1"><b style="font-size:16px">${esc(l.name)}</b> <span class="mono">${esc(l.code)}</span>
-      <div class="muted">${l.w}mm wide · ${l.d}mm deep · void ${l.v}mm · ${esc(l.opt)}</div><div class="muted">Colour: ${esc(l.colour)}${l.group ? ' (' + l.group + ')' : ''}</div></div>
+      <div class="muted">${l.w}mm wide${l.h ? ' · ' + l.h + 'mm high' : ''} · ${l.d}mm deep · void ${l.v}mm · ${esc(l.opt)}</div><div class="muted">Colour: ${esc(l.colour)}${l.group ? ' (' + l.group + ')' : ''}</div></div>
       <div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="-1" aria-label="Fewer">−</button><b style="min-width:28px;text-align:center">${l.qty}</b><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="1" aria-label="More">+</button>
       <button class="btn btn-ghost btn-sm" data-act="bkDel" data-id="${l.id}" aria-label="Remove">${ic('trash', 16)}</button></div></div></article>`).join('')}
     <div class="row"><span class="muted">${basketCount()} unit${basketCount() === 1 ? '' : 's'} in the basket. Prices will be added later.</span><span class="spacer"></span><button class="btn btn-ghost" data-act="bkClear">Empty basket</button></div></div>`;
@@ -9721,6 +9790,7 @@ function cOrders() {
   if (UI.orderCat === 'spodetails') return spoDetails();
   if (UI.orderCat === 'beldetails') return belDetails();
   if (UI.orderCat === 'winedetails') return wineDetails();
+  if (UI.orderCat === 'mtmdetails') return mtmDetails();
   if (UI.orderCat === 'robes') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Bedroom</button>
   <div class="page-head"><div><h1>Hanging Robes</h1><p>Choose a width from 300 to 1200, then the door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -9732,7 +9802,7 @@ function cOrders() {
   if (UI.orderCat === 'bases') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Bases</h1><p>Choose a width, then the door hand or drawer type.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${dlCard()}${binCard()}${spoCard()}${belCard()}${wineCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${dlCard()}${binCard()}${spoCard()}${belCard()}${wineCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}${mtmCard()}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -9749,7 +9819,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
