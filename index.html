@@ -8955,7 +8955,7 @@ const baseShade = (hex, t) => {
    the opening edge, and the back panel set in by the void. */
 function baseArt(w, d, h, hinge, vd, opts) {
   const o = Object.assign({ doors: true, dims: false }, opts), T = 18, LEG = 150, y0 = LEG, y1 = LEG + h, single = w <= 600;
-  const FL = single && hinge === 'right' && o.doors ? -1 : 1, TH = 108 * Math.PI / 180, col = '#cdbfae';
+  const FL = single && hinge === 'right' && o.doors ? -1 : 1, TH = 108 * Math.PI / 180, col = o.col || ocHex();
   const pts = [], out = [];
   // mostly a front view: the front stays square-on, depth recedes up and to the right
   const P = (x, y, z) => { const p = { x: FL * (x - 0.32 * z), y: 0.3 * z - y }; pts.push(p); return p; };
@@ -9082,12 +9082,34 @@ function baseDetails() {
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${x.w === w ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="baseW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
       <div>${row('CABINET', 'Code: HLB' + w)}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('CABINET COMPONENT', posts ?'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      ${ocDetail(it)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', BASE.v)}</div>
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
   <div style="max-width:620px">${panel(baseArt(w, d, BASE_H, 'left', BASE.v, { doors: false, dims: true }), 380)}</div>`;
 }
+/* Cabinet colour for New Orders. Only price Group 1 (cheaper) and Group 2 (dearer)
+   are offered. The choice drives the picture and the price shown, and follows the
+   customer from the room pages into More Details, where it can be changed. */
+const ocList = () => DB.cabColours.filter(c => c.active !== false && (c.group === 1 || c.group === 3));
+const ocGroup = c => c.group === 3 ? 2 : 1;           // the website's Group 2 is the board chart's Group 3
+const orderColour = () => { const l = ocList(); return l.find(c => c.id === UI.orderColour) || l[0] || null; };
+const ocHex = () => { const c = orderColour(); return c ? c.hex : '#cdbfae'; };
+const ocPrice = it => { const c = orderColour(); return it ? (it[GROUP_KEY[c ? c.group : 1]] || it.plain || 0) : 0; };
+function ocSelect() {
+  const cur = orderColour(), l = ocList();
+  const opt = c => `<option value="${c.id}" ${cur && c.id === cur.id ? 'selected' : ''}>${esc(c.name)} · ${esc(c.code)}</option>`;
+  return `<label class="field" style="max-width:420px"><span class="lbl">Cabinet colour</span><select class="select" data-chg="orderColour" aria-label="Cabinet colour">
+    <optgroup label="Group 1 · lower price">${l.filter(c => c.group === 1).map(opt).join('')}</optgroup>
+    <optgroup label="Group 2 · higher price">${l.filter(c => c.group === 3).map(opt).join('')}</optgroup></select></label>`;
+}
+function ocDetail(it) {
+  const c = orderColour(); if (!c) return '';
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  return `${ocSelect()}<div>${row('CABINET COLOUR', `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${c.hex};border:1px solid #0003;vertical-align:-1px"></span> ${esc(c.name)} · ${esc(c.code)}`)}${row('PRICE GROUP', 'Group ' + ocGroup(c) + (c.group === 1 ? ' (lower price)' : ' (higher price)'))}${it ? row('PRICE (EX VAT)', GBP(ocPrice(it))) : ''}</div>`;
+}
+CH.orderColour = t => { UI.orderColour = t.value; save(); const y = window.scrollY; render(); window.scrollTo(0, y); };
 /* Bedroom > Single Hanging Robe: same card as the bases, 300 to 1200 wide,
    2150 high, with a hanging rail under a top shelf. Widths come from the catalogue. */
 const ROBE = { w: 600, hinge: 'left', d: 600, v: 50 };
@@ -9133,6 +9155,7 @@ function robeDetails() {
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${x.w === w ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="robeW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
       <div>${row('CABINET', 'Code: ' + esc(it.code))}${row('HANGING RAIL', 'Quantity: 1')}${row('TOP SHELF', 'Quantity: 1')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      ${ocDetail(it)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', ROBE.v)}</div>
     </div>
   </div>
@@ -9191,6 +9214,7 @@ function dpDetails() {
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
       <div>${row('CABINET', 'Code: ' + dpCode(t, w))}${row('DRAWER TYPE', s.sys)}${row('LEGS', 'Quantity: ' + legs + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clips + ' x plinth clips')}</div>
       <div class="row" style="gap:8px">${DP_SYSTEMS.map(x => `<button class="btn btn-secondary" style="flex:1;${s.sys === x ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="dpSys" data-id="${id}" data-sys="${x}">${s.sys === x ? '&#9745;' : '&#9744;'} ${x}</button>`).join('')}</div>
+      ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', s.d)}${num('v', 'Void (mm)', s.v)}</div>
     </div>
   </div>
@@ -9203,18 +9227,23 @@ function cOrders() {
   if (UI.orderCat === 'robedetails') return robeDetails();
   if (UI.orderCat === 'robes') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Bedroom</button>
   <div class="page-head"><div><h1>Hanging Robes</h1><p>Choose a width from 300 to 1200, then the door hand.</p></div></div>
+  <div style="margin-bottom:16px">${ocSelect()}</div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${robeCard()}</div>`;
   if (UI.orderCat === 'bedroom') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Bedroom</h1><p>Choose a type of cabinet.</p></div></div>
+  <div style="margin-bottom:16px">${ocSelect()}</div>
   <div class="grid2">${BEDROOM_OPTS.map(o => `<button class="card card-pad stack" style="text-align:left;cursor:pointer" data-act="kitchenOpt" data-id="${o.id}"><span class="row">${ic(o.icon, 22)}<b style="font-size:17px">${o.name}</b></span><span class="muted">${o.desc}</span></button>`).join('')}</div>`;
   if (UI.orderCat === 'bases') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Bases</h1><p>Choose a width, then the door hand or drawer type.</p></div></div>
+  <div style="margin-bottom:16px">${ocSelect()}</div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
+  <div style="margin-bottom:16px">${ocSelect()}</div>
   <div class="grid2">${KITCHEN_OPTS.map(o => `<button class="card card-pad stack" style="text-align:left;cursor:pointer" data-act="kitchenOpt" data-id="${o.id}"><span class="row">${ic(o.icon, 22)}<b style="font-size:17px">${o.name}</b></span><span class="muted">${o.desc}</span></button>`).join('')}</div>`;
   if (UI.orderCat === 'cabinets') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} New Orders</button>
-  <div class="page-head"><div><h1>Cabinets</h1><p>Which room are the cabinets for?</p></div></div>
+  <div class="page-head"><div><h1>Cabinets</h1><p>Choose the cabinet colour, then which room the cabinets are for.</p></div></div>
+  <div style="margin-bottom:16px">${ocSelect()}</div>
   <div class="grid2">${CAB_ROOMS.map(o => `<button class="card card-pad stack" style="text-align:left;cursor:pointer" data-act="cabRoom" data-id="${o.id}"><span class="row">${ic(o.icon, 22)}<b style="font-size:17px">${o.id}</b></span><span class="muted">${o.desc}</span></button>`).join('')}</div>`;
   return `<div class="page-head"><div><h1>New Orders</h1><p>Choose what you want to order.</p></div></div>
   <div class="grid2">${ORDER_TYPES.map(o => `<button class="card card-pad stack" style="text-align:left;cursor:pointer" data-act="orderType" data-id="${o.id}"><span class="row">${ic(o.icon, 22)}<b style="font-size:17px">${o.name}</b></span><span class="muted">${o.desc}</span></button>`).join('')}</div>`;
