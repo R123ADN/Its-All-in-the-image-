@@ -8954,6 +8954,16 @@ const BASE_H = 720;                                   // base units are always 7
    The plinth only runs along the front, so it takes a clip on each front leg only: 1, 2 and 3. */
 const legQty = w => w <= 150 ? 2 : w <= 600 ? 4 : 5;
 const clipQty = w => w <= 150 ? 1 : w <= 600 ? 2 : 3;
+/* Door hinging: a 400, 500 or 600 wide cabinet with a single door can also be hinged on both sides, which makes it a pair of doors. */
+const bothOk = w => w === 400 || w === 500 || w === 600;
+const hingeSide = (h, w) => h === 'both' && bothOk(w) ? 'both' : h === 'right' ? 'right' : 'left';
+const hArt = hs => hs === 'right' ? 'right' : 'left';                      // the side passed to the drawing
+const hOpts = hs => hs === 'both' ? { pair: true, noPost: true } : {};      // both sides: a pair of doors, no centre post
+const hingeText = (h, w) => { const s = hingeSide(h, w); return s === 'both' ? 'Pair of doors, hinged both sides' : s.toUpperCase() + ' door hinge'; };
+const hingeButtons = (act, cur, w, sel) => {
+  const three = bothOk(w);                                   // with three buttons in the row the labels are shorter and the type smaller so nothing overlaps
+  return ['left', 'right'].concat(three ? ['both'] : []).map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 2px;font-size:${three ? 9.5 : 11}px;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:clip;${sel(cur === hd)}" data-act="${act}" data-h="${hd}">${hd === 'both' ? 'BOTH SIDES' : hd.toUpperCase() + (three ? ' HINGE' : ' DOOR HINGE')}</button>`).join('');
+};
 const legSpots = (w, d) => {                          // where the legs sit, from the left and the back, in mm
   const n = legQty(w), m = 50;
   return n === 2 ? [[w / 2, m], [w / 2, d - m]] : n === 4 ? [[m, m], [w - m, m], [m, d - m], [w - m, d - m]] : [[m, m], [w - m, m], [m, d - m], [w - m, d - m], [w / 2, d - m]];
@@ -9011,10 +9021,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     q([P(fx0, y0 + T, d), P(fx1, y0 + T, d), P(fx1, y1 - T, d), P(fx0, y1 - T, d)], baseShade(col, 0.14));                  // front face, 70 wide
     q([P(fx1, y0 + T, fz), P(fx1, y0 + T, d), P(fx1, y1 - T, d), P(fx1, y1 - T, fz)], baseShade(col, 0.04));                  // side, 18 deep
   }
-  if (o.hangers) {                // wall hangers: a small plate against the back panel at each top corner
-    [T + 24, w - T - 84].forEach(x => q([P(x, y1 - T - 52, vd), P(x + 60, y1 - T - 52, vd), P(x + 60, y1 - T, vd), P(x, y1 - T, vd)], '#8d949a', 1));
-  }
-  if (!single && (bare || o.posts) && !o.flatPost) {    // over 600 wide: two centre posts, each 70 deep x 18 thick, back to back so the doors close squarely
+  if (!single && (bare || o.posts) && !o.flatPost && !o.noPost) {    // over 600 wide: two centre posts, each 70 deep x 18 thick, back to back so the doors close squarely
     const c0 = w / 2 - T, cm = w / 2, c1 = w / 2 + T, zp = d - 70, yp = o.divider && o.drawers && o.drawers.h ? y1 - o.drawers.h + 28 : y1 - T;   // under a drawerline divider the posts stop at the drawer runners
     q([P(c0, y0 + T, d), P(cm, y0 + T, d), P(cm, yp, d), P(c0, yp, d)], baseShade(col, 0.14));                         // front faces
     q([P(cm, y0 + T, d), P(c1, y0 + T, d), P(c1, yp, d), P(cm, yp, d)], baseShade(col, 0.14));
@@ -9175,17 +9182,17 @@ function baseArt(w, d, h, hinge, vd, opts) {
 function baseCard() {
   const list = baseWidths(), it = list.find(i => i.w === BASE.w) || list.find(i => i.w === 600) || list[0];
   if (!it) return '';
-  const w = +it.w, single = w <= 600, hinge = BASE.hinge === 'right' ? 'right' : 'left';
+  const w = +it.w, single = w <= 600, hinge = hingeSide(BASE.hinge, w);
   const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
   const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
   const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="baseDim" data-k="${k}"></label>`;
   return `<article class="card card-pad stack" id="bc" style="max-width:420px">
     <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', w)}${chip('D', BASE.d)}${chip('Void', BASE.v)}</div>
-    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, BASE.d, BASE_H, hinge, BASE.v)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, BASE.d, BASE_H, hArt(hinge), BASE.v, hOpts(hinge))}</div>
     <div class="row"><div><h3 style="margin:0">Highline Base Unit</h3><span class="mono">BHL${w}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="baseMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x.w === w)}" data-act="baseW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
-    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(hinge === hd)}" data-act="baseHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
+    ${single ? `<div class="row" style="gap:8px">${hingeButtons('baseHinge', hinge, w, sel)}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
     <div class="row" style="gap:10px">${num('d', 'Depth (mm)', BASE.d)}${num('v', 'Void (mm)', BASE.v)}</div>
     ${bkRow('base')}
   </article>`;
@@ -9214,7 +9221,7 @@ function baseDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${x.w === w ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="baseW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: BHL' + w)}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', posts ?'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div>${row('CABINET', 'Code: BHL' + w)}${row('HINGES', 'Quantity: ' + (posts || hingeSide(BASE.hinge, w) === 'both' ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', posts ?'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
       ${ocDetail(it)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', BASE.v)}</div>
       ${bkRow('base')}
@@ -9228,17 +9235,17 @@ const SINK = { w: 600, hinge: 'left', d: 560, v: 50, rail: 'horizontal', liner: 
 const SINK_WIDTHS = [500, 600, 700, 800, 900, 1000, 1200];
 const sinkCode = w => 'BHL' + w + 'S';                // BHL + cabinet width + S, e.g. BHL800S
 function sinkCard() {
-  const w = SINK.w, single = w <= 600, hinge = SINK.hinge === 'right' ? 'right' : 'left';
+  const w = SINK.w, single = w <= 600, hinge = hingeSide(SINK.hinge, w);
   const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
   const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
   const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="sinkDim" data-k="${k}"></label>`;
   return `<article class="card card-pad stack" id="sk" style="max-width:420px">
     <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', w)}${chip('D', SINK.d)}${chip('Void', SINK.v)}</div>
-    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, SINK.d, BASE_H, hinge, SINK.v, { rail: SINK.rail })}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, SINK.d, BASE_H, hArt(hinge), SINK.v, Object.assign({ rail: SINK.rail }, hOpts(hinge)))}</div>
     <div class="row"><div><h3 style="margin:0">Single Sink Base Unit</h3><span class="mono">${sinkCode(w)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="sinkMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${SINK_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="sinkW" data-w="${x}">${x}</button>`).join('')}</div>
-    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(hinge === hd)}" data-act="sinkHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
+    ${single ? `<div class="row" style="gap:8px">${hingeButtons('sinkHinge', hinge, w, sel)}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
     <div class="muted">Front top rail:</div>
     <div class="row" style="gap:6px">${['horizontal', 'vertical'].map(r => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(SINK.rail === r)}" data-act="sinkRail" data-r="${r}">${SINK.rail === r ? '&#9745;' : '&#9744;'} ${r[0].toUpperCase() + r.slice(1)}</button>`).join('')}</div>
     <div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(SINK.liner)}" data-act="sinkLiner">${SINK.liner ? '&#9745;' : '&#9744;'} Sink liner</button><button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(SINK.backOff)}" data-act="sinkBack">${SINK.backOff ? '&#9745;' : '&#9744;'} Removable back</button></div>
@@ -9267,7 +9274,7 @@ function sinkDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${SINK_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="sinkW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + sinkCode(w))}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('FRONT TOP RAIL', railTxt)}${row('SINK LINER', SINK.liner ? 'Included' : 'Not included')}${row('REMOVABLE BACK', SINK.backOff ? 'Yes' : 'No')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + sinkCode(w))}${row('HINGES', 'Quantity: ' + (posts || hingeSide(SINK.hinge, w) === 'both' ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('FRONT TOP RAIL', railTxt)}${row('SINK LINER', SINK.liner ? 'Included' : 'Not included')}${row('REMOVABLE BACK', SINK.backOff ? 'Yes' : 'No')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
       <div class="muted">Front top rail:</div>
       <div class="row" style="gap:6px">${['horizontal', 'vertical'].map(r => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(SINK.rail === r)}" data-act="sinkRail" data-r="${r}">${SINK.rail === r ? '&#9745;' : '&#9744;'} ${r[0].toUpperCase() + r.slice(1)}</button>`).join('')}<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(SINK.liner)}" data-act="sinkLiner">${SINK.liner ? '&#9745;' : '&#9744;'} Sink liner</button><button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(SINK.backOff)}" data-act="sinkBack">${SINK.backOff ? '&#9745;' : '&#9744;'} Removable back</button></div>
       ${ocDetail(null)}
@@ -9293,10 +9300,10 @@ const DL_WIDTHS = [300, 400, 450, 500, 600, 800, 900, 1000, 1200];
 const dlDouble = () => DL.w > 600;                                   // over 600 wide it always has two drawers side by side
 const dlDrawer = () => ({ fronts: [1], open: [170], h: 200, cols: dlDouble() ? 2 : 1 });
 const dlCode = w => 'BDL' + w;
-const dlArt = (w, extra) => baseArt(w, DL.d, BASE_H, DL.hinge === 'right' ? 'right' : 'left', DL.v, Object.assign({ drawers: dlDrawer(), divider: true }, extra));
+const dlArt = (w, extra) => baseArt(w, DL.d, BASE_H, hArt(hingeSide(DL.hinge, w)), DL.v, Object.assign({ drawers: dlDrawer(), divider: w > 600 }, hOpts(hingeSide(DL.hinge, w)), extra));
 const dlDrawerPick = () => '';
 function dlCard() {
-  const w = DL.w, single = w <= 600, hinge = DL.hinge === 'right' ? 'right' : 'left';
+  const w = DL.w, single = w <= 600, hinge = hingeSide(DL.hinge, w);
   const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
   const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
   const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="dlDim" data-k="${k}"></label>`;
@@ -9306,7 +9313,7 @@ function dlCard() {
     <div class="row"><div><h3 style="margin:0">Drawerline Single Base Unit</h3><span class="mono">${dlCode(w)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="dlMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${DL_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="dlW" data-w="${x}">${x}</button>`).join('')}</div>
-    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(hinge === hd)}" data-act="dlHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors, two drawers side by side and a centre divider (18mm) for the drawer runners.</p>'}
+    ${single ? `<div class="row" style="gap:8px">${hingeButtons('dlHinge', hinge, w, sel)}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors, two drawers side by side and a centre divider (18mm) for the drawer runners.</p>'}
     <div class="muted">Drawer type:</div>
     <div class="row" style="gap:6px">${DP_SYSTEMS.map(x => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 4px;font-size:12px;white-space:nowrap;${sel(DL.sys === x)}" data-act="dlSys" data-sys="${x}">${DL.sys === x ? '&#9745;' : '&#9744;'} ${x}</button>`).join('')}</div>
     <div class="row" style="gap:10px">${num('d', 'Depth (mm)', DL.d)}${num('v', 'Void (mm)', DL.v)}</div>
@@ -9778,7 +9785,7 @@ CH.lshDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isF
 /* Wall Unit: heights 575, 720 and 900 (codes WS, WM and WT), widths 150 to 1200, depth from 300.
    Code: prefix + width, then, once the depth is 330 or more, the depth in cm and D (WT40033D is a 900 high,
    400 wide wall unit, 330 deep). Doors are single up to 600 wide and a pair above; over 700 wide there is one
-   flat centre post, 70 x 18. A void of 0 means no wall hangers. Wall units have no legs. */
+   flat centre post, 70 x 18. A void under 20 means no wall hangers; 20 or more always has them. Wall units have no legs. */
 const WALL = { h: 720, w: 600, hinge: 'left', d: 300, v: 50 };
 const WALL_HEIGHTS = [575, 720, 900];
 const WALL_WIDTHS = [150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1100, 1200];
@@ -9787,16 +9794,17 @@ const WALL_SHELVES = { 575: 1, 720: 2, 900: 3 };
 const WALL_LIM = { d: [300, 600], v: [0, 100] };
 const wallClamp = () => { WALL.d = Math.min(WALL_LIM.d[1], Math.max(WALL_LIM.d[0], WALL.d)); WALL.v = Math.min(Math.min(WALL_LIM.v[1], WALL.d - 150), Math.max(WALL_LIM.v[0], WALL.v)); };
 const wallCode = () => WALL_PREFIX[WALL.h] + WALL.w + (WALL.d >= 330 ? Math.round(WALL.d / 10) + 'D' : '');
-const wallPair = () => WALL.w > 600, wallPost = () => WALL.w > 700;
-const wallArt = extra => { wallClamp(); return baseArt(WALL.w, WALL.d, WALL.h, WALL.hinge === 'right' ? 'right' : 'left', WALL.v, Object.assign({ noLegs: true, fullTop: true, shelfN: WALL_SHELVES[WALL.h], flatPost: true, hangers: WALL.v > 0 }, extra)); };
-const wallVoidNote = () => WALL.v === 0 ? `<div style="font-size:13px;line-height:1.5;font-weight:700">Void is 0: this cabinet will have no wall hangers.</div>` : '';
+const wallPair = () => WALL.w > 600 || hingeSide(WALL.hinge, WALL.w) === 'both', wallPost = () => WALL.w > 700;
+const wallHangers = () => WALL.v >= 20;                       // a void under 20 leaves no room for wall hangers
+const wallArt = extra => { wallClamp(); return baseArt(WALL.w, WALL.d, WALL.h, hArt(hingeSide(WALL.hinge, WALL.w)), WALL.v, Object.assign({ noLegs: true, fullTop: true, pair: wallPair(), shelfN: WALL_SHELVES[WALL.h], flatPost: true }, extra)); };
+const wallVoidNote = () => !wallHangers() ? `<div style="font-size:13px;line-height:1.5;font-weight:700">Void is under 20: this cabinet will have no wall hangers.</div>` : '';
 function wallPick(sel) {
   const opt = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
   const num = (k, label) => `<label class="field" style="flex:1;min-width:110px"><span class="lbl">${label}</span><input class="input" type="number" min="${WALL_LIM[k][0]}" max="${WALL_LIM[k][1]}" step="1" value="${WALL[k]}" data-chg="wallDim" data-k="${k}"></label>`;
   return `<div class="muted">Height:</div><div class="row" style="gap:6px">${WALL_HEIGHTS.map(x => opt('wallH', x, x, WALL.h === x)).join('')}</div>
     <div class="muted">Width:</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${WALL_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === WALL.w)}" data-act="wallW" data-w="${x}">${x}</button>`).join('')}</div>
-    ${wallPair() ? `<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors${wallPost() ? ' and a flat centre post (70 x 18mm)' : ''}.</p>`
-      : `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(WALL.hinge === hd)}" data-act="wallHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>`}
+    ${WALL.w > 600 ? `<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors${wallPost() ? ' and a flat centre post (70 x 18mm)' : ''}.</p>`
+      : `<div class="row" style="gap:8px">${hingeButtons('wallHinge', hingeSide(WALL.hinge, WALL.w), WALL.w, sel)}</div>`}
     <div class="row" style="gap:10px;flex-wrap:wrap">${num('d', 'Depth (mm)')}${num('v', 'Void (mm)')}</div>
     ${wallVoidNote()}`;
 }
@@ -9832,7 +9840,7 @@ function wallDetails() {
       <p class="muted" style="margin:0">${w}mm wide, ${WALL.h}mm high, ${WALL.d}mm deep wall unit.</p>
       ${wallVoidNote()}
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + wallCode())}${row('DOORS', pair ? 'Pair of doors' : 'Single door, ' + WALL.hinge + ' hinge')}${row('HINGES', 'Quantity: ' + (pair ? 4 : 2) + ' x hinges')}${row('SHELVES', 'Quantity: ' + n + ' x shelf' + (n === 1 ? '' : 's'))}${row('WALL HANGERS', WALL.v > 0 ? 'Quantity: 2 x wall hangers' : 'None, the void is 0')}${row('CABINET COMPONENT', post ? 'Quantity: 1 x centre post, flat (70 x 18 mm)' : 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + wallCode())}${row('DOORS', pair ? (WALL.w > 600 ? 'Pair of doors' : 'Pair of doors, hinged both sides') : 'Single door, ' + hingeSide(WALL.hinge, WALL.w) + ' hinge')}${row('HINGES', 'Quantity: ' + (pair ? 4 : 2) + ' x hinges')}${row('SHELVES', 'Quantity: ' + n + ' x shelf' + (n === 1 ? '' : 's'))}${row('WALL HANGERS', wallHangers() ? 'Quantity: 2 x hangers, 2 x wall plates, 2 x cover caps' : 'None, the void is under 20')}${row('CABINET COMPONENT', post ? 'Quantity: 1 x centre post, flat (70 x 18 mm)' : 'None')}</div>
       ${wallPick(sel)}
       ${ocDetail(null)}
       ${bkRow('wall')}
@@ -10014,10 +10022,10 @@ A.bkAdd = t => {
   let l;
   if (key === 'base') {
     const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
-    l = { name: 'Highline Base Unit', code: 'BHL' + it.w, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? BASE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+    l = { name: 'Highline Base Unit', code: 'BHL' + it.w, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? hingeText(BASE.hinge, +it.w) : 'Pair of doors' };
   } else if (key === 'wall') {
     wallClamp();
-    l = { name: 'Wall Unit', code: wallCode(), w: WALL.w, h: WALL.h, d: WALL.d, v: WALL.v, opt: (wallPair() ? 'Pair of doors' : WALL.hinge.toUpperCase() + ' door hinge') + (wallPost() ? ', flat centre post' : '') + (WALL.v > 0 ? ', wall hangers' : ', no wall hangers (void 0)') };
+    l = { name: 'Wall Unit', code: wallCode(), w: WALL.w, h: WALL.h, d: WALL.d, v: WALL.v, opt: (WALL.w > 600 ? 'Pair of doors' : hingeText(WALL.hinge, WALL.w)) + (wallPost() ? ', flat centre post' : '') + (wallHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
   } else if (key === 'lsh') {
     lshClamp();
     l = { name: 'L Shape Corner Base Unit', code: lshCode(), w: LSH.rh, d: LSH.d, v: LSH.v, opt: 'Right hand ' + LSH.rh + ' mm, left hand ' + LSH.lh + ' mm, full top, void ' + LSH.v + ' mm, doors ' + lshDoors().rh + ' and ' + lshDoors().lh + ' x ' + lshDoors().h + ' mm, ' + lshHingeText() + ', 8 legs' };
@@ -10037,9 +10045,9 @@ A.bkAdd = t => {
   } else if (key === 'bin') {
     l = { name: 'Highline Bin Unit', code: binCode(BIN.w), w: BIN.w, d: BIN.d, v: BIN.v, opt: 'Pull-out bins, ' + binOpt().label };
   } else if (key === 'dl') {
-    l = { name: 'Drawerline Single Base Unit', code: dlCode(DL.w), w: DL.w, d: DL.d, v: DL.v, opt: (DL.w <= 600 ? DL.hinge.toUpperCase() + ' door hinge' : 'Pair of doors') + ', ' + (dlDouble() ? 'double ' : 'single ') + DL.sys + ' drawer' };
+    l = { name: 'Drawerline Single Base Unit', code: dlCode(DL.w), w: DL.w, d: DL.d, v: DL.v, opt: (DL.w <= 600 ? hingeText(DL.hinge, DL.w) : 'Pair of doors') + ', ' + (dlDouble() ? 'double ' : 'single ') + DL.sys + ' drawer' };
   } else if (key === 'sink') {
-    l = { name: 'Single Sink Base Unit', code: sinkCode(SINK.w), w: SINK.w, d: SINK.d, v: SINK.v, opt: (SINK.w <= 600 ? SINK.hinge.toUpperCase() + ' door hinge' : 'Pair of doors') + ', ' + SINK.rail + ' front top rail' + (SINK.liner ? ', sink liner' : '') + (SINK.backOff ? ', removable back' : '') };
+    l = { name: 'Single Sink Base Unit', code: sinkCode(SINK.w), w: SINK.w, d: SINK.d, v: SINK.v, opt: (SINK.w <= 600 ? hingeText(SINK.hinge, SINK.w) : 'Pair of doors') + ', ' + SINK.rail + ' front top rail' + (SINK.liner ? ', sink liner' : '') + (SINK.backOff ? ', removable back' : '') };
   } else if (key === 'robe') {
     const it = robeWidths().find(i => i.w === ROBE.w) || robeWidths()[0]; if (!it) return;
     l = { name: 'Single Hanging Robe', code: it.code, w: +it.w, d: ROBE.d, v: ROBE.v, opt: +it.w <= 600 ? ROBE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
