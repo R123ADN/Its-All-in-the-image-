@@ -9098,6 +9098,41 @@ function baseArt(w, d, h, hinge, vd, opts) {
     const ymid = (yb + yt) / 2, hh = Math.min(100, (yt - yb) * 0.15);
     ln(at(1 - m / 2, ymid - hh), at(1 - m / 2, ymid + hh), '#3a3631', 4);                                            // handle in the middle of the opening-edge stile, halfway up the door
   };
+  if (o.carousel) {               // corner carousel: two dark trays with a solid rim on a centre column, swung out round the column through the door opening, with a few things on them
+    const { x0, x1 } = o.carousel, cx0 = (x0 + x1) / 2, a = Math.min(340, (x1 - x0) / 2 - 35), b = Math.min(235, (d - 60) / 2 - 10);
+    const px = o.carousel.pole != null ? o.carousel.pole : x1 - 25, pz = d / 2 - 40, sgn = cx0 < px ? -1 : 1, WALL = 75;
+    ln(P(px, y0 + T, pz), P(px, y1 - T, pz), '#3a3d41', 16);                                                              // the centre column
+    // a round-ended bowl or jar: its side drawn back to front, then the top
+    const cyl = (x, z, r, yb, ht, top, side) => {
+      const c = [];
+      for (let k = 0; k < 16; k++) c.push([x + r * Math.cos(k * Math.PI / 8), z + r * Math.sin(k * Math.PI / 8)]);
+      c.map((p, k) => [p, c[(k + 1) % 16]]).sort((s, t) => (s[0][1] + s[1][1]) - (t[0][1] + t[1][1])).forEach(([p, n]) => q([P(p[0], yb, p[1]), P(n[0], yb, n[1]), P(n[0], yb + ht, n[1]), P(p[0], yb + ht, p[1])], side, 0.5));
+      q(c.map(p => P(p[0], yb + ht, p[1])), top, 0.8);
+    };
+    [[y0 + T + 90, 38, 'low'], [y0 + T + 90 + (h - 2 * T) * 0.48, 14, 'up']].forEach(([yb, deg, which]) => {
+      const ang = sgn * deg * Math.PI / 180, ca = Math.cos(ang), sa = Math.sin(ang);
+      const rot = (x, z) => [px + (x - px) * ca - (z - pz) * sa, pz + (x - px) * sa + (z - pz) * ca];       // swing about the column
+      const hwAt = u => b * Math.sqrt(Math.max(0, 1 - u * u)) * (1 - 0.24 * Math.exp(-Math.pow(u - 0.05, 2) / 0.08)) * (1 - 0.12 * u);   // two round lobes and a soft waist
+      const raw = [], N = 12;
+      for (let k = 0; k <= N; k++) { const u = -1 + 2 * k / N; raw.push([cx0 + a * u, pz + hwAt(u)]); }
+      for (let k = N - 1; k >= 1; k--) { const u = -1 + 2 * k / N; raw.push([cx0 + a * u, pz - hwAt(u)]); }
+      const pts = raw.map(p => rot(p[0], p[1])), cen = rot(cx0, pz), segs = pts.map((p, k) => [p, pts[(k + 1) % pts.length]]);
+      const mz = s => (s[0][1] + s[1][1]) / 2, wall = s => q([P(s[0][0], yb, s[0][1]), P(s[1][0], yb, s[1][1]), P(s[1][0], yb + WALL, s[1][1]), P(s[0][0], yb + WALL, s[0][1])], '#2a2c2f', 0.6);
+      segs.forEach(s => q([P(s[0][0], yb, s[0][1]), P(s[1][0], yb, s[1][1]), P(s[1][0], yb - 22, s[1][1]), P(s[0][0], yb - 22, s[0][1])], '#1c1e20', 0.6));   // underside edge
+      segs.filter(s => mz(s) < cen[1]).sort((s, t) => mz(s) - mz(t)).forEach(wall);                              // the far rim, seen from inside
+      q(pts.map(p => P(p[0], yb, p[1])), '#3b3f44', 1);                                                          // tray floor
+      if (which === 'low') {                                                                                    // a stack of plates and a bowl
+        const c1 = rot(cx0 - sgn * a * 0.35, pz + b * 0.1), c2 = rot(cx0 + sgn * a * 0.3, pz - b * 0.1);
+        [0, 14, 28].forEach(i => cyl(c1[0], c1[1], 95, yb + i, 12, '#eceae4', '#bdbab2'));
+        cyl(c2[0], c2[1], 85, yb, 55, '#d9d6cf', '#8e8b84');
+      } else {                                                                                                  // two wooden-lidded jars and a pot
+        const c1 = rot(cx0 - sgn * a * 0.4, pz), c2 = rot(cx0 + sgn * a * 0.05, pz + b * 0.15), c3 = rot(cx0 + sgn * a * 0.45, pz - b * 0.05);
+        cyl(c1[0], c1[1], 62, yb, 95, '#b98a58', '#8d6a43'); cyl(c2[0], c2[1], 55, yb, 85, '#b98a58', '#8d6a43'); cyl(c3[0], c3[1], 70, yb, 60, '#e4e1da', '#a9a69e');
+      }
+      segs.filter(s => mz(s) >= cen[1]).sort((s, t) => mz(s) - mz(t)).forEach(wall);                              // the near rim, in front of whatever is on the tray
+      segs.forEach(s => ln(P(s[0][0], yb + WALL, s[0][1]), P(s[1][0], yb + WALL, s[1][1]), '#6b7077', 2));       // lit top edge of the rim
+    });
+  }
   if (o.blank) {                  // corner unit: a fixed blank panel on one side, the door covers the rest
     const bw = o.blank.w, bx0 = o.blank.side === 'right' ? w - bw : 0, bx1 = bx0 + bw;
     // the blank sits between the base panel and the top rail, and carries the door hinges
@@ -9543,7 +9578,7 @@ A.wineMore = () => { UI.orderCat = 'winedetails'; render(); window.scrollTo(0, 0
 A.wineOpt = t => { WINE.opt = +t.dataset.i; wineRefresh(); };
 /* Kitchen > All Bases: Corner Base Unit, 800 to 1500 wide. One door, plus a fixed blank panel
    on the right or the left whose width the customer can change. Code is BCHL + width + RB or LB. */
-const CORNER = { w: 1000, side: 'right', door: 500, d: 570, v: 50 };
+const CORNER = { w: 1000, side: 'right', door: 500, d: 570, v: 50, carousel: false };
 const CORNER_WIDTHS = [800, 900, 1000, 1100, 1200, 1300, 1400, 1500];
 const CORNER_T = 18.2;                                            // the internal blank panel
 const CORNER_MIN_DOOR = 300;                                      // the door can't be narrower than this
@@ -9551,11 +9586,18 @@ const cornerDoorMax = () => Math.floor(CORNER.w - CORNER_T - 50);   // leaves at
 const cornerDoor = () => Math.min(Math.max(CORNER.door, CORNER_MIN_DOOR), cornerDoorMax());
 const cornerBlank = () => Math.round((CORNER.w - cornerDoor() - CORNER_T) * 10) / 10;   // blank = cabinet width - door size - 18.2
 const cornerCode = () => 'BCHL' + CORNER.w + (CORNER.side === 'right' ? 'RB' : 'LB');
-const cornerArt = (extra) => baseArt(CORNER.w, CORNER.d, BASE_H, 'left', CORNER.v, Object.assign({ blank: { side: CORNER.side, w: cornerBlank() } }, extra));
+const cornerArt = (extra) => {
+  const w = CORNER.w, dr = cornerDoor(), right = CORNER.side === 'right';
+  return baseArt(w, CORNER.d, BASE_H, 'left', CORNER.v, Object.assign({
+    blank: { side: CORNER.side, w: cornerBlank() }, noShelf: CORNER.carousel,
+    carousel: CORNER.carousel ? { x0: right ? 20 : w - dr, x1: right ? dr - 70 : w - 20, pole: right ? dr - 95 : w - dr + 25 } : null   // pulled in on the blank side so the trays aren't hidden behind the blank panel
+  }, extra));
+};
 function cornerPick(sel) {
   const num = `<label class="field"><span class="lbl">Door size (mm)</span><input class="input" type="number" min="${CORNER_MIN_DOOR}" max="${cornerDoorMax()}" step="1" value="${cornerDoor()}" data-chg="cornerDoor"></label>`;
   return `<div class="muted">Blank:</div><div class="row" style="gap:6px">${[['right', 'Right hand blank'], ['left', 'Left hand blank']].map(([k, t]) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(CORNER.side === k)}" data-act="cornerSide" data-v="${k}">${CORNER.side === k ? '&#9745;' : '&#9744;'} ${t}</button>`).join('')}</div>${num}
-    <div class="muted">Blank size: <b>${cornerBlank()} mm</b> (${CORNER.w} - ${cornerDoor()} - 18.2)</div>`;
+    <div class="muted">Blank size: <b>${cornerBlank()} mm</b> (${CORNER.w} - ${cornerDoor()} - 18.2)</div>
+    <div class="row"><button class="btn btn-secondary btn-sm" style="flex:1;font-size:12px;${sel(CORNER.carousel)}" data-act="cornerCar">${CORNER.carousel ? '&#9745;' : '&#9744;'} Signature Magic Corner Carousel</button></div>`;
 }
 function cornerCard() {
   const w = CORNER.w;
@@ -9593,7 +9635,7 @@ function cornerDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${CORNER_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="cornerW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + cornerCode())}${row('BLANK', (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand, ' + bl + ' mm (' + w + ' - ' + cornerDoor() + ' - 18.2)')}${row('DOOR SIZE', cornerDoor() + ' mm')}${row('HINGES', 'Quantity: 2 x blank corner hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + legQty(w) + ' x plinth clips')}${row('SHELF', 'Quantity: 1 x shelf')}${row('CABINET COMPONENT', 'Quantity: 1 x blank panel, ' + bl + ' mm wide, between the base and the top rail, carries the door hinges')}</div>
+      <div>${row('CABINET', 'Code: ' + cornerCode())}${row('BLANK', (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand, ' + bl + ' mm (' + w + ' - ' + cornerDoor() + ' - 18.2)')}${row('DOOR SIZE', cornerDoor() + ' mm')}${row('HINGES', 'Quantity: 2 x blank corner hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + legQty(w) + ' x plinth clips')}${CORNER.carousel ? row('CAROUSEL', 'Signature Magic Corner Carousel, 2 trays, black') : row('SHELF', 'Quantity: 1 x shelf')}${row('CABINET COMPONENT', 'Quantity: 1 x blank panel, ' + bl + ' mm wide, between the base and the top rail, carries the door hinges')}</div>
       ${cornerPick(sel)}
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', CORNER.v)}</div>
@@ -9606,6 +9648,7 @@ function cornerDetails() {
 const cornerRefresh = () => { if (UI.orderCat === 'cornerdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#cn'); if (el) el.outerHTML = cornerCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 A.cornerMore = () => { UI.orderCat = 'cornerdetails'; render(); window.scrollTo(0, 0); };
 A.cornerW = t => { CORNER.w = +t.dataset.w; CORNER.door = cornerDoor(); cornerRefresh(); };
+A.cornerCar = () => { CORNER.carousel = !CORNER.carousel; cornerRefresh(); };
 A.cornerSide = t => { CORNER.side = t.dataset.v; cornerRefresh(); };
 CH.cornerDoor = t => { let v = Math.round(+t.value); if (!isFinite(v)) v = CORNER.door; CORNER.door = Math.min(Math.max(v, CORNER_MIN_DOOR), cornerDoorMax()); cornerRefresh(); };
 CH.cornerDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = CORNER[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), CORNER.d - 200); CORNER[k] = v; cornerRefresh(); };
@@ -9701,7 +9744,7 @@ A.bkAdd = t => {
     const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
     l = { name: 'Highline Base Unit', code: 'BHL' + it.w, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? BASE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
   } else if (key === 'corner') {
-    l = { name: 'Corner Base Unit', code: cornerCode(), w: CORNER.w, d: CORNER.d, v: CORNER.v, opt: (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + cornerBlank() + ' mm, door ' + cornerDoor() + ' mm, 2 blank corner hinges' };
+    l = { name: 'Corner Base Unit', code: cornerCode(), w: CORNER.w, d: CORNER.d, v: CORNER.v, opt: (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + cornerBlank() + ' mm, door ' + cornerDoor() + ' mm, 2 blank corner hinges' + (CORNER.carousel ? ', Signature Magic Corner Carousel' : '') };
   } else if (key === 'mtm') {
     l = { name: 'Made to Measure Base Unit', code: MTM_CODE, w: MTM.w, h: MTM.h, d: MTM.d, v: MTM.back === 'fixed' ? 0 : MTM.v, opt: MTM.h + ' high, ' + MTM.shelves + ' shelf' + (MTM.shelves === 1 ? '' : 's') + ', ' + (MTM.top === 'full' ? 'full top' : 'top rail') + ', ' + mtmBackText().toLowerCase() };
   } else if (key === 'wine') {
