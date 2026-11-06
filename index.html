@@ -8958,7 +8958,10 @@ const legSpots = (w, d) => {                          // where the legs sit, fro
   const n = legQty(w), m = 50;
   return n === 2 ? [[w / 2, m], [w / 2, d - m]] : n === 4 ? [[m, m], [w - m, m], [m, d - m], [w - m, d - m]] : [[m, m], [w - m, m], [m, d - m], [w - m, d - m], [w / 2, d - m]];
 };
-const KITCHEN_OPTS = [{ id: 'bases', name: 'All Bases', desc: 'Base units and drawer packs. Pick the width, door hand or drawer type.', icon: 'cube' }];
+const KITCHEN_OPTS = [
+  { id: 'bases', name: 'All Bases', desc: 'Base units and drawer packs. Pick the width, door hand or drawer type.', icon: 'cube' },
+  { id: 'walls', name: 'All Wall Units', desc: 'Wall units. Pick the width, door hand and options.', icon: 'layout' }
+];
 const baseWidths = () => DB.items.filter(i => i.active !== false && /^HL\d+$/.test(i.code)).sort((a, b) => a.w - b.w);
 const baseShade = (hex, t) => {
   const n = parseInt(String(hex).replace('#', ''), 16), f = c => Math.max(0, Math.min(255, Math.round(t < 0 ? c * (1 + t) : c + (255 - c) * t)));
@@ -8967,16 +8970,16 @@ const baseShade = (hex, t) => {
 /* A shaded isometric base unit on legs: door open to show the shelf, handle on
    the opening edge, and the back panel set in by the void. */
 function baseArt(w, d, h, hinge, vd, opts) {
-  const o = Object.assign({ doors: true, dims: false }, opts), T = 18, LEG = 150, y0 = LEG, y1 = LEG + h, single = (w <= 600 && !o.pair) || !!o.blank;
+  const o = Object.assign({ doors: true, dims: false }, opts), T = 18, LEG = opts && opts.noLegs ? 0 : 150, y0 = LEG, y1 = LEG + h, single = (w <= 600 && !o.pair) || !!o.blank;
   const FL = single && hinge === 'right' && o.doors ? -1 : 1, TH = 108 * Math.PI / 180, col = o.col || ocHex();
   const pts = [], out = [];
   // mostly a front view: the front stays square-on, depth recedes up and to the right
   const P = (x, y, z) => { const p = { x: FL * (x - 0.32 * z), y: 0.3 * z - y }; pts.push(p); return p; };
-  out.push(`<polygon points="${[P(-30, 0, -20), P(w + 30, 0, -20), P(w + 30, 0, d + 40), P(-30, 0, d + 40)].map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="#000" opacity="0.08"/>`);   // floor shadow
+  if (!o.noLegs) out.push(`<polygon points="${[P(-30, 0, -20), P(w + 30, 0, -20), P(w + 30, 0, d + 40), P(-30, 0, d + 40)].map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="#000" opacity="0.08"/>`);   // floor shadow
   const q = (a, fill, sw) => out.push(`<polygon points="${a.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="${fill}" stroke="${baseShade(col, -0.55)}" stroke-width="${sw || 1.2}" stroke-linejoin="round"/>`);
   const ln = (a, b, c, sw) => out.push(`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`);
   // adjustable plastic legs: a short black stem on a wide round foot
-  legSpots(w, d).forEach(([x, z]) => {
+  (o.noLegs ? [] : legSpots(w, d)).forEach(([x, z]) => {
     const f = P(x, 12, z);
     ln(P(x, y0, z), P(x, 14, z), '#1d1d1d', 20);
     out.push(`<ellipse cx="${f.x.toFixed(1)}" cy="${f.y.toFixed(1)}" rx="30" ry="15" fill="#0e0e0e"/><ellipse cx="${f.x.toFixed(1)}" cy="${(f.y - 9).toFixed(1)}" rx="24" ry="10" fill="#2a2a2a"/>`);
@@ -9003,7 +9006,15 @@ function baseArt(w, d, h, hinge, vd, opts) {
     q([P(cm, yd, d), P(cx, yd, d), P(cx, y1, d), P(cm, y1, d)], baseShade(col, 0.14));                                 // front edge
     q([P(cm, y1, vd), P(cx, y1, vd), P(cx, y1, d), P(cm, y1, d)], baseShade(col, 0.28));                               // top edge
   }
-  if (!single && (bare || o.posts)) {    // over 600 wide: two centre posts, each 70 deep x 18 thick, back to back so the doors close squarely
+  if (o.flatPost && w > 700) {    // wall unit over 700 wide: one centre post lying flat to the front, 70 wide x 18 deep
+    const fx0 = w / 2 - 35, fx1 = w / 2 + 35, fz = d - 18;
+    q([P(fx0, y0 + T, d), P(fx1, y0 + T, d), P(fx1, y1 - T, d), P(fx0, y1 - T, d)], baseShade(col, 0.14));                  // front face, 70 wide
+    q([P(fx1, y0 + T, fz), P(fx1, y0 + T, d), P(fx1, y1 - T, d), P(fx1, y1 - T, fz)], baseShade(col, 0.04));                  // side, 18 deep
+  }
+  if (o.hangers) {                // wall hangers: a small plate against the back panel at each top corner
+    [T + 24, w - T - 84].forEach(x => q([P(x, y1 - T - 52, vd), P(x + 60, y1 - T - 52, vd), P(x + 60, y1 - T, vd), P(x, y1 - T, vd)], '#8d949a', 1));
+  }
+  if (!single && (bare || o.posts) && !o.flatPost) {    // over 600 wide: two centre posts, each 70 deep x 18 thick, back to back so the doors close squarely
     const c0 = w / 2 - T, cm = w / 2, c1 = w / 2 + T, zp = d - 70, yp = o.divider && o.drawers && o.drawers.h ? y1 - o.drawers.h + 28 : y1 - T;   // under a drawerline divider the posts stop at the drawer runners
     q([P(c0, y0 + T, d), P(cm, y0 + T, d), P(cm, yp, d), P(c0, yp, d)], baseShade(col, 0.14));                         // front faces
     q([P(cm, y0 + T, d), P(c1, y0 + T, d), P(c1, yp, d), P(cm, yp, d)], baseShade(col, 0.14));
@@ -9637,10 +9648,12 @@ A.ovenSys = t => { OVEN.sys = t.dataset.v; ovenRefresh(); };
    widths and the depth; the height is fixed at 720 and the top is always a full top. Code is
    BCHL + right hand width + x + left hand width, e.g. BCHL1000x1000. */
 const LSH = { rh: 1000, lh: 1000, d: 570, v: 50, hinge: '155' };
-/* Door sizes follow the 3D picture: each wing's door runs from the corner to the wing end, less a 3mm gap each side,
-   and is 714 high (720 less the same gaps). Bifold hinges join the two doors so they fold together; 155 hinges
-   hang each door on its own wing. */
-const lshDoors = () => ({ rh: LSH.rh - LSH.d - 6, lh: LSH.lh - LSH.d - 6, h: BASE_H - 6 });
+/* Door width for any L shape (base, wall unit or robe): the gable width, right or left hand, less the depth of the
+   cabinet, less 22mm (the door thickness), less 4mm (clearance). The height is the cabinet height less 5mm, so a
+   720 cabinet has a 715 door. Bifold hinges join the two doors so they fold together;
+   155 hinges hang each door on its own wing. */
+const L_DOOR_DEDUCT = 22 + 4;
+const lshDoors = () => ({ rh: LSH.rh - LSH.d - L_DOOR_DEDUCT, lh: LSH.lh - LSH.d - L_DOOR_DEDUCT, h: BASE_H - 5 });
 const lshHingeText = () => LSH.hinge === 'bifold' ? '2 x 155 hinges (door to carcass) + 2 x bifold hinges (between the doors)' : '4 x 155 hinges';
 function lshHingePick(sel) {
   return `<div class="muted">Hinges:</div><div class="row" style="gap:6px">${[['155', '155 hinges'], ['bifold', 'Bifold hinges']].map(([k, t]) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(LSH.hinge === k)}" data-act="lshHinge" data-v="${k}">${LSH.hinge === k ? '&#9745;' : '&#9744;'} ${t}</button>`).join('')}</div>`;
@@ -9685,12 +9698,12 @@ function lshArt(o) {
   q([P(rh, y0, 0), P(rh, y0, d), P(rh, y1, d), P(rh, y1, 0)], baseShade(col, 0.08));                                 // right hand wing end
   q([P(0, y0, lh), P(d, y0, lh), P(d, y1, lh), P(0, y1, lh)], baseShade(col, 0.1));                                  // left hand wing end
   if (o.doors) {                                                                                                     // one door on each wing, each on two 155 degree hinges
-    q([P(d + 3, y0 + 3, d), P(rh - 3, y0 + 3, d), P(rh - 3, y1 - 3, d), P(d + 3, y1 - 3, d)], baseShade(col, 0.24), 1.3);
-    q([P(d + 58, y0 + 78, d), P(rh - 58, y0 + 78, d), P(rh - 58, y1 - 78, d), P(d + 58, y1 - 78, d)], baseShade(col, 0.08), 1);
-    ln(P(rh - 80, (y0 + y1) / 2 - 90, d), P(rh - 80, (y0 + y1) / 2 + 90, d), '#3a3631', 4);
-    q([P(d, y0 + 3, d + 3), P(d, y0 + 3, lh - 3), P(d, y1 - 3, lh - 3), P(d, y1 - 3, d + 3)], baseShade(col, 0.24), 1.3);
-    q([P(d, y0 + 78, d + 58), P(d, y0 + 78, lh - 58), P(d, y1 - 78, lh - 58), P(d, y1 - 78, d + 58)], baseShade(col, 0.08), 1);
-    ln(P(d, (y0 + y1) / 2 - 90, lh - 80), P(d, (y0 + y1) / 2 + 90, lh - 80), '#3a3631', 4);
+    q([P(d + 13, y0 + 2.5, d), P(rh - 13, y0 + 2.5, d), P(rh - 13, y1 - 2.5, d), P(d + 13, y1 - 2.5, d)], baseShade(col, 0.24), 1.3);   // 13mm in from each end, so the door is wing width - depth - 26, and 715 high
+    q([P(d + 68, y0 + 78, d), P(rh - 68, y0 + 78, d), P(rh - 68, y1 - 78, d), P(d + 68, y1 - 78, d)], baseShade(col, 0.08), 1);
+    ln(P(rh - 90, (y0 + y1) / 2 - 90, d), P(rh - 90, (y0 + y1) / 2 + 90, d), '#3a3631', 4);
+    q([P(d, y0 + 2.5, d + 13), P(d, y0 + 2.5, lh - 13), P(d, y1 - 2.5, lh - 13), P(d, y1 - 2.5, d + 13)], baseShade(col, 0.24), 1.3);
+    q([P(d, y0 + 78, d + 68), P(d, y0 + 78, lh - 68), P(d, y1 - 78, lh - 68), P(d, y1 - 78, d + 68)], baseShade(col, 0.08), 1);
+    ln(P(d, (y0 + y1) / 2 - 90, lh - 90), P(d, (y0 + y1) / 2 + 90, lh - 90), '#3a3631', 4);
   } else {                                                                                                           // open fronts: just the floor edge of each wing
     q([P(d, y0, d), P(rh, y0, d), P(rh, y0 + T, d), P(d, y0 + T, d)], baseShade(col, 0.1));
     q([P(d, y0, d), P(d, y0, lh), P(d, y0 + T, lh), P(d, y0 + T, d)], baseShade(col, 0.1));
@@ -9761,6 +9774,80 @@ const lshRefresh = () => { if (UI.orderCat === 'lshdetails') { const y = window.
 A.lshHinge = t => { LSH.hinge = t.dataset.v; lshRefresh(); };
 A.lshMore = () => { UI.orderCat = 'lshdetails'; render(); window.scrollTo(0, 0); };
 CH.lshDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = LSH[k]; LSH[k] = v; lshClamp(); lshRefresh(); };
+/* Kitchen > All Wall Units: the wall unit cards go here, one function per card like the bases above. */
+/* Wall Unit: heights 575, 720 and 900 (codes WS, WM and WT), widths 150 to 1200, depth from 300.
+   Code: prefix + width, then, once the depth is 330 or more, the depth in cm and D (WT40033D is a 900 high,
+   400 wide wall unit, 330 deep). Doors are single up to 600 wide and a pair above; over 700 wide there is one
+   flat centre post, 70 x 18. A void of 0 means no wall hangers. Wall units have no legs. */
+const WALL = { h: 720, w: 600, hinge: 'left', d: 300, v: 50 };
+const WALL_HEIGHTS = [575, 720, 900];
+const WALL_WIDTHS = [150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1100, 1200];
+const WALL_PREFIX = { 575: 'WS', 720: 'WM', 900: 'WT' };
+const WALL_SHELVES = { 575: 1, 720: 2, 900: 3 };
+const WALL_LIM = { d: [300, 600], v: [0, 100] };
+const wallClamp = () => { WALL.d = Math.min(WALL_LIM.d[1], Math.max(WALL_LIM.d[0], WALL.d)); WALL.v = Math.min(Math.min(WALL_LIM.v[1], WALL.d - 150), Math.max(WALL_LIM.v[0], WALL.v)); };
+const wallCode = () => WALL_PREFIX[WALL.h] + WALL.w + (WALL.d >= 330 ? Math.round(WALL.d / 10) + 'D' : '');
+const wallPair = () => WALL.w > 600, wallPost = () => WALL.w > 700;
+const wallArt = extra => { wallClamp(); return baseArt(WALL.w, WALL.d, WALL.h, WALL.hinge === 'right' ? 'right' : 'left', WALL.v, Object.assign({ noLegs: true, fullTop: true, shelfN: WALL_SHELVES[WALL.h], flatPost: true, hangers: WALL.v > 0 }, extra)); };
+const wallVoidNote = () => WALL.v === 0 ? `<div style="font-size:13px;line-height:1.5;font-weight:700">Void is 0: this cabinet will have no wall hangers.</div>` : '';
+function wallPick(sel) {
+  const opt = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  const num = (k, label) => `<label class="field" style="flex:1;min-width:110px"><span class="lbl">${label}</span><input class="input" type="number" min="${WALL_LIM[k][0]}" max="${WALL_LIM[k][1]}" step="1" value="${WALL[k]}" data-chg="wallDim" data-k="${k}"></label>`;
+  return `<div class="muted">Height:</div><div class="row" style="gap:6px">${WALL_HEIGHTS.map(x => opt('wallH', x, x, WALL.h === x)).join('')}</div>
+    <div class="muted">Width:</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${WALL_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === WALL.w)}" data-act="wallW" data-w="${x}">${x}</button>`).join('')}</div>
+    ${wallPair() ? `<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors${wallPost() ? ' and a flat centre post (70 x 18mm)' : ''}.</p>`
+      : `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(WALL.hinge === hd)}" data-act="wallHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>`}
+    <div class="row" style="gap:10px;flex-wrap:wrap">${num('d', 'Depth (mm)')}${num('v', 'Void (mm)')}</div>
+    ${wallVoidNote()}`;
+}
+function wallCard() {
+  wallClamp();
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="wl" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', WALL.h)}${chip('W', WALL.w)}${chip('D', WALL.d)}${chip('Void', WALL.v)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${wallArt({ doors: true })}</div>
+    <div class="row"><div><h3 style="margin:0">Wall Unit</h3><span class="mono">${wallCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="wallMore">More Details ${ic('chevR', 14)}</button></div>
+    ${wallPick(sel)}
+    ${bkRow('wall')}
+  </article>`;
+}
+function wallDetails() {
+  wallClamp();
+  const w = WALL.w, post = wallPost(), pair = wallPair();
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const n = WALL_SHELVES[WALL.h];
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Wall Units</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(wallArt({ doors: false }), 340)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', wallCode())}${row('Width', w + ' mm')}${row('Height', WALL.h + ' mm')}${row('Depth', WALL.d + ' mm')}${row('Void', WALL.v + ' mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${w}MM WALL UNIT, ${WALL.h} HIGH</h1>
+      <span class="mono">${wallCode()}</span>
+      <p class="muted" style="margin:0">${w}mm wide, ${WALL.h}mm high, ${WALL.d}mm deep wall unit.</p>
+      ${wallVoidNote()}
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + wallCode())}${row('DOORS', pair ? 'Pair of doors' : 'Single door, ' + WALL.hinge + ' hinge')}${row('HINGES', 'Quantity: ' + (pair ? 4 : 2) + ' x hinges')}${row('SHELVES', 'Quantity: ' + n + ' x shelf' + (n === 1 ? '' : 's'))}${row('WALL HANGERS', WALL.v > 0 ? 'Quantity: 2 x wall hangers' : 'None, the void is 0')}${row('CABINET COMPONENT', post ? 'Quantity: 1 x centre post, flat (70 x 18 mm)' : 'None')}</div>
+      ${wallPick(sel)}
+      ${ocDetail(null)}
+      ${bkRow('wall')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(wallArt({ doors: false, dims: true }), 380)}</div>`;
+}
+const wallRefresh = () => { if (UI.orderCat === 'walldetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#wl'); if (el) el.outerHTML = wallCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.wallMore = () => { UI.orderCat = 'walldetails'; render(); window.scrollTo(0, 0); };
+A.wallW = t => { WALL.w = +t.dataset.w; wallRefresh(); };
+A.wallH = t => { WALL.h = +t.dataset.v; wallRefresh(); };
+A.wallHinge = t => { WALL.hinge = t.dataset.h; wallRefresh(); };
+CH.wallDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = WALL[k]; WALL[k] = v; wallClamp(); wallRefresh(); };
+const wallCards = () => wallCard();
 /* Kitchen > All Bases: Corner Base Unit, 800 to 1500 wide. One door, plus a fixed blank panel
    on the right or the left whose width the customer can change. Code is BCHL + width + RB or LB. */
 const CORNER = { w: 1000, side: 'right', door: 500, d: 570, v: 50, carousel: false };
@@ -9928,6 +10015,9 @@ A.bkAdd = t => {
   if (key === 'base') {
     const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
     l = { name: 'Highline Base Unit', code: 'BHL' + it.w, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? BASE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+  } else if (key === 'wall') {
+    wallClamp();
+    l = { name: 'Wall Unit', code: wallCode(), w: WALL.w, h: WALL.h, d: WALL.d, v: WALL.v, opt: (wallPair() ? 'Pair of doors' : WALL.hinge.toUpperCase() + ' door hinge') + (wallPost() ? ', flat centre post' : '') + (WALL.v > 0 ? ', wall hangers' : ', no wall hangers (void 0)') };
   } else if (key === 'lsh') {
     lshClamp();
     l = { name: 'L Shape Corner Base Unit', code: lshCode(), w: LSH.rh, d: LSH.d, v: LSH.v, opt: 'Right hand ' + LSH.rh + ' mm, left hand ' + LSH.lh + ' mm, full top, void ' + LSH.v + ' mm, doors ' + lshDoors().rh + ' and ' + lshDoors().lh + ' x ' + lshDoors().h + ' mm, ' + lshHingeText() + ', 8 legs' };
@@ -10108,6 +10198,7 @@ function cOrders() {
   if (UI.orderCat === 'cornerdetails') return cornerDetails();
   if (UI.orderCat === 'ovendetails') return ovenDetails();
   if (UI.orderCat === 'lshdetails') return lshDetails();
+  if (UI.orderCat === 'walldetails') return wallDetails();
   if (UI.orderCat === 'robes') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Bedroom</button>
   <div class="page-head"><div><h1>Hanging Robes</h1><p>Choose a width from 300 to 1200, then the door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -10120,6 +10211,10 @@ function cOrders() {
   <div class="page-head"><div><h1>All Bases</h1><p>Choose a width, then the door hand or drawer type.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${dlCard()}${binCard()}${spoCard()}${belCard()}${wineCard()}${ovenCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}${cornerCard()}${lshCard()}${mtmCard()}</div>`;
+  if (UI.orderCat === 'walls') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
+  <div class="page-head"><div><h1>All Wall Units</h1><p>Choose a width, then the door hand and options.</p></div></div>
+  <div style="margin-bottom:16px">${ocSelect()}</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${wallCards() || `<div class="empty">${ic('layout', 22)}<p>Wall units will be added here.</p></div>`}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -10136,7 +10231,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', walldetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
