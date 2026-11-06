@@ -8950,6 +8950,12 @@ const CAB_ROOMS = [
    follows the chosen width and door hand. */
 const BASE = { w: 600, hinge: 'left', d: 570, v: 50 };
 const BASE_H = 720;                                   // base units are always 720 high
+/* Legs and plinth clips, the same for every cabinet: 150 wide has 2, 200 to 600 has 4, 700 to 1200 has 5. */
+const legQty = w => w <= 150 ? 2 : w <= 600 ? 4 : 5;
+const legSpots = (w, d) => {                          // where the legs sit, from the left and the back, in mm
+  const n = legQty(w), m = 50;
+  return n === 2 ? [[w / 2, m], [w / 2, d - m]] : n === 4 ? [[m, m], [w - m, m], [m, d - m], [w - m, d - m]] : [[m, m], [w - m, m], [m, d - m], [w - m, d - m], [w / 2, d - m]];
+};
 const KITCHEN_OPTS = [{ id: 'bases', name: 'All Bases', desc: 'Base units and drawer packs. Pick the width, door hand or drawer type.', icon: 'cube' }];
 const baseWidths = () => DB.items.filter(i => i.active !== false && /^HL\d+$/.test(i.code)).sort((a, b) => a.w - b.w);
 const baseShade = (hex, t) => {
@@ -8959,7 +8965,7 @@ const baseShade = (hex, t) => {
 /* A shaded isometric base unit on legs: door open to show the shelf, handle on
    the opening edge, and the back panel set in by the void. */
 function baseArt(w, d, h, hinge, vd, opts) {
-  const o = Object.assign({ doors: true, dims: false }, opts), T = 18, LEG = 150, y0 = LEG, y1 = LEG + h, single = w <= 600 && !o.pair;
+  const o = Object.assign({ doors: true, dims: false }, opts), T = 18, LEG = 150, y0 = LEG, y1 = LEG + h, single = (w <= 600 && !o.pair) || !!o.blank;
   const FL = single && hinge === 'right' && o.doors ? -1 : 1, TH = 108 * Math.PI / 180, col = o.col || ocHex();
   const pts = [], out = [];
   // mostly a front view: the front stays square-on, depth recedes up and to the right
@@ -8968,7 +8974,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
   const q = (a, fill, sw) => out.push(`<polygon points="${a.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="${fill}" stroke="${baseShade(col, -0.55)}" stroke-width="${sw || 1.2}" stroke-linejoin="round"/>`);
   const ln = (a, b, c, sw) => out.push(`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`);
   // adjustable plastic legs: a short black stem on a wide round foot
-  [[50, 50], [w - 50, 50], [50, d - 50], [w - 50, d - 50]].forEach(([x, z]) => {
+  legSpots(w, d).forEach(([x, z]) => {
     const f = P(x, 12, z);
     ln(P(x, y0, z), P(x, 14, z), '#1d1d1d', 20);
     out.push(`<ellipse cx="${f.x.toFixed(1)}" cy="${f.y.toFixed(1)}" rx="30" ry="15" fill="#0e0e0e"/><ellipse cx="${f.x.toFixed(1)}" cy="${(f.y - 9).toFixed(1)}" rx="24" ry="10" fill="#2a2a2a"/>`);
@@ -9092,7 +9098,13 @@ function baseArt(w, d, h, hinge, vd, opts) {
     const ymid = (yb + yt) / 2, hh = Math.min(100, (yt - yb) * 0.15);
     ln(at(1 - m / 2, ymid - hh), at(1 - m / 2, ymid + hh), '#3a3631', 4);                                            // handle in the middle of the opening-edge stile, halfway up the door
   };
-  if (o.doors && o.bins) {        // a bin unit's door is fixed to the pull-out frame and slides out with the bins
+  if (o.blank) {                  // corner unit: a fixed blank panel on one side, the door covers the rest
+    const bw = o.blank.w, bx0 = o.blank.side === 'right' ? w - bw : 0, bx1 = bx0 + bw;
+    // the blank sits between the base panel and the top rail, and carries the door hinges
+    q([P(bx0, y0 + T, d), P(bx1, y0 + T, d), P(bx1, y1 - T, d), P(bx0, y1 - T, d)], baseShade(col, 0.24), 1.3);
+  }
+  if (o.doors && o.blank) { const dw = w - o.blank.w - T - 4; if (o.blank.side === 'right') door(0, 1, dw); else door(w, -1, dw, 150 * Math.PI / 180); }   // swung wider so it opens clear of the carcass, as the right-hand door of a pair does
+  else if (o.doors && o.bins) {        // a bin unit's door is fixed to the pull-out frame and slides out with the bins
     const zf = d + BIN_PULL, yb = y0 + 3, yt = y1 - 3, m = 55;
     q([P(3, yb, zf), P(w - 3, yb, zf), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(col, 0.24), 1.3);                    // door face
     q([P(3 + m, yb + 75, zf), P(w - 3 - m, yb + 75, zf), P(w - 3 - m, yt - 75, zf), P(3 + m, yt - 75, zf)], baseShade(col, 0.08), 1);   // shaker panel
@@ -9122,7 +9134,7 @@ function baseCard() {
   return `<article class="card card-pad stack" id="bc" style="max-width:420px">
     <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', w)}${chip('D', BASE.d)}${chip('Void', BASE.v)}</div>
     <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, BASE.d, BASE_H, hinge, BASE.v)}</div>
-    <div class="row"><div><h3 style="margin:0">Highline Base Unit</h3><span class="mono">HLB${w}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="baseMore">More Details ${ic('chevR', 14)}</button></div>
+    <div class="row"><div><h3 style="margin:0">Highline Base Unit</h3><span class="mono">BHL${w}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="baseMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x.w === w)}" data-act="baseW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
     ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(hinge === hd)}" data-act="baseHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
@@ -9145,16 +9157,16 @@ function baseDetails() {
     <div class="stack">
       ${panel(baseArt(w, d, BASE_H, 'left', BASE.v, { doors: false }), 320)}
       <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
-      <div>${row('Cabinet code', 'HLB' + w)}${row('Width', w + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', BASE.v + ' mm')}${row('Leg height', '150 mm')}</div>
+      <div>${row('Cabinet code', 'BHL' + w)}${row('Width', w + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', BASE.v + ' mm')}${row('Leg height', '150 mm')}</div>
     </div>
     <div class="stack">
       <h1 style="margin:0">${w}MM HIGHLINE BASE UNIT</h1>
-      <span class="mono">HLB${w}</span>
+      <span class="mono">BHL${w}</span>
       <p class="muted" style="margin:0">${w}mm wide Highline base unit.</p>
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${x.w === w ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="baseW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: HLB' + w)}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('CABINET COMPONENT', posts ?'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div>${row('CABINET', 'Code: BHL' + w)}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + legQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', posts ?'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
       ${ocDetail(it)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', BASE.v)}</div>
       ${bkRow('base')}
@@ -9207,7 +9219,7 @@ function sinkDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${SINK_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="sinkW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + sinkCode(w))}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('FRONT TOP RAIL', railTxt)}${row('SINK LINER', SINK.liner ? 'Included' : 'Not included')}${row('REMOVABLE BACK', SINK.backOff ? 'Yes' : 'No')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + sinkCode(w))}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + legQty(w) + ' x plinth clips')}${row('FRONT TOP RAIL', railTxt)}${row('SINK LINER', SINK.liner ? 'Included' : 'Not included')}${row('REMOVABLE BACK', SINK.backOff ? 'Yes' : 'No')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
       <div class="muted">Front top rail:</div>
       <div class="row" style="gap:6px">${['horizontal', 'vertical'].map(r => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(SINK.rail === r)}" data-act="sinkRail" data-r="${r}">${SINK.rail === r ? '&#9745;' : '&#9744;'} ${r[0].toUpperCase() + r.slice(1)}</button>`).join('')}<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(SINK.liner)}" data-act="sinkLiner">${SINK.liner ? '&#9745;' : '&#9744;'} Sink liner</button><button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(SINK.backOff)}" data-act="sinkBack">${SINK.backOff ? '&#9745;' : '&#9744;'} Removable back</button></div>
       ${ocDetail(null)}
@@ -9273,7 +9285,7 @@ function dlDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${DL_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="dlW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + dlCode(w))}${row('DRAWER TYPE', DL.sys)}${row('DRAWERS', dlDouble() ? 'Double: 2 drawers side by side' : 'Single drawer')}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm) below the drawers, plus 1 x centre divider, full depth (18 mm), from the top down to the drawer runners' : 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + dlCode(w))}${row('DRAWER TYPE', DL.sys)}${row('DRAWERS', dlDouble() ? 'Double: 2 drawers side by side' : 'Single drawer')}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + legQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm) below the drawers, plus 1 x centre divider, full depth (18 mm), from the top down to the drawer runners' : 'None')}</div>
       <div class="row" style="gap:6px">${DP_SYSTEMS.map(x => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(DL.sys === x)}" data-act="dlSys" data-sys="${x}">${DL.sys === x ? '&#9745;' : '&#9744;'} ${x}</button>`).join('')}</div>
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', DL.v)}</div>
@@ -9340,7 +9352,7 @@ function binDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${BIN_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="binW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + binCode(w))}${row('BINS', binOpt().label)}${row('LEGS', 'Quantity: 4 x legs')}${row('PLINTH CLIPS', 'Quantity: 2 x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + binCode(w))}${row('BINS', binOpt().label)}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + legQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${binPick(sel)}
       ${ocDetail(null)}
       ${bkRow('bin')}
@@ -9387,7 +9399,7 @@ function spoDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${SPO_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="spoW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + spoCode(w))}${row('LEGS', 'Quantity: 4 x legs')}${row('PLINTH CLIPS', 'Quantity: 2 x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + spoCode(w))}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + legQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${ocDetail(null)}
       ${bkRow('spo')}
     </div>
@@ -9458,7 +9470,7 @@ function belDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${BEL_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="belW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + belCode(w, BEL.h))}${row('DOORS', posts ? 'Double doors' : 'Single door, ' + BEL.hinge + ' hinge')}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('SHELF', 'Quantity: 1 x shelf')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + belCode(w, BEL.h))}${row('DOORS', posts ? 'Double doors' : 'Single door, ' + BEL.hinge + ' hinge')}${row('HINGES', 'Quantity: ' + (posts ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + legQty(w) + ' x plinth clips')}${row('SHELF', 'Quantity: 1 x shelf')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
       ${BEL_HEIGHTS[w].length > 1 ? belHeightPick(sel) : ''}
       ${belPick(sel)}
       ${ocDetail(null)}
@@ -9517,7 +9529,7 @@ function wineDetails() {
       <span class="mono">${o.code}</span>
       <p class="muted" style="margin:0">${w} Base ${o.x ? 'X ' : ''}Wine Rack ${BASE_H} High ${d} Deep.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + o.code)}${row('RACK', o.x ? 'Two X cells' : '5 rows x ' + o.cols + ' column' + (o.cols > 1 ? 's' : ''))}${row('TOP', 'Full top')}${row('LEGS', 'Quantity: 4 x legs')}${row('PLINTH CLIPS', 'Quantity: 2 x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + o.code)}${row('RACK', o.x ? 'Two X cells' : '5 rows x ' + o.cols + ' column' + (o.cols > 1 ? 's' : ''))}${row('TOP', 'Full top')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + legQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${winePick(sel)}
       ${ocDetail(null)}
       ${bkRow('wine')}
@@ -9529,6 +9541,74 @@ function wineDetails() {
 const wineRefresh = () => { if (UI.orderCat === 'winedetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#wn'); if (el) el.outerHTML = wineCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 A.wineMore = () => { UI.orderCat = 'winedetails'; render(); window.scrollTo(0, 0); };
 A.wineOpt = t => { WINE.opt = +t.dataset.i; wineRefresh(); };
+/* Kitchen > All Bases: Corner Base Unit, 800 to 1500 wide. One door, plus a fixed blank panel
+   on the right or the left whose width the customer can change. Code is BCHL + width + RB or LB. */
+const CORNER = { w: 1000, side: 'right', door: 500, d: 570, v: 50 };
+const CORNER_WIDTHS = [800, 900, 1000, 1100, 1200, 1300, 1400, 1500];
+const CORNER_T = 18.2;                                            // the internal blank panel
+const CORNER_MIN_DOOR = 300;                                      // the door can't be narrower than this
+const cornerDoorMax = () => Math.floor(CORNER.w - CORNER_T - 50);   // leaves at least a 50mm blank
+const cornerDoor = () => Math.min(Math.max(CORNER.door, CORNER_MIN_DOOR), cornerDoorMax());
+const cornerBlank = () => Math.round((CORNER.w - cornerDoor() - CORNER_T) * 10) / 10;   // blank = cabinet width - door size - 18.2
+const cornerCode = () => 'BCHL' + CORNER.w + (CORNER.side === 'right' ? 'RB' : 'LB');
+const cornerArt = (extra) => baseArt(CORNER.w, CORNER.d, BASE_H, 'left', CORNER.v, Object.assign({ blank: { side: CORNER.side, w: cornerBlank() } }, extra));
+function cornerPick(sel) {
+  const num = `<label class="field"><span class="lbl">Door size (mm)</span><input class="input" type="number" min="${CORNER_MIN_DOOR}" max="${cornerDoorMax()}" step="1" value="${cornerDoor()}" data-chg="cornerDoor"></label>`;
+  return `<div class="muted">Blank:</div><div class="row" style="gap:6px">${[['right', 'Right hand blank'], ['left', 'Left hand blank']].map(([k, t]) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(CORNER.side === k)}" data-act="cornerSide" data-v="${k}">${CORNER.side === k ? '&#9745;' : '&#9744;'} ${t}</button>`).join('')}</div>${num}
+    <div class="muted">Blank size: <b>${cornerBlank()} mm</b> (${CORNER.w} - ${cornerDoor()} - 18.2)</div>`;
+}
+function cornerCard() {
+  const w = CORNER.w;
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="cornerDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="cn" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', w)}${chip('D', CORNER.d)}${chip('Void', CORNER.v)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${cornerArt({ doors: true })}</div>
+    <div class="row"><div><h3 style="margin:0">Corner Base Unit</h3><span class="mono">${cornerCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="cornerMore">More Details ${ic('chevR', 14)}</button></div>
+    <div class="muted">Width:</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${CORNER_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="cornerW" data-w="${x}">${x}</button>`).join('')}</div>
+    ${cornerPick(sel)}
+    <div class="row" style="gap:10px">${num('d', 'Depth (mm)', CORNER.d)}${num('v', 'Void (mm)', CORNER.v)}</div>
+    ${bkRow('corner')}
+  </article>`;
+}
+function cornerDetails() {
+  const w = CORNER.w, d = CORNER.d, bl = cornerBlank();
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="cornerDim" data-k="${k}"></label>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Bases</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(cornerArt({ doors: false }), 320)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', cornerCode())}${row('Width', w + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', CORNER.v + ' mm')}${row('Leg height', '150 mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${w}MM CORNER BASE UNIT</h1>
+      <span class="mono">${cornerCode()}</span>
+      <p class="muted" style="margin:0">${w}mm wide corner base unit with a ${CORNER.side} hand blank of ${bl}mm.</p>
+      <div class="muted">Available widths:</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${CORNER_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="cornerW" data-w="${x}">${x}</button>`).join('')}</div>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + cornerCode())}${row('BLANK', (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand, ' + bl + ' mm (' + w + ' - ' + cornerDoor() + ' - 18.2)')}${row('DOOR SIZE', cornerDoor() + ' mm')}${row('HINGES', 'Quantity: 2 x blank corner hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + legQty(w) + ' x plinth clips')}${row('SHELF', 'Quantity: 1 x shelf')}${row('CABINET COMPONENT', 'Quantity: 1 x blank panel, ' + bl + ' mm wide, between the base and the top rail, carries the door hinges')}</div>
+      ${cornerPick(sel)}
+      ${ocDetail(null)}
+      <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', CORNER.v)}</div>
+      ${bkRow('corner')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(cornerArt({ doors: false, dims: true }), 380)}</div>`;
+}
+const cornerRefresh = () => { if (UI.orderCat === 'cornerdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#cn'); if (el) el.outerHTML = cornerCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.cornerMore = () => { UI.orderCat = 'cornerdetails'; render(); window.scrollTo(0, 0); };
+A.cornerW = t => { CORNER.w = +t.dataset.w; CORNER.door = cornerDoor(); cornerRefresh(); };
+A.cornerSide = t => { CORNER.side = t.dataset.v; cornerRefresh(); };
+CH.cornerDoor = t => { let v = Math.round(+t.value); if (!isFinite(v)) v = CORNER.door; CORNER.door = Math.min(Math.max(v, CORNER_MIN_DOOR), cornerDoorMax()); cornerRefresh(); };
+CH.cornerDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = CORNER[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), CORNER.d - 200); CORNER[k] = v; cornerRefresh(); };
 /* Kitchen > All Bases: Made to Measure base (MTM Base), last in the list. The customer sets
    width, height, depth, number of shelves, full top or top rail, and fixed, loose or custom
    back. Everything shows in the 3D picture. */
@@ -9578,7 +9658,7 @@ function mtmDetails() {
       <span class="mono">${MTM_CODE}</span>
       <p class="muted" style="margin:0">${w} x ${MTM.h} x ${MTM.d} mm, built to your sizes.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + MTM_CODE)}${row('SHELVES', 'Quantity: ' + MTM.shelves + ' x shelf' + (MTM.shelves === 1 ? '' : 's'))}${row('TOP', MTM.top === 'full' ? 'Full top' : 'Top rail')}${row('BACK', mtmBackText())}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + (posts ? 3 : 2) + ' x plinth clips')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + MTM_CODE)}${row('SHELVES', 'Quantity: ' + MTM.shelves + ' x shelf' + (MTM.shelves === 1 ? '' : 's'))}${row('TOP', MTM.top === 'full' ? 'Full top' : 'Top rail')}${row('BACK', mtmBackText())}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + legQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
       ${mtmControls(sel)}
       ${ocDetail(null)}
       ${bkRow('mtm')}
@@ -9619,7 +9699,9 @@ A.bkAdd = t => {
   let l;
   if (key === 'base') {
     const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
-    l = { name: 'Highline Base Unit', code: it.code, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? BASE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+    l = { name: 'Highline Base Unit', code: 'BHL' + it.w, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? BASE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+  } else if (key === 'corner') {
+    l = { name: 'Corner Base Unit', code: cornerCode(), w: CORNER.w, d: CORNER.d, v: CORNER.v, opt: (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + cornerBlank() + ' mm, door ' + cornerDoor() + ' mm, 2 blank corner hinges' };
   } else if (key === 'mtm') {
     l = { name: 'Made to Measure Base Unit', code: MTM_CODE, w: MTM.w, h: MTM.h, d: MTM.d, v: MTM.back === 'fixed' ? 0 : MTM.v, opt: MTM.h + ' high, ' + MTM.shelves + ' shelf' + (MTM.shelves === 1 ? '' : 's') + ', ' + (MTM.top === 'full' ? 'full top' : 'top rail') + ', ' + mtmBackText().toLowerCase() };
   } else if (key === 'wine') {
@@ -9709,7 +9791,7 @@ function robeDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${x.w === w ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="robeW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + esc(it.code))}${row('HANGING RAIL', 'Quantity: 1')}${row('TOP SHELF', 'Quantity: 1')}${row('LEGS', 'Quantity: ' + (posts ? 5 : 4) + ' x legs')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + esc(it.code))}${row('HANGING RAIL', 'Quantity: 1')}${row('TOP SHELF', 'Quantity: 1')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
       ${ocDetail(it)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', ROBE.v)}</div>
       ${bkRow('robe')}
@@ -9731,7 +9813,7 @@ const DPK = {}; DP_TYPES.forEach(t => DPK[t.id] = { w: 600, sys: 'Antaro', d: 57
 const dpType = id => DP_TYPES.find(t => t.id === id);
 const dpCode = (t, w) => 'DP' + w + t.code;
 const dpArt = (t, s, extra) => baseArt(s.w, s.d, BASE_H, 'left', s.v, Object.assign({ doors: false, drawers: t }, extra));
-const dpLegs = w => w > 600 ? [5, 3] : [4, 2];
+const dpLegs = w => [legQty(w), legQty(w)];
 function dpCard(id) {
   const t = dpType(id), s = DPK[id], w = s.w;
   const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
@@ -9790,6 +9872,7 @@ function cOrders() {
   if (UI.orderCat === 'beldetails') return belDetails();
   if (UI.orderCat === 'winedetails') return wineDetails();
   if (UI.orderCat === 'mtmdetails') return mtmDetails();
+  if (UI.orderCat === 'cornerdetails') return cornerDetails();
   if (UI.orderCat === 'robes') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Bedroom</button>
   <div class="page-head"><div><h1>Hanging Robes</h1><p>Choose a width from 300 to 1200, then the door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -9801,7 +9884,7 @@ function cOrders() {
   if (UI.orderCat === 'bases') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Bases</h1><p>Choose a width, then the door hand or drawer type.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${dlCard()}${binCard()}${spoCard()}${belCard()}${wineCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}${mtmCard()}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${dlCard()}${binCard()}${spoCard()}${belCard()}${wineCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}${cornerCard()}${mtmCard()}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -9818,7 +9901,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
