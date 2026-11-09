@@ -8949,7 +8949,10 @@ const CAB_ROOMS = [
 /* Kitchen > All Bases: one card per base-unit family, with a 3D picture that
    follows the chosen width and door hand. */
 const BASE = { w: 600, hinge: 'left', d: 570, v: 50, gola: false };
-const GOLA_CUT = { d: 27, h: 57 };                    // Gola (J profile) notch in the front top corner of each side panel of a normal base, mm
+const baseCode = w => (BASE.gola ? 'GBCHL' : 'BHL') + w;                // a Gola normal base takes the GBCHL prefix
+const GOLA_C = { d: 27, h: 73 };                      // Gola C profile notch between two drawers of a drawer pack, mm
+const golaRows = (hs, yb, yt) => { const g = hs.length > 1 ? (yt - yb - hs.reduce((a, b) => a + b, 0)) / (hs.length - 1) : 0; let top = yt; return hs.map(h => { const r = { ytop: top, ybot: top - h }; top -= h + g; return r; }); };   // Gola drawer pack: fronts at their real heights, the left-over height shared between the gaps
+const GOLA_CUT = { d: 27, h: 57 };                  // Gola (J profile) notch in the front top corner of each side panel of a normal base, mm
 const BASE_H = 720;                                   // base units are always 720 high
 /* Legs, the same for every cabinet: 150 wide has 2, 200 to 600 has 4, 700 to 1200 has 5.
    The plinth only runs along the front, so it takes a clip on each front leg only: 1, 2 and 3. */
@@ -8988,6 +8991,28 @@ function baseArt(w, d, h, hinge, vd, opts) {
   const pts = [], out = [];
   // mostly a front view: the front stays square-on, depth recedes up and to the right
   const P = (x, y, z) => { const p = { x: FL * (x - 0.32 * z), y: 0.3 * z - y }; pts.push(p); return p; };
+  /* Gola: the J profile notch in the top front corner of each side panel (27 x 57), and on a drawer pack a C profile notch (27 x 73)
+     centred on every gap between two drawer fronts. NOT lists them from the bottom up. */
+  const GN = o.gola ? GOLA_CUT : null, NOT = [];
+  if (GN) {
+    if ((o.golaDrawers || o.drawers) && (o.golaDrawers || o.drawers).hs) {
+      const dr = o.golaDrawers || o.drawers, rows = golaRows(dr.hs, y0 + 4, y1 - GN.h);
+      (dr.cGaps || []).forEach(i => { const c = (rows[i].ybot + rows[i + 1].ytop) / 2; NOT.push({ a: c - GOLA_C.h / 2, b: c + GOLA_C.h / 2, d: GOLA_C.d }); });
+      NOT.sort((p, r) => p.a - r.a);
+    }
+    NOT.push({ a: y1 - GN.h, b: y1, d: GN.d });
+  }
+  // a side panel's outline seen from the front, with the notches cut out of its front edge, between heights ylo and yhi
+  const notched = (x, ylo, yhi, zback) => {
+    const a = [P(x, ylo, zback), P(x, ylo, d)]; let open = false;
+    NOT.forEach(n => {
+      if (open || n.a >= yhi || n.b <= ylo) return;
+      a.push(P(x, Math.max(n.a, ylo), d), P(x, Math.max(n.a, ylo), d - n.d));
+      if (n.b >= yhi) { a.push(P(x, yhi, d - n.d), P(x, yhi, zback)); open = true; } else a.push(P(x, n.b, d - n.d), P(x, n.b, d));
+    });
+    if (!open) a.push(P(x, yhi, d), P(x, yhi, zback));
+    return a;
+  };
   if (!o.noLegs) out.push(`<polygon points="${[P(-30, 0, -20), P(w + 30, 0, -20), P(w + 30, 0, d + 40), P(-30, 0, d + 40)].map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="#000" opacity="0.08"/>`);   // floor shadow
   const q = (a, fill, sw) => out.push(`<polygon points="${a.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="${fill}" stroke="${baseShade(col, -0.55)}" stroke-width="${sw || 1.2}" stroke-linejoin="round"/>`);
   const ln = (a, b, c, sw) => out.push(`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`);
@@ -8999,8 +9024,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
   });
   const yBack = o.backH != null ? Math.min(y1 - T, y0 + T + o.backH) : y1 - T;                                          // a custom back can be shorter than the cabinet, sitting on the floor
   if (!o.noBack) q([P(T, y0 + T, vd), P(w - T, y0 + T, vd), P(w - T, yBack, vd), P(T, yBack, vd)], o.backCol || baseShade(col, -0.22));   // back panel, set in by the void
-  if (o.gola) q([P(T, y0 + T, vd), P(T, y0 + T, d), P(T, y1 - GOLA_CUT.h, d), P(T, y1 - GOLA_CUT.h, d - GOLA_CUT.d), P(T, y1 - T, d - GOLA_CUT.d), P(T, y1 - T, vd)], baseShade(col, -0.1));   // inside of the left side, notched
-  else q([P(T, y0 + T, vd), P(T, y0 + T, d), P(T, y1 - T, d), P(T, y1 - T, vd)], baseShade(col, -0.1));                  // inside of the left side
+  q(notched(T, y0 + T, y1 - T, vd), baseShade(col, -0.1));                                                              // inside of the left side (with any Gola notches)
   q([P(T, y0 + T, vd), P(w - T, y0 + T, vd), P(w - T, y0 + T, d), P(T, y0 + T, d)], baseShade(col, 0.04));              // floor
   const ym = (y0 + y1) / 2, zs = d - 22;
   const shelf = (xa, xb) => {
@@ -9075,9 +9099,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
       q([P(xr, yb, zA), P(xr, yb, zB), P(xr, yt, zB), P(xr, yt, zA)], '#c9ced2');                                      // right
     });
   }
-  const GN = o.gola ? GOLA_CUT : null;                      // Gola (J profile): a notch in the top front corner of each side panel, GN.d deep and GN.h high
-  if (GN) q([P(w, y0, 0), P(w, y0, d), P(w, y1 - GN.h, d), P(w, y1 - GN.h, d - GN.d), P(w, y1, d - GN.d), P(w, y1, 0)], baseShade(col, 0.08));   // right side, notched
-  else q([P(w, y0, 0), P(w, y0, d), P(w, y1, d), P(w, y1, 0)], baseShade(col, 0.08));                                   // right side
+  q(notched(w, y0, y1, 0), baseShade(col, 0.08));                                                                       // right side (with any Gola notches)
   // a base unit has no full top: just one flat front top rail (160 deep, 18 thick) and the edges of the side panels
   const vRail = o.rail === 'vertical', rf = vRail ? T : 160, topCol = baseShade(col, 0.28);   // a vertical top rail stands on edge: 70 high, 18 thick
   const zt = GN ? d - GN.d : d;                                                                                           // with a Gola notch the top edges of the side panels stop 27 short of the front
@@ -9088,17 +9110,23 @@ function baseArt(w, d, h, hinge, vd, opts) {
   if (o.fullTop) q([P(T, y1, 0), P(w - T, y1, 0), P(w - T, y1, d), P(T, y1, d)], topCol);                                  // a Belfast sink base keeps a full top panel
   [[0, T], [w - T, w]].forEach(([xa, xb]) => {                                                                            // front of each side panel
     if (!GN) { q([P(xa, y0, d), P(xb, y0, d), P(xb, y1, d), P(xa, y1, d)], baseShade(eh, 0.1), esw); return; }
-    q([P(xa, y0, d), P(xb, y0, d), P(xb, y1 - GN.h, d), P(xa, y1 - GN.h, d)], baseShade(eh, 0.1), esw);                    // front face stops at the notch
-    q([P(xa, y1 - GN.h, d - GN.d), P(xb, y1 - GN.h, d - GN.d), P(xb, y1 - GN.h, d), P(xa, y1 - GN.h, d)], topCol);        // floor of the notch
-    q([P(xa, y1 - GN.h, zt), P(xb, y1 - GN.h, zt), P(xb, y1, zt), P(xa, y1, zt)], baseShade(col, -0.12));                  // back wall of the notch, where the J profile sits
+    let lo = y0;
+    NOT.forEach(n => {
+      q([P(xa, lo, d), P(xb, lo, d), P(xb, n.a, d), P(xa, n.a, d)], baseShade(eh, 0.1), esw);                              // front face up to the notch
+      q([P(xa, n.a, d - n.d), P(xb, n.a, d - n.d), P(xb, n.a, d), P(xa, n.a, d)], topCol);                                  // floor of the notch
+      q([P(xa, n.a, d - n.d), P(xb, n.a, d - n.d), P(xb, n.b, d - n.d), P(xa, n.b, d - n.d)], baseShade(col, -0.12));       // back wall of the notch, where the profile sits
+      lo = n.b;
+    });
+    if (lo < y1) q([P(xa, lo, d), P(xb, lo, d), P(xb, y1, d), P(xa, y1, d)], baseShade(eh, 0.1), esw);                       // front face above the last notch
   });
   q([P(T, yr - (vRail ? 70 : T), d), P(w - T, yr - (vRail ? 70 : T), d), P(w - T, yr, d), P(T, yr, d)], baseShade(eh, 0.1), esw);   // front rail, face
   q([P(T, y0, d), P(w - T, y0, d), P(w - T, y0 + T, d), P(T, y0 + T, d)], baseShade(eh, 0.1), esw);
   if (o.drawers) {                // drawer pack: stacked fronts, the pulled-out ones show their metal-sided box
-    const dr = o.drawers, yb = dr.h && !dr.bottom ? y1 - 4 - dr.h : y0 + 4, yt = dr.h && dr.bottom ? y0 + 4 + dr.h : y1 - 4, zone = dr.internal ? (yt - yb) * 0.26 : 0, avail = yt - yb - zone;
+    const dr = o.drawers, yb = dr.h && !dr.bottom ? y1 - 4 - dr.h : y0 + 4, yt = dr.h && dr.bottom ? y0 + 4 + dr.h : o.gola && !dr.h ? y1 - GOLA_CUT.h : y1 - 4, zone = dr.internal ? (yt - yb) * 0.26 : 0, avail = yt - yb - zone;
     const sum = dr.fronts.reduce((a, b) => a + b, 0), jobs = [];
     let top = yt - zone;
-    dr.fronts.forEach((f, i) => { const hf = avail * f / sum; jobs.push({ ytop: top, ybot: top - hf + 4, pull: (dr.open || [])[i] || 0, front: true }); top -= hf; });
+    if (o.gola && dr.hs) golaRows(dr.hs, y0 + 4, y1 - GOLA_CUT.h).forEach((r, i) => jobs.push({ ytop: r.ytop, ybot: r.ybot, pull: (dr.open || [])[i] || 0, front: true }));
+    else dr.fronts.forEach((f, i) => { const hf = avail * f / sum; jobs.push({ ytop: top, ybot: top - hf + 4, pull: (dr.open || [])[i] || 0, front: true }); top -= hf; });
     if (dr.internal) jobs.push({ ytop: yt, ybot: yt - zone + 4, pull: dr.internalPull || 150, front: false });
     // a double drawer (wide units) is two drawers side by side, either side of the centre post
     const two = dr.cols === 2, boxes = two ? [[T + 14, w / 2 - T - 6], [w / 2 + T + 6, w - T - 14]] : [[T + 14, w - T - 14]], faces = two ? [[3, w / 2 - 2], [w / 2 + 2, w - 3]] : [[3, w - 3]];
@@ -9117,7 +9145,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
         if (j.pull > 0) q([P(fa, j.ytop, zf - T), P(fb, j.ytop, zf - T), P(fb, j.ytop, zf), P(fa, j.ytop, zf)], baseShade(eh, 0.32), esw);
         if (j.ytop - j.ybot > 130 && fb - fa > 260) q([P(fa + 52, j.ybot + 35, zf), P(fb - 52, j.ybot + 35, zf), P(fb - 52, j.ytop - 35, zf), P(fa + 52, j.ytop - 35, zf)], baseShade(col, 0.08), 1);   // shaker panel
         const hm = (fa + fb) / 2, hw = (fb - fa) * 0.12;
-        ln(P(hm - hw, j.ytop - 30, zf), P(hm + hw, j.ytop - 30, zf), '#3a3631', 4);                                          // handle
+        if (!o.gola) ln(P(hm - hw, j.ytop - 30, zf), P(hm + hw, j.ytop - 30, zf), '#3a3631', 4);                            // handle (Gola is handleless)
       });
     });
   }
@@ -9201,7 +9229,7 @@ function baseCard() {
   return `<article class="card card-pad stack" id="bc" style="max-width:420px">
     <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', w)}${chip('D', BASE.d)}${chip('Void', BASE.v)}</div>
     <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, BASE.d, BASE_H, hArt(hinge), BASE.v, Object.assign({ gola: BASE.gola }, hOpts(hinge)))}</div>
-    <div class="row"><div><h3 style="margin:0">Highline Base Unit</h3><span class="mono">BHL${w}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="baseMore">More Details ${ic('chevR', 14)}</button></div>
+    <div class="row"><div><h3 style="margin:0">Highline Base Unit</h3><span class="mono">${baseCode(w)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="baseMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x.w === w)}" data-act="baseW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
     ${single ? `<div class="row" style="gap:8px">${hingeButtons('baseHinge', hinge, w, sel)}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
@@ -9225,11 +9253,11 @@ function baseDetails() {
     <div class="stack">
       ${panel(baseArt(w, d, BASE_H, 'left', BASE.v, { doors: false, gola: BASE.gola }), 320)}
       <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
-      <div>${row('Cabinet code', 'BHL' + w)}${row('Width', w + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', BASE.v + ' mm')}${row('Leg height', '150 mm')}</div>
+      <div>${row('Cabinet code', baseCode(w))}${row('Width', w + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', BASE.v + ' mm')}${row('Leg height', '150 mm')}</div>
     </div>
     <div class="stack">
       <h1 style="margin:0">${w}MM HIGHLINE BASE UNIT</h1>
-      <span class="mono">BHL${w}</span>
+      <span class="mono">${baseCode(w)}</span>
       <p class="muted" style="margin:0">${w}mm wide Highline base unit.</p>
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${x.w === w ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="baseW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
@@ -10048,7 +10076,7 @@ A.bkAdd = t => {
   let l;
   if (key === 'base') {
     const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
-    l = { name: 'Highline Base Unit', code: 'BHL' + it.w, w: +it.w, d: BASE.d, v: BASE.v, opt: (+it.w <= 600 ? hingeText(BASE.hinge, +it.w) : 'Pair of doors') + (BASE.gola ? ', Gola J profile cut-out ' + GOLA_CUT.d + ' x ' + GOLA_CUT.h + ' mm' : '') };
+    l = { name: 'Highline Base Unit', code: baseCode(it.w), w: +it.w, d: BASE.d, v: BASE.v, opt: (+it.w <= 600 ? hingeText(BASE.hinge, +it.w) : 'Pair of doors') + (BASE.gola ? ', Gola J profile cut-out ' + GOLA_CUT.d + ' x ' + GOLA_CUT.h + ' mm' : '') };
   } else if (key === 'wall') {
     wallClamp();
     l = { name: 'Wall Unit', code: wallCode(), w: WALL.w, h: WALL.h, d: WALL.d, v: WALL.v, opt: (WALL.w > 600 ? 'Pair of doors' : hingeText(WALL.hinge, WALL.w)) + (wallPost() ? ', flat centre post' : '') + (wallHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
@@ -10079,7 +10107,7 @@ A.bkAdd = t => {
     l = { name: 'Single Hanging Robe', code: it.code, w: +it.w, d: ROBE.d, v: ROBE.v, opt: +it.w <= 600 ? ROBE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
   } else {
     const id = key.slice(3), tp = dpType(id), s = DPK[id]; if (!tp) return;
-    l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers' };
+    l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers' + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
   Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? webGroup(col.group) : '', edging: ocEdgeText() });
   const sig = x => [x.code, x.w, x.d, x.v, x.opt, x.colourId].join('|');
@@ -10164,14 +10192,19 @@ function robeDetails() {
 const DP_TYPES = [
   { id: 'd3', name: '3 Drawer Base Unit', code: 'D3', fronts: [0.26, 0.37, 0.37], open: [170, 0, 0] },
   { id: 'p2i1', name: '2 Pan Drawer + 1 Internal Drawer Unit', code: 'D2I1', fronts: [0.5, 0.5], internal: true, internalPull: 160 },
-  { id: 'd4', name: '4 Drawer Base Unit', code: 'D4', fronts: [0.17, 0.17, 0.33, 0.33], open: [170, 120, 70, 0] }
+  { id: 'd4', name: '4 Drawer Base Unit', code: 'D4', fronts: [0.17, 0.17, 0.33, 0.33], open: [170, 120, 70, 0] },
+  /* Gola drawer packs: their own range. Front heights are fixed; the J profile cut-out is on top and a C profile cut-out sits only
+     in the gap(s) named by cGaps (gap 0 is below the first front). */
+  { id: 'gd3', name: 'Gola 3 Drawer Base Unit (2 x 160 + 325)', code: 'GBD3', gola: true, hs: [160, 160, 325], cGaps: [1], fronts: [160, 160, 325], open: [170, 0, 0], plain: true },
+  { id: 'gd2', name: 'Gola 2 Drawer Base Unit (2 x 325)', code: 'GBD2', gola: true, hs: [325, 325], cGaps: [0], fronts: [325, 325], open: [170, 0], plain: true }
 ];
 const DP_SYSTEMS = ['Antaro', 'Legrabox', 'Merivo'];
 const DP_WIDTHS = Array.from({ length: 19 }, (_, i) => 300 + i * 50);          // 300 to 1200 in 50s
 const DPK = {}; DP_TYPES.forEach(t => DPK[t.id] = { w: 600, sys: 'Antaro', d: 570, v: 50 });
+const dpGolaText = t => 'Gola: J profile cut-out ' + GOLA_CUT.d + ' x ' + GOLA_CUT.h + ' mm at the top, and ' + t.cGaps.length + ' x C profile cut-out ' + GOLA_C.d + ' x ' + GOLA_C.h + ' mm ' + (t.hs.length === 3 ? 'between the 160 and the 325 drawer (none between the two 160s)' : 'between the two 325 drawers') + '. Fronts: ' + t.hs.join(' + ') + ' mm';
 const dpType = id => DP_TYPES.find(t => t.id === id);
-const dpCode = (t, w) => 'DP' + w + t.code;
-const dpArt = (t, s, extra) => baseArt(s.w, s.d, BASE_H, 'left', s.v, Object.assign({ doors: false, drawers: t }, extra));
+const dpCode = (t, w) => t.gola ? t.code + w : 'DP' + w + t.code;           // Gola packs: GBD3 / GBD2 + width, e.g. GBD3600
+const dpArt = (t, s, extra) => baseArt(s.w, s.d, BASE_H, 'left', s.v, Object.assign({ doors: false, drawers: t, gola: !!t.gola }, extra));
 const dpLegs = w => [legQty(w), clipQty(w)];
 function dpCard(id) {
   const t = dpType(id), s = DPK[id], w = s.w;
@@ -10210,7 +10243,7 @@ function dpDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${DP_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${x === w ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="dpW" data-id="${id}" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + dpCode(t, w))}${row('DRAWER TYPE', s.sys)}${row('LEGS', 'Quantity: ' + legs + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clips + ' x plinth clips')}</div>
+      <div>${row('CABINET', 'Code: ' + dpCode(t, w))}${row('DRAWER TYPE', s.sys)}${row('LEGS', 'Quantity: ' + legs + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clips + ' x plinth clips')}${t.gola ? row('GOLA', dpGolaText(t)) : ''}</div>
       <div class="row" style="gap:8px">${DP_SYSTEMS.map(x => `<button class="btn btn-secondary" style="flex:1;${s.sys === x ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="dpSys" data-id="${id}" data-sys="${x}">${s.sys === x ? '&#9745;' : '&#9744;'} ${x}</button>`).join('')}</div>
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', s.d)}${num('v', 'Void (mm)', s.v)}</div>
@@ -10218,7 +10251,7 @@ function dpDetails() {
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
-  <div style="max-width:620px">${panel(baseArt(w, s.d, BASE_H, 'left', s.v, { doors: false, dims: true, drawers: { fronts: [] } }), 380)}</div>`;      // bare carcass: no shelf, posts or drawers
+  <div style="max-width:620px">${panel(baseArt(w, s.d, BASE_H, 'left', s.v, { doors: false, dims: true, drawers: { fronts: [] }, gola: !!t.gola, golaDrawers: t.gola ? t : null }), 380)}</div>`;      // bare carcass: no shelf, posts or drawers
 }
 function cOrders() {
   if (UI.orderCat === 'drawerdetails') return dpDetails();
