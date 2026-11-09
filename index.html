@@ -9699,13 +9699,15 @@ A.ovenSys = t => { OVEN.sys = t.dataset.v; ovenRefresh(); };
    wing runs along the back wall, the left hand wing along the left wall. The customer sets both
    widths and the depth; the height is fixed at 720 and the top is always a full top. Code is
    BCHL + right hand width + x + left hand width, e.g. BCHL1000x1000. */
-const LSH = { rh: 1000, lh: 1000, d: 570, v: 50, hinge: '155' };
+const LSH = { rh: 1000, lh: 1000, d: 570, v: 50, hinge: '155', gola: false };
 /* Door width for any L shape (base, wall unit or robe): the gable width, right or left hand, less the depth of the
    cabinet, less 22mm (the door thickness), less 4mm (clearance). The height is the cabinet height less 5mm, so a
    720 cabinet has a 715 door. Bifold hinges join the two doors so they fold together;
    155 hinges hang each door on its own wing. */
 const L_DOOR_DEDUCT = 22 + 4;
-const lshDoors = () => ({ rh: LSH.rh - LSH.d - L_DOOR_DEDUCT, lh: LSH.lh - LSH.d - L_DOOR_DEDUCT, h: BASE_H - 5 });
+const lshDoors = () => ({ rh: LSH.rh - LSH.d - L_DOOR_DEDUCT, lh: LSH.lh - LSH.d - L_DOOR_DEDUCT, h: BASE_H - 5 - (LSH.gola ? GOLA_CUT.h : 0) });   // a Gola door stops below the J profile cut-out
+const GOLA_L_D = 60;                                  // on an L shape the top is set back 60 from the front (a normal base is 27)
+const lshGolaText = () => 'J profile cut-out ' + GOLA_CUT.d + ' x ' + GOLA_CUT.h + ' mm at the top front, with the top set back ' + GOLA_L_D + ' mm from the front of both wings';
 const lshHingeText = () => LSH.hinge === 'bifold' ? '2 x 155 hinges (door to carcass) + 2 x bifold hinges (between the doors)' : '4 x 155 hinges';
 function lshHingePick(sel) {
   return `<div class="muted">Hinges:</div><div class="row" style="gap:6px">${[['155', '155 hinges'], ['bifold', 'Bifold hinges']].map(([k, t]) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(LSH.hinge === k)}" data-act="lshHinge" data-v="${k}">${LSH.hinge === k ? '&#9745;' : '&#9744;'} ${t}</button>`).join('')}</div>`;
@@ -9720,7 +9722,7 @@ const lshClamp = () => {                                           // each wing 
   LSH.v = Math.min(LSH_LIM.v[1], Math.max(LSH_LIM.v[0], LSH.v));
   ['rh', 'lh'].forEach(k => { LSH[k] = Math.min(LSH_LIM[k][1], Math.max(Math.max(LSH_LIM[k][0], LSH.d + 200), LSH[k])); });
 };
-const lshCode = () => 'BCHL' + LSH.rh + 'x' + LSH.lh;
+const lshCode = () => (LSH.gola ? 'GBCHL' : 'BCHL') + LSH.rh + 'x' + LSH.lh;
 
 function lshArt(o) {
   o = Object.assign({ doors: true, dims: false }, o);
@@ -9747,23 +9749,33 @@ function lshArt(o) {
   q([[T, T], [rh - T, T], [rh - T, d - sd], [d - sd, d - sd], [d - sd, lh - sd], [T, lh - sd]].map(([x, z]) => P(x, ym, z)), baseShade(col, 0.12));
   q([P(d - sd, ym - T, d - sd), P(rh - T, ym - T, d - sd), P(rh - T, ym, d - sd), P(d - sd, ym, d - sd)], baseShade(col, -0.05));      // front edge, right hand wing
   q([P(d - sd, ym - T, d - sd), P(d - sd, ym - T, lh - sd), P(d - sd, ym, lh - sd), P(d - sd, ym, d - sd)], baseShade(col, -0.05));      // front edge, left hand wing
-  q([P(rh, y0, 0), P(rh, y0, d), P(rh, y1, d), P(rh, y1, 0)], baseShade(col, 0.08));                                 // right hand wing end
+  const G = LSH.gola ? GOLA_CUT : null, gh = G ? G.h : 0, gd = G ? GOLA_L_D : 0;                                        // Gola: the J profile notch, 27 deep x 57 high, along the top front of both wings
+  q(G ? [P(rh, y0, 0), P(rh, y0, d), P(rh, y1 - gh, d), P(rh, y1 - gh, d - GOLA_CUT.d), P(rh, y1, d - GOLA_CUT.d), P(rh, y1, 0)] : [P(rh, y0, 0), P(rh, y0, d), P(rh, y1, d), P(rh, y1, 0)], baseShade(col, 0.08));   // right hand wing end
   const eh = (ocEdge() || {}).hex || col, esw = ocEdgeType() === '0.8mm' ? 0.8 : 1.8;                                // edging colour on the front edges, heavier for 2mm
-  q([P(0, y0, lh), P(d, y0, lh), P(d, y1, lh), P(0, y1, lh)], baseShade(col, 0.1));                                  // left hand wing end: the whole outer face of the gable, so the cabinet colour, not edging
+  q(G ? [P(0, y0, lh), P(d, y0, lh), P(d, y1 - gh, lh), P(d - GOLA_CUT.d, y1 - gh, lh), P(d - GOLA_CUT.d, y1, lh), P(0, y1, lh)] : [P(0, y0, lh), P(d, y0, lh), P(d, y1, lh), P(0, y1, lh)], baseShade(col, 0.1));   // left hand wing end: the whole outer face of the gable, so the cabinet colour, not edging
   if (o.doors) {                                                                                                     // one door on each wing, each on two 155 degree hinges
-    q([P(d + 13, y0 + 2.5, d), P(rh - 13, y0 + 2.5, d), P(rh - 13, y1 - 2.5, d), P(d + 13, y1 - 2.5, d)], baseShade(col, 0.24), 1.3);   // 13mm in from each end, so the door is wing width - depth - 26, and 715 high
-    q([P(d + 68, y0 + 78, d), P(rh - 68, y0 + 78, d), P(rh - 68, y1 - 78, d), P(d + 68, y1 - 78, d)], baseShade(col, 0.08), 1);
-    ln(P(rh - 90, (y0 + y1) / 2 - 90, d), P(rh - 90, (y0 + y1) / 2 + 90, d), '#3a3631', 4);
-    q([P(d, y0 + 2.5, d + 13), P(d, y0 + 2.5, lh - 13), P(d, y1 - 2.5, lh - 13), P(d, y1 - 2.5, d + 13)], baseShade(col, 0.24), 1.3);
-    q([P(d, y0 + 78, d + 68), P(d, y0 + 78, lh - 68), P(d, y1 - 78, lh - 68), P(d, y1 - 78, d + 68)], baseShade(col, 0.08), 1);
-    ln(P(d, (y0 + y1) / 2 - 90, lh - 90), P(d, (y0 + y1) / 2 + 90, lh - 90), '#3a3631', 4);
+    q([P(d + 13, y0 + 2.5, d), P(rh - 13, y0 + 2.5, d), P(rh - 13, y1 - 2.5 - gh, d), P(d + 13, y1 - 2.5 - gh, d)], baseShade(col, 0.24), 1.3);   // 13mm in from each end, so the door is wing width - depth - 26, and 715 high (less the Gola cut-out)
+    q([P(d + 68, y0 + 78, d), P(rh - 68, y0 + 78, d), P(rh - 68, y1 - 78 - gh, d), P(d + 68, y1 - 78 - gh, d)], baseShade(col, 0.08), 1);
+    if (!G) ln(P(rh - 90, (y0 + y1) / 2 - 90, d), P(rh - 90, (y0 + y1) / 2 + 90, d), '#3a3631', 4);                  // Gola is handleless
+    q([P(d, y0 + 2.5, d + 13), P(d, y0 + 2.5, lh - 13), P(d, y1 - 2.5 - gh, lh - 13), P(d, y1 - 2.5 - gh, d + 13)], baseShade(col, 0.24), 1.3);
+    q([P(d, y0 + 78, d + 68), P(d, y0 + 78, lh - 68), P(d, y1 - 78 - gh, lh - 68), P(d, y1 - 78 - gh, d + 68)], baseShade(col, 0.08), 1);
+    if (!G) ln(P(d, (y0 + y1) / 2 - 90, lh - 90), P(d, (y0 + y1) / 2 + 90, lh - 90), '#3a3631', 4);
   } else {                                                                                                           // open fronts: just the floor edge of each wing
     q([P(d, y0, d), P(rh, y0, d), P(rh, y0 + T, d), P(d, y0 + T, d)], baseShade(eh, 0.1), esw);
     q([P(d, y0, d), P(d, y0, lh), P(d, y0 + T, lh), P(d, y0 + T, d)], baseShade(eh, 0.1), esw);
   }
-  q(plan.map(([x, z]) => P(x, y1, z)), baseShade(col, 0.28));                                                        // full top
-  q([P(d, y1 - T, d), P(rh, y1 - T, d), P(rh, y1, d), P(d, y1, d)], baseShade(eh, 0.1), esw);
-  q([P(d, y1 - T, d), P(d, y1 - T, lh), P(d, y1, lh), P(d, y1, d)], baseShade(eh, 0.1), esw);
+  if (G) {                                                                                                           // full top, its front edges set back 27 by the notch, then the notch back wall and floor
+    q([[0, 0], [rh, 0], [rh, d - gd], [d - gd, d - gd], [d - gd, lh], [0, lh]].map(([x, z]) => P(x, y1, z)), baseShade(col, 0.28));
+    q([P(d - gd, y1 - gh, d - gd), P(rh, y1 - gh, d - gd), P(rh, y1, d - gd), P(d - gd, y1, d - gd)], baseShade(col, -0.12));
+    q([P(d - gd, y1 - gh, d - gd), P(d - gd, y1 - gh, lh), P(d - gd, y1, lh), P(d - gd, y1, d - gd)], baseShade(col, -0.12));
+    q([[d - gd, d - gd], [rh, d - gd], [rh, d], [d, d], [d, lh], [d - gd, lh]].map(([x, z]) => P(x, y1 - gh, z)), baseShade(col, 0.28));
+    q([P(d - gd, y1 - T, d - gd), P(rh, y1 - T, d - gd), P(rh, y1, d - gd), P(d - gd, y1, d - gd)], baseShade(eh, 0.1), esw);
+    q([P(d - gd, y1 - T, d - gd), P(d - gd, y1 - T, lh), P(d - gd, y1, lh), P(d - gd, y1, d - gd)], baseShade(eh, 0.1), esw);
+  } else {
+    q(plan.map(([x, z]) => P(x, y1, z)), baseShade(col, 0.28));                                                      // full top
+    q([P(d, y1 - T, d), P(rh, y1 - T, d), P(rh, y1, d), P(d, y1, d)], baseShade(eh, 0.1), esw);
+    q([P(d, y1 - T, d), P(d, y1 - T, lh), P(d, y1, lh), P(d, y1, d)], baseShade(eh, 0.1), esw);
+  }
   if (o.dims) {
     const ink = '#3b4a52', fs = 34, off = 70;
     const dim = (a, b, dx, dy, label) => {
@@ -9790,6 +9802,7 @@ function lshCard() {
     <div class="row" style="gap:10px;flex-wrap:wrap">${num('rh', 'Right hand width (mm)')}${num('lh', 'Left hand width (mm)')}${num('d', 'Depth (mm)')}${num('v', 'Void (mm)')}</div>
     ${lshDoorNote()}
     ${lshHingePick(sel)}
+    <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="lshGola" ${LSH.gola ? 'checked' : ''}><span>Gola (J profile cut-out)</span></label>
     ${bkRow('lsh')}
   </article>`;
 }
@@ -9812,10 +9825,11 @@ function lshDetails() {
       <span class="mono">${lshCode()}</span>
       <p class="muted" style="margin:0">${LSH.rh} right hand by ${LSH.lh} left hand, ${LSH.d} deep, with a full top.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + lshCode())}${row('DOOR SIZES', 'Right hand ' + dr.rh + ' x ' + dr.h + ' mm, left hand ' + dr.lh + ' x ' + dr.h + ' mm')}${row('HINGES', 'Quantity: ' + lshHingeText())}${row('LEGS', 'Quantity: 8 x legs')}${row('SHELF', 'Quantity: 1 x L shaped shelf')}${row('TOP', 'Full top')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + lshCode())}${row('DOOR SIZES', 'Right hand ' + dr.rh + ' x ' + dr.h + ' mm, left hand ' + dr.lh + ' x ' + dr.h + ' mm')}${row('HINGES', 'Quantity: ' + lshHingeText())}${row('LEGS', 'Quantity: 8 x legs')}${row('SHELF', 'Quantity: 1 x L shaped shelf')}${row('TOP', 'Full top')}${LSH.gola ? row('GOLA', lshGolaText()) : ''}${row('CABINET COMPONENT', 'None')}</div>
       <div class="row" style="gap:10px;flex-wrap:wrap">${num('rh', 'Right hand width (mm)')}${num('lh', 'Left hand width (mm)')}${num('d', 'Depth (mm)')}${num('v', 'Void (mm)')}</div>
       ${lshDoorNote()}
       ${lshHingePick(sel)}
+      <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="lshGola" ${LSH.gola ? 'checked' : ''}><span>Gola (J profile cut-out)</span></label>
       ${ocDetail(null)}
       ${bkRow('lsh')}
     </div>
@@ -9824,6 +9838,7 @@ function lshDetails() {
   <div style="max-width:620px">${panel(lshArt({ doors: false, dims: true }), 400)}</div>`;
 }
 const lshRefresh = () => { if (UI.orderCat === 'lshdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#ls'); if (el) el.outerHTML = lshCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+CH.lshGola = t => { LSH.gola = !!t.checked; lshRefresh(); };
 A.lshHinge = t => { LSH.hinge = t.dataset.v; lshRefresh(); };
 A.lshMore = () => { UI.orderCat = 'lshdetails'; render(); window.scrollTo(0, 0); };
 CH.lshDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = LSH[k]; LSH[k] = v; lshClamp(); lshRefresh(); };
@@ -10082,7 +10097,7 @@ A.bkAdd = t => {
     l = { name: 'Wall Unit', code: wallCode(), w: WALL.w, h: WALL.h, d: WALL.d, v: WALL.v, opt: (WALL.w > 600 ? 'Pair of doors' : hingeText(WALL.hinge, WALL.w)) + (wallPost() ? ', flat centre post' : '') + (wallHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
   } else if (key === 'lsh') {
     lshClamp();
-    l = { name: 'L Shape Corner Base Unit', code: lshCode(), w: LSH.rh, d: LSH.d, v: LSH.v, opt: 'Right hand ' + LSH.rh + ' mm, left hand ' + LSH.lh + ' mm, full top, void ' + LSH.v + ' mm, doors ' + lshDoors().rh + ' and ' + lshDoors().lh + ' x ' + lshDoors().h + ' mm, ' + lshHingeText() + ', 8 legs' };
+    l = { name: 'L Shape Corner Base Unit', code: lshCode(), w: LSH.rh, d: LSH.d, v: LSH.v, opt: 'Right hand ' + LSH.rh + ' mm, left hand ' + LSH.lh + ' mm, full top, void ' + LSH.v + ' mm, doors ' + lshDoors().rh + ' and ' + lshDoors().lh + ' x ' + lshDoors().h + ' mm, ' + lshHingeText() + ', 8 legs' + (LSH.gola ? ', Gola ' + lshGolaText() : '') };
   } else if (key === 'oven') {
     l = { name: 'Built Under Oven Housing', code: ovenCode(), w: OVEN.w, d: OVEN.d, v: OVEN.v, opt: OVEN.drawer ? 'With ' + OVEN.sys + ' drawer' : 'Without drawer' };
   } else if (key === 'corner') {
