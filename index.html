@@ -8948,7 +8948,8 @@ const CAB_ROOMS = [
 ];
 /* Kitchen > All Bases: one card per base-unit family, with a 3D picture that
    follows the chosen width and door hand. */
-const BASE = { w: 600, hinge: 'left', d: 570, v: 50 };
+const BASE = { w: 600, hinge: 'left', d: 570, v: 50, gola: false };
+const GOLA_CUT = { d: 27, h: 57 };                    // Gola (J profile) notch in the front top corner of each side panel of a normal base, mm
 const BASE_H = 720;                                   // base units are always 720 high
 /* Legs, the same for every cabinet: 150 wide has 2, 200 to 600 has 4, 700 to 1200 has 5.
    The plinth only runs along the front, so it takes a clip on each front leg only: 1, 2 and 3. */
@@ -8982,6 +8983,8 @@ const baseShade = (hex, t) => {
 function baseArt(w, d, h, hinge, vd, opts) {
   const o = Object.assign({ doors: true, dims: false }, opts), T = 18, LEG = opts && opts.noLegs ? 0 : 150, y0 = LEG, y1 = LEG + h, single = (w <= 600 && !o.pair) || !!o.blank;
   const FL = single && hinge === 'right' && o.doors ? -1 : 1, TH = 108 * Math.PI / 180, col = o.col || ocHex();
+  // edging: the front edges of the panels take the edging colour, and a 2mm edge is drawn heavier than a 0.8mm one
+  const eh = o.edgeCol || ((ocEdge() || {}).hex) || col, esw = ocEdgeType() === '0.8mm' ? 0.8 : 1.8;
   const pts = [], out = [];
   // mostly a front view: the front stays square-on, depth recedes up and to the right
   const P = (x, y, z) => { const p = { x: FL * (x - 0.32 * z), y: 0.3 * z - y }; pts.push(p); return p; };
@@ -8996,7 +8999,8 @@ function baseArt(w, d, h, hinge, vd, opts) {
   });
   const yBack = o.backH != null ? Math.min(y1 - T, y0 + T + o.backH) : y1 - T;                                          // a custom back can be shorter than the cabinet, sitting on the floor
   if (!o.noBack) q([P(T, y0 + T, vd), P(w - T, y0 + T, vd), P(w - T, yBack, vd), P(T, yBack, vd)], o.backCol || baseShade(col, -0.22));   // back panel, set in by the void
-  q([P(T, y0 + T, vd), P(T, y0 + T, d), P(T, y1 - T, d), P(T, y1 - T, vd)], baseShade(col, -0.1));                      // inside of the left side
+  if (o.gola) q([P(T, y0 + T, vd), P(T, y0 + T, d), P(T, y1 - GOLA_CUT.h, d), P(T, y1 - GOLA_CUT.h, d - GOLA_CUT.d), P(T, y1 - T, d - GOLA_CUT.d), P(T, y1 - T, vd)], baseShade(col, -0.1));   // inside of the left side, notched
+  else q([P(T, y0 + T, vd), P(T, y0 + T, d), P(T, y1 - T, d), P(T, y1 - T, vd)], baseShade(col, -0.1));                  // inside of the left side
   q([P(T, y0 + T, vd), P(w - T, y0 + T, vd), P(w - T, y0 + T, d), P(T, y0 + T, d)], baseShade(col, 0.04));              // floor
   const ym = (y0 + y1) / 2, zs = d - 22;
   const shelf = (xa, xb) => {
@@ -9004,7 +9008,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     const ysList = o.shelfAt != null ? [o.shelfAt] : o.shelfN != null ? Array.from({ length: o.shelfN }, (_, i) => y0 + T + (y1 - y0 - 2 * T) * (i + 1) / (o.shelfN + 1)) : [o.robe ? y1 - T - 300 : ym];
     ysList.forEach(ys => {
       q([P(xa, ys, vd), P(xb, ys, vd), P(xb, ys, zs), P(xa, ys, zs)], baseShade(col, 0.12));                           // shelf
-      q([P(xa, ys, zs), P(xb, ys, zs), P(xb, ys - T, zs), P(xa, ys - T, zs)], baseShade(col, -0.05));
+      q([P(xa, ys, zs), P(xb, ys, zs), P(xb, ys - T, zs), P(xa, ys - T, zs)], baseShade(eh, -0.05), esw);
       if (o.robe) ln(P(xa, ys - 80, (vd + zs) / 2), P(xb, ys - 80, (vd + zs) / 2), '#8f969b', 9);                       // hanging rail
     });
   };
@@ -9071,17 +9075,25 @@ function baseArt(w, d, h, hinge, vd, opts) {
       q([P(xr, yb, zA), P(xr, yb, zB), P(xr, yt, zB), P(xr, yt, zA)], '#c9ced2');                                      // right
     });
   }
-  q([P(w, y0, 0), P(w, y0, d), P(w, y1, d), P(w, y1, 0)], baseShade(col, 0.08));                                        // right side
+  const GN = o.gola ? GOLA_CUT : null;                      // Gola (J profile): a notch in the top front corner of each side panel, GN.d deep and GN.h high
+  if (GN) q([P(w, y0, 0), P(w, y0, d), P(w, y1 - GN.h, d), P(w, y1 - GN.h, d - GN.d), P(w, y1, d - GN.d), P(w, y1, 0)], baseShade(col, 0.08));   // right side, notched
+  else q([P(w, y0, 0), P(w, y0, d), P(w, y1, d), P(w, y1, 0)], baseShade(col, 0.08));                                   // right side
   // a base unit has no full top: just one flat front top rail (160 deep, 18 thick) and the edges of the side panels
   const vRail = o.rail === 'vertical', rf = vRail ? T : 160, topCol = baseShade(col, 0.28);   // a vertical top rail stands on edge: 70 high, 18 thick
-  q([P(0, y1, 0), P(T, y1, 0), P(T, y1, d), P(0, y1, d)], topCol);                                                         // side panel edges
-  q([P(w - T, y1, 0), P(w, y1, 0), P(w, y1, d), P(w - T, y1, d)], topCol);
-  q([P(T, y1, d - rf), P(w - T, y1, d - rf), P(w - T, y1, d), P(T, y1, d)], topCol);                                       // front rail, top
+  const zt = GN ? d - GN.d : d;                                                                                           // with a Gola notch the top edges of the side panels stop 27 short of the front
+  q([P(0, y1, 0), P(T, y1, 0), P(T, y1, zt), P(0, y1, zt)], topCol);                                                       // side panel edges
+  q([P(w - T, y1, 0), P(w, y1, 0), P(w, y1, zt), P(w - T, y1, zt)], topCol);
+  const yr = GN ? y1 - GN.h : y1;                                                                                         // with Gola the front rail starts at the bottom of the notch, so its top is 57 down
+  q([P(T, yr, d - rf), P(w - T, yr, d - rf), P(w - T, yr, d), P(T, yr, d)], topCol);                                       // front rail, top
   if (o.fullTop) q([P(T, y1, 0), P(w - T, y1, 0), P(w - T, y1, d), P(T, y1, d)], topCol);                                  // a Belfast sink base keeps a full top panel
-  q([P(0, y0, d), P(T, y0, d), P(T, y1, d), P(0, y1, d)], baseShade(col, 0.1));                                         // front frame
-  q([P(w - T, y0, d), P(w, y0, d), P(w, y1, d), P(w - T, y1, d)], baseShade(col, 0.1));
-  q([P(T, y1 - (vRail ? 70 : T), d), P(w - T, y1 - (vRail ? 70 : T), d), P(w - T, y1, d), P(T, y1, d)], baseShade(col, 0.1));
-  q([P(T, y0, d), P(w - T, y0, d), P(w - T, y0 + T, d), P(T, y0 + T, d)], baseShade(col, 0.1));
+  [[0, T], [w - T, w]].forEach(([xa, xb]) => {                                                                            // front of each side panel
+    if (!GN) { q([P(xa, y0, d), P(xb, y0, d), P(xb, y1, d), P(xa, y1, d)], baseShade(eh, 0.1), esw); return; }
+    q([P(xa, y0, d), P(xb, y0, d), P(xb, y1 - GN.h, d), P(xa, y1 - GN.h, d)], baseShade(eh, 0.1), esw);                    // front face stops at the notch
+    q([P(xa, y1 - GN.h, d - GN.d), P(xb, y1 - GN.h, d - GN.d), P(xb, y1 - GN.h, d), P(xa, y1 - GN.h, d)], topCol);        // floor of the notch
+    q([P(xa, y1 - GN.h, zt), P(xb, y1 - GN.h, zt), P(xb, y1, zt), P(xa, y1, zt)], baseShade(col, -0.12));                  // back wall of the notch, where the J profile sits
+  });
+  q([P(T, yr - (vRail ? 70 : T), d), P(w - T, yr - (vRail ? 70 : T), d), P(w - T, yr, d), P(T, yr, d)], baseShade(eh, 0.1), esw);   // front rail, face
+  q([P(T, y0, d), P(w - T, y0, d), P(w - T, y0 + T, d), P(T, y0 + T, d)], baseShade(eh, 0.1), esw);
   if (o.drawers) {                // drawer pack: stacked fronts, the pulled-out ones show their metal-sided box
     const dr = o.drawers, yb = dr.h && !dr.bottom ? y1 - 4 - dr.h : y0 + 4, yt = dr.h && dr.bottom ? y0 + 4 + dr.h : y1 - 4, zone = dr.internal ? (yt - yb) * 0.26 : 0, avail = yt - yb - zone;
     const sum = dr.fronts.reduce((a, b) => a + b, 0), jobs = [];
@@ -9102,7 +9114,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
       if (!j.front || o.noFronts) return;
       faces.forEach(([fa, fb]) => {
         q([P(fa, j.ybot, zf), P(fb, j.ybot, zf), P(fb, j.ytop, zf), P(fa, j.ytop, zf)], baseShade(col, 0.24), 1.3);
-        if (j.pull > 0) q([P(fa, j.ytop, zf - T), P(fb, j.ytop, zf - T), P(fb, j.ytop, zf), P(fa, j.ytop, zf)], baseShade(col, 0.32));
+        if (j.pull > 0) q([P(fa, j.ytop, zf - T), P(fb, j.ytop, zf - T), P(fb, j.ytop, zf), P(fa, j.ytop, zf)], baseShade(eh, 0.32), esw);
         if (j.ytop - j.ybot > 130 && fb - fa > 260) q([P(fa + 52, j.ybot + 35, zf), P(fb - 52, j.ybot + 35, zf), P(fb - 52, j.ytop - 35, zf), P(fa + 52, j.ytop - 35, zf)], baseShade(col, 0.08), 1);   // shaker panel
         const hm = (fa + fb) / 2, hw = (fb - fa) * 0.12;
         ln(P(hm - hw, j.ytop - 30, zf), P(hm + hw, j.ytop - 30, zf), '#3a3631', 4);                                          // handle
@@ -9110,13 +9122,13 @@ function baseArt(w, d, h, hinge, vd, opts) {
     });
   }
   const door = (hx, sgn, dw, ang) => {
-    const c = Math.cos(ang || TH), s = Math.sin(ang || TH), yb = y0 + 3, yt = y1 - 3 - (o.drawers && o.drawers.h ? o.drawers.h + 4 : 0);   // a drawerline unit keeps its drawer above the door
+    const c = Math.cos(ang || TH), s = Math.sin(ang || TH), yb = y0 + 3, yt = y1 - 3 - (o.gola ? GOLA_CUT.h : 0) - (o.drawers && o.drawers.h ? o.drawers.h + 4 : 0);   // a Gola door stops below the notch; a drawerline unit keeps its drawer above the door
     const at = (t, y) => P(hx + sgn * dw * c * t, y, d + dw * s * t);
     q([at(0, yb), at(1, yb), at(1, yt), at(0, yt)], baseShade(col, 0.24), 1.3);
     const m = Math.min(0.2, 55 / dw);
     q([at(m, yb + 75), at(1 - m, yb + 75), at(1 - m, yt - 75), at(m, yt - 75)], baseShade(col, 0.08), 1);          // shaker panel
     const ymid = (yb + yt) / 2, hh = Math.min(100, (yt - yb) * 0.15);
-    ln(at(1 - m / 2, ymid - hh), at(1 - m / 2, ymid + hh), '#3a3631', 4);                                            // handle in the middle of the opening-edge stile, halfway up the door
+    if (!o.gola) ln(at(1 - m / 2, ymid - hh), at(1 - m / 2, ymid + hh), '#3a3631', 4);                                         // handle in the middle of the opening-edge stile, halfway up the door
   };
   if (o.carousel) {               // corner carousel: two dark trays with a solid rim on a centre column, swung out round the column through the door opening, with a few things on them
     const { x0, x1 } = o.carousel, cx0 = (x0 + x1) / 2, a = Math.min(340, (x1 - x0) / 2 - 35), b = Math.min(235, (d - 60) / 2 - 10);
@@ -9163,7 +9175,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     const zf = d + BIN_PULL, yb = y0 + 3, yt = y1 - 3, m = 55;
     q([P(3, yb, zf), P(w - 3, yb, zf), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(col, 0.24), 1.3);                    // door face
     q([P(3 + m, yb + 75, zf), P(w - 3 - m, yb + 75, zf), P(w - 3 - m, yt - 75, zf), P(3 + m, yt - 75, zf)], baseShade(col, 0.08), 1);   // shaker panel
-    q([P(3, yt, zf - T), P(w - 3, yt, zf - T), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(col, 0.32));                  // top edge
+    q([P(3, yt, zf - T), P(w - 3, yt, zf - T), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(eh, 0.32), esw);                  // top edge
   } else if (o.doors) { if (single) door(0, 1, w - 4); else { door(0, 1, w / 2 - 3); door(w, -1, w / 2 - 3, 150 * Math.PI / 180); } }   // the right door swings wider so it opens clear of the right half
   if (o.dims) {                                            // technical drawing: overall width, height and depth
     const ink = '#3b4a52', fs = 34, off = 70;
@@ -9188,12 +9200,13 @@ function baseCard() {
   const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="baseDim" data-k="${k}"></label>`;
   return `<article class="card card-pad stack" id="bc" style="max-width:420px">
     <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', w)}${chip('D', BASE.d)}${chip('Void', BASE.v)}</div>
-    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, BASE.d, BASE_H, hArt(hinge), BASE.v, hOpts(hinge))}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, BASE.d, BASE_H, hArt(hinge), BASE.v, Object.assign({ gola: BASE.gola }, hOpts(hinge)))}</div>
     <div class="row"><div><h3 style="margin:0">Highline Base Unit</h3><span class="mono">BHL${w}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="baseMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x.w === w)}" data-act="baseW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
     ${single ? `<div class="row" style="gap:8px">${hingeButtons('baseHinge', hinge, w, sel)}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
     <div class="row" style="gap:10px">${num('d', 'Depth (mm)', BASE.d)}${num('v', 'Void (mm)', BASE.v)}</div>
+    <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="baseGola" ${BASE.gola ? 'checked' : ''}><span>Gola (J profile cut-out)</span></label>
     ${bkRow('base')}
   </article>`;
 }
@@ -9210,7 +9223,7 @@ function baseDetails() {
   return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Bases</button>
   <div class="two-col" style="align-items:start">
     <div class="stack">
-      ${panel(baseArt(w, d, BASE_H, 'left', BASE.v, { doors: false }), 320)}
+      ${panel(baseArt(w, d, BASE_H, 'left', BASE.v, { doors: false, gola: BASE.gola }), 320)}
       <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
       <div>${row('Cabinet code', 'BHL' + w)}${row('Width', w + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', BASE.v + ' mm')}${row('Leg height', '150 mm')}</div>
     </div>
@@ -9221,17 +9234,18 @@ function baseDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${x.w === w ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="baseW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: BHL' + w)}${row('HINGES', 'Quantity: ' + (posts || hingeSide(BASE.hinge, w) === 'both' ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', posts ?'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div>${row('CABINET', 'Code: BHL' + w)}${row('HINGES', 'Quantity: ' + (posts || hingeSide(BASE.hinge, w) === 'both' ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', posts ?'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}${BASE.gola ? row('GOLA', 'J profile cut-out on the front of each side panel, ' + GOLA_CUT.d + ' mm deep x ' + GOLA_CUT.h + ' mm high') : ''}</div>
       ${ocDetail(it)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', BASE.v)}</div>
+      <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="baseGola" ${BASE.gola ? 'checked' : ''}><span>Gola (J profile cut-out)</span></label>
       ${bkRow('base')}
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
-  <div style="max-width:620px">${panel(baseArt(w, d, BASE_H, 'left', BASE.v, { doors: false, dims: true }), 380)}</div>`;
+  <div style="max-width:620px">${panel(baseArt(w, d, BASE_H, 'left', BASE.v, { doors: false, dims: true, gola: BASE.gola }), 380)}</div>`;
 }
 /* Kitchen > All Bases: Single Sink Base Unit, 500 to 1200 wide, same card as the bases. */
-const SINK = { w: 600, hinge: 'left', d: 560, v: 50, rail: 'horizontal', liner: false, backOff: false };
+const SINK = { w: 600, hinge: 'left', d: 560, v: 50, rail: 'horizontal', liner: false, backOff: false, gola: false };
 const SINK_WIDTHS = [500, 600, 700, 800, 900, 1000, 1200];
 const sinkCode = w => 'BHL' + w + 'S';                // BHL + cabinet width + S, e.g. BHL800S
 function sinkCard() {
@@ -9241,7 +9255,7 @@ function sinkCard() {
   const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="sinkDim" data-k="${k}"></label>`;
   return `<article class="card card-pad stack" id="sk" style="max-width:420px">
     <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', w)}${chip('D', SINK.d)}${chip('Void', SINK.v)}</div>
-    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, SINK.d, BASE_H, hArt(hinge), SINK.v, Object.assign({ rail: SINK.rail }, hOpts(hinge)))}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, SINK.d, BASE_H, hArt(hinge), SINK.v, Object.assign({ rail: SINK.rail, gola: SINK.gola }, hOpts(hinge)))}</div>
     <div class="row"><div><h3 style="margin:0">Single Sink Base Unit</h3><span class="mono">${sinkCode(w)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="sinkMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${SINK_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="sinkW" data-w="${x}">${x}</button>`).join('')}</div>
@@ -9250,6 +9264,7 @@ function sinkCard() {
     <div class="row" style="gap:6px">${['horizontal', 'vertical'].map(r => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(SINK.rail === r)}" data-act="sinkRail" data-r="${r}">${SINK.rail === r ? '&#9745;' : '&#9744;'} ${r[0].toUpperCase() + r.slice(1)}</button>`).join('')}</div>
     <div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(SINK.liner)}" data-act="sinkLiner">${SINK.liner ? '&#9745;' : '&#9744;'} Sink liner</button><button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(SINK.backOff)}" data-act="sinkBack">${SINK.backOff ? '&#9745;' : '&#9744;'} Removable back</button></div>
     <div class="row" style="gap:10px">${num('d', 'Depth (mm)', SINK.d)}${num('v', 'Void (mm)', SINK.v)}</div>
+    <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="sinkGola" ${SINK.gola ? 'checked' : ''}><span>Gola (J profile cut-out)</span></label>
     ${bkRow('sink')}
   </article>`;
 }
@@ -9263,7 +9278,7 @@ function sinkDetails() {
   return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Bases</button>
   <div class="two-col" style="align-items:start">
     <div class="stack">
-      ${panel(baseArt(w, d, BASE_H, 'left', SINK.v, { doors: false, rail: SINK.rail }), 320)}
+      ${panel(baseArt(w, d, BASE_H, 'left', SINK.v, { doors: false, rail: SINK.rail, gola: SINK.gola }), 320)}
       <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
       <div>${row('Cabinet code', sinkCode(w))}${row('Width', w + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', SINK.v + ' mm')}${row('Leg height', '150 mm')}</div>
     </div>
@@ -9274,16 +9289,17 @@ function sinkDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${SINK_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="sinkW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + sinkCode(w))}${row('HINGES', 'Quantity: ' + (posts || hingeSide(SINK.hinge, w) === 'both' ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('FRONT TOP RAIL', railTxt)}${row('SINK LINER', SINK.liner ? 'Included' : 'Not included')}${row('REMOVABLE BACK', SINK.backOff ? 'Yes' : 'No')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + sinkCode(w))}${row('HINGES', 'Quantity: ' + (posts || hingeSide(SINK.hinge, w) === 'both' ? 4 : 2) + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('FRONT TOP RAIL', railTxt)}${row('SINK LINER', SINK.liner ? 'Included' : 'Not included')}${row('REMOVABLE BACK', SINK.backOff ? 'Yes' : 'No')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}${SINK.gola ? row('GOLA', 'J profile cut-out on the front of each side panel, ' + GOLA_CUT.d + ' mm deep x ' + GOLA_CUT.h + ' mm high') : ''}</div>
       <div class="muted">Front top rail:</div>
       <div class="row" style="gap:6px">${['horizontal', 'vertical'].map(r => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(SINK.rail === r)}" data-act="sinkRail" data-r="${r}">${SINK.rail === r ? '&#9745;' : '&#9744;'} ${r[0].toUpperCase() + r.slice(1)}</button>`).join('')}<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(SINK.liner)}" data-act="sinkLiner">${SINK.liner ? '&#9745;' : '&#9744;'} Sink liner</button><button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;${sel(SINK.backOff)}" data-act="sinkBack">${SINK.backOff ? '&#9745;' : '&#9744;'} Removable back</button></div>
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', SINK.v)}</div>
+      <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="sinkGola" ${SINK.gola ? 'checked' : ''}><span>Gola (J profile cut-out)</span></label>
       ${bkRow('sink')}
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
-  <div style="max-width:620px">${panel(baseArt(w, d, BASE_H, 'left', SINK.v, { doors: false, dims: true, rail: SINK.rail }), 380)}</div>`;
+  <div style="max-width:620px">${panel(baseArt(w, d, BASE_H, 'left', SINK.v, { doors: false, dims: true, rail: SINK.rail, gola: SINK.gola }), 380)}</div>`;
 }
 A.sinkMore = () => { UI.orderCat = 'sinkdetails'; render(); window.scrollTo(0, 0); };
 const sinkRefresh = () => { if (UI.orderCat === 'sinkdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#sk'); if (el) el.outerHTML = sinkCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
@@ -9291,6 +9307,7 @@ A.sinkW = t => { SINK.w = +t.dataset.w; sinkRefresh(); };
 A.sinkRail = t => { SINK.rail = t.dataset.r; sinkRefresh(); };
 A.sinkLiner = () => { SINK.liner = !SINK.liner; sinkRefresh(); };
 A.sinkBack = () => { SINK.backOff = !SINK.backOff; sinkRefresh(); };
+CH.sinkGola = t => { SINK.gola = !!t.checked; sinkRefresh(); };
 A.sinkHinge = t => { SINK.hinge = t.dataset.h; sinkRefresh(); };
 CH.sinkDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = SINK[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), SINK.d - 200); SINK[k] = v; sinkRefresh(); };
 /* Kitchen > All Bases: Drawerline Single Base Unit, a top drawer over a door.
@@ -9703,7 +9720,8 @@ function lshArt(o) {
   q([P(d - sd, ym - T, d - sd), P(rh - T, ym - T, d - sd), P(rh - T, ym, d - sd), P(d - sd, ym, d - sd)], baseShade(col, -0.05));      // front edge, right hand wing
   q([P(d - sd, ym - T, d - sd), P(d - sd, ym - T, lh - sd), P(d - sd, ym, lh - sd), P(d - sd, ym, d - sd)], baseShade(col, -0.05));      // front edge, left hand wing
   q([P(rh, y0, 0), P(rh, y0, d), P(rh, y1, d), P(rh, y1, 0)], baseShade(col, 0.08));                                 // right hand wing end
-  q([P(0, y0, lh), P(d, y0, lh), P(d, y1, lh), P(0, y1, lh)], baseShade(col, 0.1));                                  // left hand wing end
+  const eh = (ocEdge() || {}).hex || col, esw = ocEdgeType() === '0.8mm' ? 0.8 : 1.8;                                // edging colour on the front edges, heavier for 2mm
+  q([P(0, y0, lh), P(d, y0, lh), P(d, y1, lh), P(0, y1, lh)], baseShade(col, 0.1));                                  // left hand wing end: the whole outer face of the gable, so the cabinet colour, not edging
   if (o.doors) {                                                                                                     // one door on each wing, each on two 155 degree hinges
     q([P(d + 13, y0 + 2.5, d), P(rh - 13, y0 + 2.5, d), P(rh - 13, y1 - 2.5, d), P(d + 13, y1 - 2.5, d)], baseShade(col, 0.24), 1.3);   // 13mm in from each end, so the door is wing width - depth - 26, and 715 high
     q([P(d + 68, y0 + 78, d), P(rh - 68, y0 + 78, d), P(rh - 68, y1 - 78, d), P(d + 68, y1 - 78, d)], baseShade(col, 0.08), 1);
@@ -9712,12 +9730,12 @@ function lshArt(o) {
     q([P(d, y0 + 78, d + 68), P(d, y0 + 78, lh - 68), P(d, y1 - 78, lh - 68), P(d, y1 - 78, d + 68)], baseShade(col, 0.08), 1);
     ln(P(d, (y0 + y1) / 2 - 90, lh - 90), P(d, (y0 + y1) / 2 + 90, lh - 90), '#3a3631', 4);
   } else {                                                                                                           // open fronts: just the floor edge of each wing
-    q([P(d, y0, d), P(rh, y0, d), P(rh, y0 + T, d), P(d, y0 + T, d)], baseShade(col, 0.1));
-    q([P(d, y0, d), P(d, y0, lh), P(d, y0 + T, lh), P(d, y0 + T, d)], baseShade(col, 0.1));
+    q([P(d, y0, d), P(rh, y0, d), P(rh, y0 + T, d), P(d, y0 + T, d)], baseShade(eh, 0.1), esw);
+    q([P(d, y0, d), P(d, y0, lh), P(d, y0 + T, lh), P(d, y0 + T, d)], baseShade(eh, 0.1), esw);
   }
   q(plan.map(([x, z]) => P(x, y1, z)), baseShade(col, 0.28));                                                        // full top
-  q([P(d, y1 - T, d), P(rh, y1 - T, d), P(rh, y1, d), P(d, y1, d)], baseShade(col, 0.1));
-  q([P(d, y1 - T, d), P(d, y1 - T, lh), P(d, y1, lh), P(d, y1, d)], baseShade(col, 0.1));
+  q([P(d, y1 - T, d), P(rh, y1 - T, d), P(rh, y1, d), P(d, y1, d)], baseShade(eh, 0.1), esw);
+  q([P(d, y1 - T, d), P(d, y1 - T, lh), P(d, y1, lh), P(d, y1, d)], baseShade(eh, 0.1), esw);
   if (o.dims) {
     const ink = '#3b4a52', fs = 34, off = 70;
     const dim = (a, b, dx, dy, label) => {
@@ -10002,17 +10020,25 @@ const ocGroup = c => c.group === 3 ? 2 : 1;           // the website's Group 2 i
 const orderColour = () => { const l = ocList(); return l.find(c => c.id === UI.orderColour) || l[0] || null; };
 const ocHex = () => { const c = orderColour(); return c ? c.hex : '#cdbfae'; };
 const ocPrice = it => { const c = orderColour(); return it ? (it[GROUP_KEY[c ? c.group : 1]] || it.plain || 0) : 0; };
+/* Edging for New Orders: 2mm or 0.8mm (tick one), then a colour from the same Group 1 and Group 2 list,
+   or matching the cabinet colour. */
+const ocEdgeType = () => UI.orderEdgeType === '0.8mm' ? '0.8mm' : '2mm';
+const ocEdge = () => { const e = UI.orderEdge; return !e || e === 'match' ? null : ocList().find(c => c.id === e) || null; };
+const ocEdgeText = () => { const e = ocEdge(); return ocEdgeType() + ' edging, ' + (e ? e.name + ' · ' + e.code + ' (' + webGroup(e.group) + ')' : 'matches the cabinet colour'); };
 function ocSelect() {
-  const cur = orderColour(), l = ocList();
-  const opt = c => `<option value="${c.id}" ${cur && c.id === cur.id ? 'selected' : ''}>${esc(c.name)} · ${esc(c.code)}</option>`;
-  return `<label class="field" style="max-width:420px"><span class="lbl">Cabinet colour</span><select class="select" data-chg="orderColour" aria-label="Cabinet colour">
-    <optgroup label="Group 1 · lower price">${l.filter(c => c.group === 1).map(opt).join('')}</optgroup>
-    <optgroup label="Group 2 · higher price">${l.filter(c => c.group === 3).map(opt).join('')}</optgroup></select></label>`;
+  const cur = orderColour(), l = ocList(), ed = ocEdge(), et = ocEdgeType();
+  const opt = (c, sel) => `<option value="${c.id}" ${sel && c.id === sel.id ? 'selected' : ''}>${esc(c.name)} · ${esc(c.code)}</option>`;
+  const groups = sel => `<optgroup label="Group 1 · lower price">${l.filter(c => c.group === 1).map(c => opt(c, sel)).join('')}</optgroup>
+    <optgroup label="Group 2 · higher price">${l.filter(c => c.group === 3).map(c => opt(c, sel)).join('')}</optgroup>`;
+  const tick = t => `<button type="button" class="btn btn-secondary btn-sm" style="flex:none;white-space:nowrap;${et === t ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="orderEdgeType" data-v="${t}">${et === t ? '&#9745;' : '&#9744;'} ${t}</button>`;
+  return `<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end">
+    <label class="field" style="flex:1 1 260px;max-width:420px"><span class="lbl">Cabinet colour</span><select class="select" data-chg="orderColour" aria-label="Cabinet colour">${groups(cur)}</select></label>
+    <div class="field" style="flex:1 1 320px;max-width:520px"><span class="lbl">Edging</span><div class="row" style="gap:8px;flex-wrap:nowrap">${tick('2mm')}${tick('0.8mm')}<select class="select" style="flex:1;min-width:0" data-chg="orderEdge" aria-label="Edging colour"><option value="match" ${ed ? '' : 'selected'}>Match cabinet colour</option>${groups(ed)}</select></div></div></div>`;
 }
 function ocDetail(it) {
   const c = orderColour(); if (!c) return '';
   const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
-  return `${ocSelect()}<div>${row('CABINET COLOUR', `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${c.hex};border:1px solid #0003;vertical-align:-1px"></span> ${esc(c.name)} · ${esc(c.code)}`)}${row('PRICE GROUP', 'Group ' + ocGroup(c) + (c.group === 1 ? ' (lower price)' : ' (higher price)'))}${it ? row('PRICE (EX VAT)', GBP(ocPrice(it))) : ''}</div>`;
+  return `${ocSelect()}<div>${row('CABINET COLOUR', `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${c.hex};border:1px solid #0003;vertical-align:-1px"></span> ${esc(c.name)} · ${esc(c.code)}`)}${row('PRICE GROUP', 'Group ' + ocGroup(c) + (c.group === 1 ? ' (lower price)' : ' (higher price)'))}${row('EDGING', esc(ocEdgeText()))}${it ? row('PRICE (EX VAT)', GBP(ocPrice(it))) : ''}</div>`;
 }
 /* Basket for New Orders. No prices yet: it records what was picked, in which colour. */
 const basketCount = () => (UI.basket || []).reduce((n, l) => n + l.qty, 0);
@@ -10022,7 +10048,7 @@ A.bkAdd = t => {
   let l;
   if (key === 'base') {
     const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
-    l = { name: 'Highline Base Unit', code: 'BHL' + it.w, w: +it.w, d: BASE.d, v: BASE.v, opt: +it.w <= 600 ? hingeText(BASE.hinge, +it.w) : 'Pair of doors' };
+    l = { name: 'Highline Base Unit', code: 'BHL' + it.w, w: +it.w, d: BASE.d, v: BASE.v, opt: (+it.w <= 600 ? hingeText(BASE.hinge, +it.w) : 'Pair of doors') + (BASE.gola ? ', Gola J profile cut-out ' + GOLA_CUT.d + ' x ' + GOLA_CUT.h + ' mm' : '') };
   } else if (key === 'wall') {
     wallClamp();
     l = { name: 'Wall Unit', code: wallCode(), w: WALL.w, h: WALL.h, d: WALL.d, v: WALL.v, opt: (WALL.w > 600 ? 'Pair of doors' : hingeText(WALL.hinge, WALL.w)) + (wallPost() ? ', flat centre post' : '') + (wallHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
@@ -10047,7 +10073,7 @@ A.bkAdd = t => {
   } else if (key === 'dl') {
     l = { name: 'Drawerline Single Base Unit', code: dlCode(DL.w), w: DL.w, d: DL.d, v: DL.v, opt: (DL.w <= 600 ? hingeText(DL.hinge, DL.w) : 'Pair of doors') + ', ' + (dlDouble() ? 'double ' : 'single ') + DL.sys + ' drawer' };
   } else if (key === 'sink') {
-    l = { name: 'Single Sink Base Unit', code: sinkCode(SINK.w), w: SINK.w, d: SINK.d, v: SINK.v, opt: (SINK.w <= 600 ? hingeText(SINK.hinge, SINK.w) : 'Pair of doors') + ', ' + SINK.rail + ' front top rail' + (SINK.liner ? ', sink liner' : '') + (SINK.backOff ? ', removable back' : '') };
+    l = { name: 'Single Sink Base Unit', code: sinkCode(SINK.w), w: SINK.w, d: SINK.d, v: SINK.v, opt: (SINK.w <= 600 ? hingeText(SINK.hinge, SINK.w) : 'Pair of doors') + ', ' + SINK.rail + ' front top rail' + (SINK.liner ? ', sink liner' : '') + (SINK.backOff ? ', removable back' : '') + (SINK.gola ? ', Gola J profile cut-out ' + GOLA_CUT.d + ' x ' + GOLA_CUT.h + ' mm' : '') };
   } else if (key === 'robe') {
     const it = robeWidths().find(i => i.w === ROBE.w) || robeWidths()[0]; if (!it) return;
     l = { name: 'Single Hanging Robe', code: it.code, w: +it.w, d: ROBE.d, v: ROBE.v, opt: +it.w <= 600 ? ROBE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
@@ -10055,7 +10081,7 @@ A.bkAdd = t => {
     const id = key.slice(3), tp = dpType(id), s = DPK[id]; if (!tp) return;
     l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers' };
   }
-  Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? webGroup(col.group) : '' });
+  Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? webGroup(col.group) : '', edging: ocEdgeText() });
   const sig = x => [x.code, x.w, x.d, x.v, x.opt, x.colourId].join('|');
   UI.basket = UI.basket || [];
   const same = UI.basket.find(x => sig(x) === sig(l));
@@ -10070,13 +10096,15 @@ function cBasket() {
   const list = UI.basket || [];
   const body = !list.length ? `<div class="empty">${ic('basket', 22)}<p>Your basket is empty. Add cabinets from New Orders.</p><button class="btn btn-primary" data-act="orders">Go to New Orders</button></div>` :
     `<div class="stack">${list.map(l => `<article class="card card-pad"><div class="row" style="gap:12px;flex-wrap:wrap"><div style="min-width:0;flex:1"><b style="font-size:16px">${esc(l.name)}</b> <span class="mono">${esc(l.code)}</span>
-      <div class="muted">${l.w}mm wide${l.h ? ' · ' + l.h + 'mm high' : ''} · ${l.d}mm deep · void ${l.v}mm · ${esc(l.opt)}</div><div class="muted">Colour: ${esc(l.colour)}${l.group ? ' (' + l.group + ')' : ''}</div></div>
+      <div class="muted">${l.w}mm wide${l.h ? ' · ' + l.h + 'mm high' : ''} · ${l.d}mm deep · void ${l.v}mm · ${esc(l.opt)}</div><div class="muted">Colour: ${esc(l.colour)}${l.group ? ' (' + l.group + ')' : ''}</div>${l.edging ? `<div class="muted">Edging: ${esc(l.edging)}</div>` : ''}</div>
       <div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="-1" aria-label="Fewer">−</button><b style="min-width:28px;text-align:center">${l.qty}</b><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="1" aria-label="More">+</button>
       <button class="btn btn-ghost btn-sm" data-act="bkDel" data-id="${l.id}" aria-label="Remove">${ic('trash', 16)}</button></div></div></article>`).join('')}
     <div class="row"><span class="muted">${basketCount()} unit${basketCount() === 1 ? '' : 's'} in the basket. Prices will be added later.</span><span class="spacer"></span><button class="btn btn-ghost" data-act="bkClear">Empty basket</button></div></div>`;
   return `<div class="page-head"><div><h1>Basket</h1><p>The cabinets you have added from New Orders.</p></div></div>${body}`;
 }
 CH.orderColour = t => { UI.orderColour = t.value; save(); const y = window.scrollY; render(); window.scrollTo(0, y); };
+CH.orderEdge = t => { UI.orderEdge = t.value; save(); const y = window.scrollY; render(); window.scrollTo(0, y); };
+A.orderEdgeType = t => { UI.orderEdgeType = t.dataset.v; save(); const y = window.scrollY; render(); window.scrollTo(0, y); };
 /* Bedroom > Single Hanging Robe: same card as the bases, 300 to 1200 wide,
    2150 high, with a hanging rail under a top shelf. Widths come from the catalogue. */
 const ROBE = { w: 600, hinge: 'left', d: 600, v: 50 };
@@ -10250,6 +10278,7 @@ CH.dpDim = t => { const s = DPK[t.dataset.id], k = t.dataset.k; let v = Math.rou
 A.baseMore = () => { UI.orderCat = 'basedetails'; render(); window.scrollTo(0, 0); };
 A.baseW = t => { BASE.w = +t.dataset.w; baseRefresh(); };
 A.baseHinge = t => { BASE.hinge = t.dataset.h; baseRefresh(); };
+CH.baseGola = t => { BASE.gola = !!t.checked; baseRefresh(); };
 CH.baseDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = BASE[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), BASE.d - 200); BASE[k] = v; baseRefresh(); };
 const robeRefresh = () => { const el = $('#rc'); if (el) el.outerHTML = robeCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 A.robeMore = () => { UI.orderCat = 'robedetails'; render(); window.scrollTo(0, 0); };
