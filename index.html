@@ -9869,7 +9869,7 @@ CH.lshDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isF
    flat centre post, 70 x 18. A void under 20 means no wall hangers; 20 or more always has them. Wall units have no legs. */
 /* Two wall unit ranges share every function below: the plain one (WS / WM / WT) and the glass one (WSG / WMG / WTG,
    glass door and glass shelves). WK says which is being drawn or edited, and WALL reads and writes that range's state. */
-const WALLS = { w: { h: 720, w: 600, hinge: 'left', d: 300, v: 50, gola: false, shelves: null }, g: { h: 720, w: 600, hinge: 'left', d: 300, v: 50, gola: false, shelves: null } };
+const WALLS = { w: { h: 720, w: 600, hinge: 'left', d: 300, v: 20, gola: false, shelves: null }, g: { h: 720, w: 600, hinge: 'left', d: 300, v: 20, gola: false, shelves: null } };   // the void starts at 20, and can be changed
 let WK = 'w';
 const WALL = new Proxy({}, { get: (_, k) => WALLS[WK][k], set: (_, k, v) => { WALLS[WK][k] = v; return true; } });
 const WP = () => WK === 'g' ? 'wallg' : 'wall';                         // prefix of the handler names, so each card edits its own range
