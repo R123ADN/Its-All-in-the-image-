@@ -92,6 +92,17 @@ button{font-family:inherit}
 .btn-danger:hover{background:var(--bad);color:#fff}
 .btn[disabled]{opacity:.42;cursor:not-allowed;transform:none}
 .btn-sm{height:32px;padding:0 11px;font-size:12.5px;border-radius:8px;gap:6px}
+/* Glass switches: the option buttons and tick boxes on the cabinet order cards look like frosted glass, and the chosen one lights up */
+article.card .btn-secondary[data-act]{background:linear-gradient(180deg,color-mix(in srgb,var(--ink) 9%,transparent),color-mix(in srgb,var(--ink) 3%,transparent));border:1px solid color-mix(in srgb,var(--ink) 16%,transparent);-webkit-backdrop-filter:blur(10px) saturate(150%);backdrop-filter:blur(10px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 2px 6px rgba(0,0,0,.12);transition:background .32s cubic-bezier(.2,.8,.2,1),border-color .32s,box-shadow .32s,transform .2s cubic-bezier(.2,.8,.2,1),color .2s}
+article.card .btn-secondary[data-act]:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--ink) 34%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 5px 14px rgba(0,0,0,.18)}
+article.card .btn-secondary[data-act]:active{transform:translateY(0) scale(.97)}
+article.card .btn-secondary[data-act][style*="border-bottom:3px"]{border-bottom-width:1px !important;border-color:color-mix(in srgb,#8fc4ff 70%,transparent);background:linear-gradient(180deg,color-mix(in srgb,#8fc4ff 36%,transparent),color-mix(in srgb,#8fc4ff 12%,transparent));box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -8px 14px color-mix(in srgb,#8fc4ff 14%,transparent),0 0 16px color-mix(in srgb,#8fc4ff 38%,transparent);animation:glassOn .38s cubic-bezier(.2,.8,.2,1)}
+@keyframes glassOn{0%{transform:scale(.94);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 rgba(143,196,255,0)}60%{transform:scale(1.03)}100%{transform:scale(1)}}
+article.card label.row>input[type=checkbox]{-webkit-appearance:none;appearance:none;flex:0 0 auto;position:relative;width:42px;height:24px;margin:0;border-radius:999px;cursor:pointer;background:linear-gradient(180deg,color-mix(in srgb,var(--ink) 12%,transparent),color-mix(in srgb,var(--ink) 4%,transparent));border:1px solid color-mix(in srgb,var(--ink) 20%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:inset 0 1px 2px rgba(0,0,0,.22);transition:background .32s cubic-bezier(.2,.8,.2,1),border-color .32s,box-shadow .32s}
+article.card label.row>input[type=checkbox]::before{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:linear-gradient(180deg,#fff,#dfe6ea);box-shadow:0 1px 4px rgba(0,0,0,.35),inset 0 1px 0 #fff;transition:transform .34s cubic-bezier(.3,1.4,.5,1)}
+article.card label.row>input[type=checkbox]:checked{border-color:color-mix(in srgb,#8fc4ff 70%,transparent);background:linear-gradient(180deg,color-mix(in srgb,#8fc4ff 55%,transparent),color-mix(in srgb,#8fc4ff 25%,transparent));box-shadow:inset 0 1px 2px rgba(0,0,0,.18),0 0 14px color-mix(in srgb,#8fc4ff 40%,transparent)}
+article.card label.row>input[type=checkbox]:checked::before{transform:translateX(18px)}
+article.card label.row>input[type=checkbox]:focus-visible{outline:2px solid #8fc4ff;outline-offset:2px}
 .btn-lg{height:50px;padding:0 22px;font-size:15px;border-radius:12px}
 .btn-icon{width:36px;padding:0}
 .btn-sm.btn-icon{width:32px}
@@ -310,6 +321,17 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
 
 /* ---------- app shell ---------- */
 .app{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh}
+/* Glass background: soft colour glows drift slowly behind frosted panels, and each new page eases in out of a blur */
+body::before{content:"";position:fixed;inset:-12%;z-index:-1;pointer-events:none;background:radial-gradient(38% 34% at 14% 18%,color-mix(in srgb,#8fc4ff 30%,transparent),transparent 72%),radial-gradient(34% 38% at 86% 14%,color-mix(in srgb,#c4a3ff 24%,transparent),transparent 72%),radial-gradient(44% 38% at 72% 92%,color-mix(in srgb,#7fe0c4 22%,transparent),transparent 72%),radial-gradient(30% 30% at 18% 88%,color-mix(in srgb,#ffcf94 20%,transparent),transparent 72%);filter:blur(28px);animation:auroraDrift 28s ease-in-out infinite alternate}
+@keyframes auroraDrift{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-2.5%,1.5%,0) scale(1.06)}100%{transform:translate3d(2%,-2%,0) scale(1.1)}}
+.app .side{background:color-mix(in srgb,var(--surface) 58%,transparent);-webkit-backdrop-filter:blur(20px) saturate(150%);backdrop-filter:blur(20px) saturate(150%)}
+.app .card{background:linear-gradient(160deg,color-mix(in srgb,var(--surface) 78%,transparent),color-mix(in srgb,var(--surface) 58%,transparent));-webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);border-color:color-mix(in srgb,var(--ink) 13%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),var(--shadow)}
+.main.view-in{animation:viewIn .6s cubic-bezier(.2,.8,.2,1) backwards}
+.main.view-in .card{animation:glassRise .7s cubic-bezier(.2,.8,.2,1) backwards}
+.main.view-in .card:nth-child(2){animation-delay:.05s}.main.view-in .card:nth-child(3){animation-delay:.1s}.main.view-in .card:nth-child(4){animation-delay:.15s}.main.view-in .card:nth-child(5){animation-delay:.2s}.main.view-in .card:nth-child(n+6){animation-delay:.25s}
+@keyframes viewIn{0%{opacity:0;transform:translateY(12px) scale(.985);filter:blur(14px)}100%{opacity:1;transform:none;filter:blur(0)}}
+@keyframes glassRise{0%{opacity:0;transform:translateY(22px) scale(.97);filter:blur(10px)}100%{opacity:1;transform:none;filter:blur(0)}}
+@media (prefers-reduced-motion:reduce){body::before,.main.view-in,.main.view-in .card{animation:none}}
 .side{position:sticky;top:0;height:100vh;overflow-y:auto;padding:18px 14px;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:2px;z-index:50}
 .side .brand{padding:6px 10px 18px}
 .side .grp{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:16px 12px 6px}
@@ -8324,6 +8346,8 @@ function render() {
   else if (r.startsWith('c-')) { if (UI.session.customerId && me()) html = custView(r, p); else { UI.afterLogin = UI.route; html = loginView(); } }
   else html = ({ home: homeView, login: loginView, signup: signupView, forgot: forgotView, 'admin-login': adminLoginView }[r] || homeView)();
   $('#app').innerHTML = html;
+  const vk = UI.route + '|' + (UI.orderCat || '') + '|' + (UI.dpId || '') + '|' + (UI.wallG ? 'g' : '');   // a new page (not a refresh of the same one) eases in
+  if (vk !== window.__viewKey) { window.__viewKey = vk; const mn = $('#main'); if (mn) mn.classList.add('view-in'); }
   renderFloat();
   if (typeof afterRender === 'function') afterRender(r, p);
 }
@@ -9158,7 +9182,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     });
   }
   const door = (hx, sgn, dw, ang) => {
-    const c = Math.cos(ang || TH), s = Math.sin(ang || TH), yb = y0 + 3, yt = y1 - 3 - (o.gola ? GOLA_CUT.h : 0) - (o.drawers && o.drawers.h ? o.drawers.h + 4 : 0);   // a Gola door stops below the notch; a drawerline unit keeps its drawer above the door
+    const c = Math.cos(ang || TH), s = Math.sin(ang || TH), cl = o.blank && o.blank.inside ? 2.5 : 3, yb = y0 + cl, yt = y1 - cl - (o.gola ? GOLA_CUT.h : 0) - (o.drawers && o.drawers.h ? o.drawers.h + 4 : 0);   // a Gola door stops below the notch; a drawerline unit keeps its drawer above the door
     const at = (t, y) => P(hx + sgn * dw * c * t, y, d + dw * s * t);
     const m = Math.min(0.2, 55 / dw);
     if (o.glass) {                                                                                                          // a framed glass door on standard hinges: the cabinet-colour frame round a clear glass panel
@@ -9213,11 +9237,16 @@ function baseArt(w, d, h, hinge, vd, opts) {
     });
   }
   if (o.blank) {                  // corner unit: a fixed blank panel on one side, the door covers the rest
-    const bw = o.blank.w, bx0 = o.blank.side === 'right' ? w - bw : 0, bx1 = bx0 + bw;
-    // the blank sits between the base panel and the top rail, and carries the door hinges
-    q([P(bx0, y0 + T, d), P(bx1, y0 + T, d), P(bx1, y1 - T, d), P(bx0, y1 - T, d)], baseShade(col, 0.24), 1.3);
+    const bw = o.blank.w, inside = !!o.blank.inside, bx0 = inside ? (o.blank.side === 'right' ? w - T - bw : T) : (o.blank.side === 'right' ? w - bw : 0), bx1 = bx0 + bw;
+    // the blank sits between the base panel and the top rail, and carries the door hinges; an inside blank stands within the carcass, set back from the front by the door thickness
+    const bz = inside ? d - 22 : d;
+    q([P(bx0, y0 + T, bz), P(bx1, y0 + T, bz), P(bx1, y1 - T, bz), P(bx0, y1 - T, bz)], baseShade(col, 0.24), 1.3);
+    if (inside) { const xe = o.blank.side === 'right' ? bx0 : bx1; q([P(xe, y0 + T, bz - T), P(xe, y0 + T, bz), P(xe, y1 - T, bz), P(xe, y1 - T, bz - T)], baseShade(col, 0.04)); }   // the blank's edge, its 18mm thickness
   }
-  if (o.doors && o.blank) { const dw = w - o.blank.w - T - 4; if (o.blank.side === 'right') door(dw, -1, dw, 150 * Math.PI / 180); else door(w - dw, 1, dw); }   // the door is always hinged on the blank: the blank carries the hinges
+  if (o.doors && o.blank) {
+    if (o.blank.inside) { const dw = o.blank.door - 4, hx = o.blank.side === 'right' ? w - T - o.blank.w : T + o.blank.w; if (o.blank.side === 'right') door(hx, -1, dw, 150 * Math.PI / 180); else door(hx, 1, dw); }   // hinged on the blank's free edge; 4mm clearance off the door width
+    else { const dw = w - o.blank.w - T - 4; if (o.blank.side === 'right') door(dw, -1, dw, 150 * Math.PI / 180); else door(w - dw, 1, dw); }   // the door is always hinged on the blank: the blank carries the hinges
+  }
   else if (o.doors && o.bins) {        // a bin unit's door is fixed to the pull-out frame and slides out with the bins
     const zf = d + BIN_PULL, yb = y0 + 3, yt = y1 - 3, m = 55;
     q([P(3, yb, zf), P(w - 3, yb, zf), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(col, 0.24), 1.3);                    // door face
@@ -9959,7 +9988,76 @@ Object.keys(wallOps).forEach(k => {
   reg['wall' + k] = t => { WK = 'w'; wallOps[k](t); };
   reg['wallg' + k] = t => { WK = 'g'; wallOps[k](t); };
 });
-const wallCards = () => wallCard(false) + wallCard(true);
+/* Kitchen > All Wall Units: Corner Wall Unit. One door plus a fixed blank panel on the right or the left, like the corner base;
+   blank = width - door size - 18.2. Heights 575, 720 and 900 give the codes WS, WM and WT, then the width and RB or LB. */
+const CW = { h: 720, w: 600, side: 'right', door: 300, d: 300, v: 20 };
+const CW_WIDTHS = [600, 700, 800, 900, 1000, 1100, 1200];
+const CW_MIN_DOOR = 250;
+const cwDoorMax = () => Math.floor(CW.w - CORNER_T - 50);                                // leaves at least a 50mm blank
+const cwDoor = () => Math.min(Math.max(CW.door, CW_MIN_DOOR), cwDoorMax());
+const cwBlank = () => Math.round((CW.w - cwDoor() - CORNER_T) * 10) / 10;
+const cwBlankH = () => Math.round((CW.h - 2 * CORNER_T) * 10) / 10;                     // the blank stands between the top and bottom panels
+const cwCode = () => WALL_PREFIX[CW.h] + CW.w + (CW.side === 'right' ? 'RB' : 'LB');
+const cwClamp = () => { CW.d = Math.min(600, Math.max(300, CW.d)); CW.v = Math.min(Math.min(100, CW.d - 150), Math.max(0, CW.v)); CW.door = cwDoor(); };
+const cwArt = extra => { cwClamp(); return baseArt(CW.w, CW.d, CW.h, 'left', CW.v, Object.assign({ noLegs: true, fullTop: true, shelfN: WALL_SHELVES[CW.h], blank: { side: CW.side, w: cwBlank(), inside: true, door: cwDoor() } }, extra)); };
+function cwPick(sel) {
+  const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  const num = (k, label, v) => `<label class="field" style="flex:1;min-width:110px"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="cwDim" data-k="${k}"></label>`;
+  return `<div class="muted">Height:</div><div class="row" style="gap:6px">${WALL_HEIGHTS.map(x => btn('cwH', x, x, CW.h === x)).join('')}</div>
+    <div class="muted">Width:</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${CW_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === CW.w)}" data-act="cwW" data-w="${x}">${x}</button>`).join('')}</div>
+    <div class="muted">Blank:</div><div class="row" style="gap:6px">${btn('cwSide', 'right', 'Right hand blank', CW.side === 'right')}${btn('cwSide', 'left', 'Left hand blank', CW.side === 'left')}</div>
+    <label class="field"><span class="lbl">Door size (mm)</span><input class="input" type="number" min="${CW_MIN_DOOR}" max="${cwDoorMax()}" step="1" value="${cwDoor()}" data-chg="cwDoor"></label>
+    <div class="muted">Blank size: <b>${cwBlank()} x ${cwBlankH()} mm</b> (${CW.w} - ${cwDoor()} - 18.2 wide, ${CW.h} - 36.4 high)</div>
+    <div class="row" style="gap:10px;flex-wrap:wrap">${num('d', 'Depth (mm)', CW.d)}${num('v', 'Void (mm)', CW.v)}</div>
+    ${CW.v < 20 ? `<div style="font-size:13px;line-height:1.5;font-weight:700">Void is under 20: this cabinet will have no wall hangers.</div>` : ''}`;
+}
+function cwCard() {
+  cwClamp();
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="cw" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', CW.h)}${chip('W', CW.w)}${chip('D', CW.d)}${chip('Void', CW.v)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${cwArt({ doors: true })}</div>
+    <div class="row"><div><h3 style="margin:0">Corner Wall Unit</h3><span class="mono">${cwCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="cwMore">More Details ${ic('chevR', 14)}</button></div>
+    ${cwPick(sel)}
+    ${bkRow('cwall')}
+  </article>`;
+}
+function cwDetails() {
+  cwClamp();
+  const w = CW.w, bl = cwBlank(), hangers = CW.v >= 20;
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Wall Units</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(cwArt({ doors: false }), 340)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', cwCode())}${row('Width', w + ' mm')}${row('Height', CW.h + ' mm')}${row('Depth', CW.d + ' mm')}${row('Void', CW.v + ' mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${w}MM CORNER WALL UNIT, ${CW.h} HIGH</h1>
+      <span class="mono">${cwCode()}</span>
+      <p class="muted" style="margin:0">${w}mm wide, ${CW.h}mm high corner wall unit with a ${CW.side} hand blank of ${bl} x ${cwBlankH()}mm.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + cwCode())}${row('BLANK', (CW.side === 'right' ? 'Right' : 'Left') + ' hand, ' + bl + ' mm wide (' + w + ' - ' + cwDoor() + ' - 18.2) x ' + cwBlankH() + ' mm high (' + CW.h + ' - 36.4)')}${row('DOOR SIZE', (cwDoor() - 4) + ' x ' + (CW.h - 5) + ' mm (' + cwDoor() + ' entered, less 4 off the width and 5 off the height)')}${row('HINGES', 'Quantity: 2 x blank corner hinges')}${row('SHELVES', 'Quantity: ' + WALL_SHELVES[CW.h] + ' x shelf' + (WALL_SHELVES[CW.h] === 1 ? '' : 's'))}${row('WALL HANGERS', hangers ? 'Quantity: 2 x hangers, 2 x wall plates, 2 x cover caps' : 'None, the void is under 20')}${row('CABINET COMPONENT', 'Quantity: 1 x blank panel, ' + bl + ' x ' + cwBlankH() + ' mm, carries the door hinges')}</div>
+      ${cwPick(sel)}
+      ${ocDetail(null)}
+      ${bkRow('cwall')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(cwArt({ doors: false, dims: true }), 380)}</div>`;
+}
+const cwRefresh = () => { if (UI.orderCat === 'cwalldetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#cw'); if (el) el.outerHTML = cwCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.cwMore = () => { UI.orderCat = 'cwalldetails'; render(); window.scrollTo(0, 0); };
+A.cwW = t => { CW.w = +t.dataset.w; CW.door = Math.round(CW.w / 2); cwRefresh(); };
+A.cwH = t => { CW.h = +t.dataset.v; cwRefresh(); };
+A.cwSide = t => { CW.side = t.dataset.v; cwRefresh(); };
+CH.cwDoor = t => { let v = Math.round(+t.value); if (!isFinite(v)) v = CW.door; CW.door = Math.min(Math.max(v, CW_MIN_DOOR), cwDoorMax()); cwRefresh(); };
+CH.cwDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = CW[k]; CW[k] = v; cwClamp(); cwRefresh(); };
+const wallCards = () => wallCard(false) + wallCard(true) + cwCard();
 /* Kitchen > All Bases: Corner Base Unit, 800 to 1500 wide. One door, plus a fixed blank panel
    on the right or the left whose width the customer can change. Code is BCHL + width + RB or LB. */
 const CORNER = { w: 1000, side: 'right', door: 500, d: 570, v: 50, carousel: false };
@@ -10144,6 +10242,9 @@ A.bkAdd = t => {
     l = { name: 'L Shape Corner Base Unit', code: lshCode(), w: LSH.rh, d: LSH.d, v: LSH.v, opt: 'Right hand ' + LSH.rh + ' mm, left hand ' + LSH.lh + ' mm, full top, void ' + LSH.v + ' mm, doors ' + lshDoors().rh + ' and ' + lshDoors().lh + ' x ' + lshDoors().h + ' mm, ' + lshHingeText() + ', 8 legs' + (LSH.gola ? ', Gola ' + lshGolaText() : '') };
   } else if (key === 'oven') {
     l = { name: 'Built Under Oven Housing', code: ovenCode(), w: OVEN.w, d: OVEN.d, v: OVEN.v, opt: OVEN.drawer ? 'With ' + OVEN.sys + ' drawer' : 'Without drawer' };
+  } else if (key === 'cwall') {
+    cwClamp();
+    l = { name: 'Corner Wall Unit', code: cwCode(), w: CW.w, h: CW.h, d: CW.d, v: CW.v, opt: (CW.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + cwBlank() + ' x ' + cwBlankH() + ' mm, door ' + (cwDoor() - 4) + ' x ' + (CW.h - 5) + ' mm (' + cwDoor() + ' less 4 width, 5 height), 2 blank corner hinges' + (CW.v >= 20 ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
   } else if (key === 'corner') {
     l = { name: 'Corner Base Unit', code: cornerCode(), w: CORNER.w, d: CORNER.d, v: CORNER.v, opt: (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + cornerBlank() + ' mm, door ' + cornerDoor() + ' mm, 2 blank corner hinges' + (CORNER.carousel ? ', Signature Magic Corner Carousel' : '') };
   } else if (key === 'mtm') {
@@ -10327,6 +10428,7 @@ function cOrders() {
   if (UI.orderCat === 'ovendetails') return ovenDetails();
   if (UI.orderCat === 'lshdetails') return lshDetails();
   if (UI.orderCat === 'walldetails') return wallDetails();
+  if (UI.orderCat === 'cwalldetails') return cwDetails();
   if (UI.orderCat === 'robes') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Bedroom</button>
   <div class="page-head"><div><h1>Hanging Robes</h1><p>Choose a width from 300 to 1200, then the door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -10359,7 +10461,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', walldetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', walldetails: 'walls', cwalldetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
