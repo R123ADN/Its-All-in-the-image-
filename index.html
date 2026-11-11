@@ -9141,15 +9141,15 @@ function baseArt(w, d, h, hinge, vd, opts) {
   q([P(T, yr, d - rf), P(w - T, yr, d - rf), P(w - T, yr, d), P(T, yr, d)], topCol);                                       // front rail, top
   if (o.fullTop) q([P(T, y1, 0), P(w - T, y1, 0), P(w - T, y1, d), P(T, y1, d)], topCol);                                  // a Belfast sink base keeps a full top panel
   [[0, T], [w - T, w]].forEach(([xa, xb]) => {                                                                            // front of each side panel
-    if (!GN) { q([P(xa, y0, d), P(xb, y0, d), P(xb, y1, d), P(xa, y1, d)], baseShade(col, 0.1)); return; }       // gable fronts keep the cabinet colour; only the top and bottom take the edging
+    if (!GN) { q([P(xa, y0, d), P(xb, y0, d), P(xb, y1, d), P(xa, y1, d)], baseShade(eh, 0.1), esw); return; }       // the gable fronts take the edging colour
     let lo = y0;
     NOT.forEach(n => {
-      q([P(xa, lo, d), P(xb, lo, d), P(xb, n.a, d), P(xa, n.a, d)], baseShade(col, 0.1));                                  // front face up to the notch
+      q([P(xa, lo, d), P(xb, lo, d), P(xb, n.a, d), P(xa, n.a, d)], baseShade(eh, 0.1), esw);                              // front face up to the notch
       q([P(xa, n.a, d - n.d), P(xb, n.a, d - n.d), P(xb, n.a, d), P(xa, n.a, d)], topCol);                                  // floor of the notch
       q([P(xa, n.a, d - n.d), P(xb, n.a, d - n.d), P(xb, n.b, d - n.d), P(xa, n.b, d - n.d)], baseShade(col, -0.12));       // back wall of the notch, where the profile sits
       lo = n.b;
     });
-    if (lo < y1) q([P(xa, lo, d), P(xb, lo, d), P(xb, y1, d), P(xa, y1, d)], baseShade(col, 0.1));                     // front face above the last notch
+    if (lo < y1) q([P(xa, lo, d), P(xb, lo, d), P(xb, y1, d), P(xa, y1, d)], baseShade(eh, 0.1), esw);                   // front face above the last notch
   });
   q([P(T, yr - (vRail ? 70 : T), d), P(w - T, yr - (vRail ? 70 : T), d), P(w - T, yr, d), P(T, yr, d)], baseShade(eh, 0.1), esw);   // front rail, face
   q([P(T, y0, zfl), P(w - T, y0, zfl), P(w - T, y0 + T, zfl), P(T, y0 + T, zfl)], baseShade(eh, 0.1), esw);
