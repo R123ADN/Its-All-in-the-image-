@@ -9057,9 +9057,9 @@ function baseArt(w, d, h, hinge, vd, opts) {
   const ym = (y0 + y1) / 2, zs = d - 22;
   const shelf = (xa, xb) => {
     // a robe keeps its shelf near the top, above the hanging rail; a made-to-measure unit spaces o.shelfN shelves evenly
-    const ysList = o.shelfAt != null ? [o.shelfAt] : o.shelfN != null ? Array.from({ length: o.shelfN }, (_, i) => y0 + T + (y1 - y0 - 2 * T) * (i + 1) / (o.shelfN + 1)) : [o.robe ? y1 - T - 300 : ym];
+    const ysList = o.shelfAt != null ? [o.shelfAt] : o.shelfN != null ? Array.from({ length: o.shelfN }, (_, i) => (o.shelfFrom != null ? o.shelfFrom : y0 + T) + (y1 - T - (o.shelfFrom != null ? o.shelfFrom : y0 + T)) * (i + 1) / (o.shelfN + 1)) : [o.robe ? y1 - T - 300 : ym];
     ysList.forEach(ys => {
-      if (o.glass) {                                                                                                     // a glass shelf: clear with a pale green edge
+      if (o.glass || o.glassShelves) {                                                                                   // a glass shelf: clear with a pale green edge
         qg([P(xa, ys, vd), P(xb, ys, vd), P(xb, ys, zs), P(xa, ys, zs)], 0.5);
         qg([P(xa, ys, zs), P(xb, ys, zs), P(xb, ys - 6, zs), P(xa, ys - 6, zs)], 0.85);
       } else {
@@ -9071,7 +9071,29 @@ function baseArt(w, d, h, hinge, vd, opts) {
   };
   const bare = (!o.drawers || o.drawers.h) && !o.bins && !o.trays && !o.wine;     // a drawerline unit still has its shelf and centre posts; a bin unit has neither
   if (bare && !o.noShelf) shelf(T, w - T);
-  if (o.mwFront) {                                                                                                       // microwave unit: a filler, a top hung door or a hinged door across the top section only
+  if (o.bottomDrawers) {                                                                                                  // dresser: drawer fronts across the bottom, one or two rows, one or two across (a divider between two across)
+    const bd = o.bottomDrawers, z = d, g = 3;
+    for (let rr = 0; rr < bd.rows; rr++) {
+      const r = o.noFronts ? bd.rows - 1 - rr : rr, ya = y0 + 2.5 + r * (bd.fh + g), yz = ya + bd.fh;
+      const xs = bd.cols === 2 ? [[2, w / 2 - g / 2], [w / 2 + g / 2, w - 2]] : [[2, w - 2]];
+      xs.forEach(([xa, xb]) => {
+        if (o.noFronts) {                                                                                                // details view: no front, just the drawer box, pulled out of the cabinet
+          const x1 = xa + 13, x2 = xb - 13, yf = ya + 12, bh = 85, bz0 = Math.max(vd, 0) + 15, bz1 = d - 22, ext = Math.round((bz1 - bz0) * 0.8), z0 = bz0 + ext, z1 = bz1 + ext, th = 16;   // the drawer is pulled out 80% of its length, so it stands clear of the cabinet
+          q([P(x1, yf, z0), P(x2, yf, z0), P(x2, yf, z1), P(x1, yf, z1)], baseShade(col, 0.04));                          // box floor
+          q([P(x1, yf, z0), P(x2, yf, z0), P(x2, yf + bh, z0), P(x1, yf + bh, z0)], baseShade(col, -0.22));              // box back
+          q([P(x1, yf, z0), P(x1, yf, z1), P(x1, yf + bh, z1), P(x1, yf + bh, z0)], baseShade(col, -0.1));               // left side, inner face
+          q([P(x2, yf, z0), P(x2, yf, z1), P(x2, yf + bh, z1), P(x2, yf + bh, z0)], baseShade(col, 0.1));                // right side
+          q([P(x1, yf, z1), P(x2, yf, z1), P(x2, yf + bh, z1), P(x1, yf + bh, z1)], baseShade(col, 0.16));              // front of the box, behind where the drawer front goes
+          q([P(x1, yf + bh, z0), P(x1 + th, yf + bh, z0), P(x1 + th, yf + bh, z1), P(x1, yf + bh, z1)], baseShade(col, 0.2), 0.8);   // top edge of the left side
+          q([P(x2 - th, yf + bh, z0), P(x2, yf + bh, z0), P(x2, yf + bh, z1), P(x2 - th, yf + bh, z1)], baseShade(col, 0.2), 0.8); // top edge of the right side
+          return;
+        }
+        q([P(xa, ya, z), P(xb, ya, z), P(xb, yz, z), P(xa, yz, z)], baseShade(col, 0.24), 1.3);
+        q([P(xa + 45, ya + 45, z), P(xb - 45, ya + 45, z), P(xb - 45, yz - 45, z), P(xa + 45, yz - 45, z)], baseShade(col, 0.08), 1);       // shaker panel
+        ln(P((xa + xb) / 2 - 70, yz - 22, z), P((xa + xb) / 2 + 70, yz - 22, z), '#3a3631', 4);                          // handle along the top of the drawer
+      });
+    }
+  }  if (o.mwFront) {                                                                                                       // microwave unit: a filler, a top hung door or a hinged door across the top section only
     const m = o.mwFront, yb = m.yb, yt = y1 - 2.5, xa = 2, xb = w - 2, z = d;
     q([P(xa, yb + 2.5, z), P(xb, yb + 2.5, z), P(xb, yt, z), P(xa, yt, z)], baseShade(col, m.kind === 'filler' ? 0.18 : 0.24), 1.3);
     if (m.kind !== 'filler') {
@@ -9192,7 +9214,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     });
   }
   const door = (hx, sgn, dw, ang) => {
-    const c = Math.cos(ang || TH), s = Math.sin(ang || TH), cl = o.blank && o.blank.inside ? 2.5 : 3, yb = y0 + cl, yt = y1 - cl - (o.gola ? GOLA_CUT.h : 0) - (o.drawers && o.drawers.h ? o.drawers.h + 4 : 0);   // a Gola door stops below the notch; a drawerline unit keeps its drawer above the door
+    const c = Math.cos(ang || TH), s = Math.sin(ang || TH), cl = o.blank && o.blank.inside ? 2.5 : 3, yb = (o.doorFrom != null ? o.doorFrom : y0) + cl, yt = y1 - cl - (o.gola ? GOLA_CUT.h : 0) - (o.drawers && o.drawers.h ? o.drawers.h + 4 : 0);   // a Gola door stops below the notch; a drawerline unit keeps its drawer above the door
     const at = (t, y) => P(hx + sgn * dw * c * t, y, d + dw * s * t);
     const m = Math.min(0.2, 55 / dw);
     if (o.glass) {                                                                                                          // a framed glass door on standard hinges: the cabinet-colour frame round a clear glass panel
@@ -10336,7 +10358,148 @@ A.mwH = t => { MW.h = +t.dataset.v; mwRefresh(); };
 A.mwHand = t => { MW.hand = t.dataset.v; mwRefresh(); };
 A.mwD = t => { MW.d = +t.dataset.v; mwRefresh(); };
 CH.mwDim = t => { const k = t.dataset.k; let val = Math.round(+t.value); if (!isFinite(val)) val = MW[k]; MW[k] = val; mwClamp(); mwRefresh(); };
-const wallCards = () => wallCard(false) + wallCard(true) + cwCard() + lwCard() + dwCard() + mwCard();
+/* Kitchen > All Wall Units: Boiler Wall Housing. One fixed size: 600 wide, 900 high, 400 deep, code WT600BOILER. No back; it still
+   hangs on the wall, so it has 2 wall hangers and 2 wall plates. It always goes out flat pack, with 8 MP and 8 WD, and 2 hinges are supplied with it; there is no door and no door option. */
+const BL = { hinge: 'left' };
+const BL_W = 600, BL_H = 900, BL_D = 400, BL_CODE = 'WT600BOILER';
+const blArt = extra => baseArt(BL_W, BL_D, BL_H, hArt(hingeSide(BL.hinge, BL_W)), 0, Object.assign({ noLegs: true, fullTop: true, noBack: true, noShelf: true, doors: false }, extra));
+const blFittings = () => '8 x MP, 8 x WD';
+function blPick(sel) {
+  const btn = (act, val, text, on) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 auto;min-width:max-content;padding:0 10px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${val}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  return `<div class="muted" style="font-size:13px;line-height:1.5">No back. Supplied flat pack with <b>${blFittings()}</b>, 2 x wall hangers and 2 x wall plates.</div>`;
+}
+function blCard() {
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="bl" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', BL_H)}${chip('W', BL_W)}${chip('D', BL_D)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${blArt()}</div>
+    <div class="row"><div><h3 style="margin:0">Boiler Wall Housing</h3><span class="mono">${BL_CODE}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="blMore">More Details ${ic('chevR', 14)}</button></div>
+    ${blPick(sel)}
+    ${bkRow('blwall')}
+  </article>`;
+}
+function blDetails() {
+  const row = (k, val) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${val}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Wall Units</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(blArt({ doors: false }), 340)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', BL_CODE)}${row('Width', BL_W + ' mm')}${row('Height', BL_H + ' mm')}${row('Depth', BL_D + ' mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">600MM BOILER WALL HOUSING, 900 HIGH</h1>
+      <span class="mono">${BL_CODE}</span>
+      <p class="muted" style="margin:0">600mm wide, 900mm high and 400mm deep boiler housing with no back, supplied flat pack.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + BL_CODE)}${row('SUPPLIED', 'Flat pack')}${row('BACK', 'None')}${row('FITTINGS', 'Quantity: ' + blFittings())}${row('WALL HANGERS', 'Quantity: 2 x wall hangers, 2 x wall plates')}${row('HINGES', 'Quantity: 2 x hinges (supplied)')}${row('CABINET COMPONENT', 'None')}</div>
+      ${blPick(sel)}
+      ${ocDetail(null)}
+      ${bkRow('blwall')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(blArt({ doors: false, dims: true }), 380)}</div>`;
+}
+const blRefresh = () => { if (UI.orderCat === 'blwalldetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#bl'); if (el) el.outerHTML = blCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.blMore = () => { UI.orderCat = 'blwalldetails'; render(); window.scrollTo(0, 0); };
+/* Kitchen > All Wall Units: Dresser. A tall wall-hung unit with a full height door. The height is typed in (standard 1065 = DS, 1210 = DM),
+   widths 300 to 1200, 300 or 330 deep, void 20 (editable). Code: prefix + width + number of doors + DR, then 33D for 330 deep
+   (DS4001DR, DM10002DR, DS6001DR33D). One door up to 600 wide, a pair from 700; no centre post. It can have drawers across the bottom:
+   1 or 2 drawers, and two can sit side by side (not at 300 wide), with an 18mm divider between them. The door then stops above the drawers. */
+const DRS = { h: 1065, w: 600, hinge: 'left', d: 300, v: 20, drawers: 0, layout: 'stacked', sys: 'Antaro', fh: 140, glass: false };
+const DRS_DEPTHS = [300, 330], DRS_H = [600, 1500];
+const DRS_FRONTS = [[140, 'M height, 140 front']];                                 // the only drawer height offered: M height, a 140 front
+const DRS_WIDTHS = [300, 350, 400, 450, 500, 550, 600, 700, 800, 900, 1000, 1100, 1200];
+const drsPrefix = () => DRS.h >= 1210 ? 'DM' : 'DS';                                        // 1065 is DS, 1210 and over is DM
+const drsSide = () => DRS.drawers === 2 && DRS.layout === 'side' && DRS.w > 300;           // two drawers side by side (never at 300 wide)
+const drsRows = () => DRS.drawers === 0 ? 0 : (DRS.drawers === 2 && !drsSide() ? 2 : 1);   // rows of drawers
+const drsCols = () => drsSide() ? 2 : 1;
+const drsClamp = () => { DRS.v = Math.min(100, Math.max(0, DRS.v)); DRS.h = Math.min(DRS_H[1], Math.max(DRS_H[0], DRS.h)); if (DRS.w === 300 && DRS.layout === 'side') DRS.layout = 'stacked'; };
+const drsZone = () => drsRows() === 0 ? 0 : drsRows() * DRS.fh + (drsRows() - 1) * 3;      // height taken by the drawer fronts
+const drsDoorH = () => DRS.h - 5 - (drsRows() ? drsZone() + 3 : 0);                          // the door is the height less 5, less the drawers and a 3mm gap
+const drsPair = () => DRS.w > 600, drsDoors = () => drsPair() ? 2 : 1;
+const drsShelves = () => Math.max(1, Math.floor((DRS.h - drsZone()) / 270));               // about one shelf for every 270mm of height above the drawers
+const drsCode = () => drsPrefix() + DRS.w + drsDoors() + 'DR' + (DRS.d === 330 ? '33D' : '');
+const drsHangers = () => DRS.v >= 20;
+const drsGlassSize = () => ({ w: DRS.w - 43, d: Math.round((DRS.d - (DRS.v + 18.2) - 20) * 10) / 10 });   // glass shelf: width - 43, depth - (void + 18.2 back) - 20 at the front
+const drsGlassText = () => drsShelves() + ' x glass shelf' + (drsShelves() === 1 ? '' : 's') + ', ' + drsGlassSize().w + ' x ' + drsGlassSize().d + ' mm each, ' + drsShelves() * 4 + ' x glass shelf pegs (4 for each shelf)';
+const drsDrawerText = () => DRS.drawers === 0 ? 'No drawers' : drsSide() ? '2 drawers side by side, ' + (DRS.w - 7) / 2 + ' x ' + DRS.fh + ' mm each' : drsRows() === 2 ? '2 drawers, one above the other, ' + (DRS.w - 4) + ' x ' + DRS.fh + ' mm each' : '1 drawer, ' + (DRS.w - 4) + ' x ' + DRS.fh + ' mm';
+const drsArt = extra => {
+  drsClamp();
+  const z = drsRows() ? drsZone() + 2.5 : null;                                              // the top of the drawer fronts: the door starts 3 above it, the first shelf 18 above it
+  return baseArt(DRS.w, DRS.d, DRS.h, hArt(DRS.hinge), DRS.v, Object.assign({ noLegs: true, fullTop: true, pair: drsPair(), noPost: true, shelfN: drsShelves(), glassShelves: DRS.glass,
+    bottomDrawers: drsRows() ? { rows: drsRows(), cols: drsCols(), fh: DRS.fh } : null, doorFrom: z, shelfFrom: z != null ? z + 18 : null }, extra));
+};
+function drsPick(sel) {
+  const btn = (act, val, text, on, dis) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 auto;min-width:max-content;padding:0 10px;font-size:12px;white-space:nowrap;${dis ? 'opacity:.4;pointer-events:none;' : ''}${sel(on)}" data-act="${act}" data-v="${val}" ${dis ? 'disabled' : ''}>${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  return `<label class="field"><span class="lbl">Height (mm, ${DRS_H[0]} to ${DRS_H[1]})</span><input class="input" type="number" min="${DRS_H[0]}" max="${DRS_H[1]}" step="1" value="${DRS.h}" data-chg="drsDim" data-k="h"></label>
+    <div class="muted">Width:</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${DRS_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === DRS.w)}" data-act="drsW" data-w="${x}">${x}</button>`).join('')}</div>
+    <div class="muted">Depth:</div><div class="row" style="gap:6px;flex-wrap:wrap">${DRS_DEPTHS.map(x => btn('drsD', x, x + ' deep', DRS.d === x)).join('')}</div>
+    <div class="muted">Drawers at the bottom:</div><div class="row" style="gap:6px;flex-wrap:wrap">${btn('drsDrawers', 0, 'No drawer', DRS.drawers === 0)}${btn('drsDrawers', 1, '1 drawer', DRS.drawers === 1)}${btn('drsDrawers', 2, '2 drawers', DRS.drawers === 2)}</div>
+    <div class="muted">Shelves:</div><div class="row" style="gap:6px;flex-wrap:wrap">${btn('drsGlass', 'no', 'Standard shelves', !DRS.glass)}${btn('drsGlass', 'yes', 'Glass shelves', DRS.glass)}</div>
+    ${DRS.glass ? `<div class="muted" style="font-size:13px;line-height:1.5">Glass shelf size: <b>${drsGlassSize().w} x ${drsGlassSize().d} mm</b> (width - 43, depth - (void + 18.2) - 20)</div>` : ''}
+    ${DRS.drawers > 0 ? `<div class="muted">Drawer type:</div><div class="row" style="gap:6px;flex-wrap:wrap">${DP_SYSTEMS.map(x => btn('drsSys', x, x, DRS.sys === x)).join('')}</div><div class="muted">Drawer height:</div><div class="row" style="gap:6px;flex-wrap:wrap">${DRS_FRONTS.map(([v, t]) => btn('drsFront', v, t, DRS.fh === v)).join('')}</div>` : ''}
+    ${DRS.drawers === 2 ? `<div class="row" style="gap:6px;flex-wrap:wrap">${btn('drsLayout', 'stacked', 'One above the other', !drsSide())}${btn('drsLayout', 'side', 'Side by side', drsSide(), DRS.w === 300)}</div>${DRS.w === 300 ? '<div class="muted" style="font-size:13px">A 300 wide dresser cannot have drawers side by side.</div>' : ''}` : ''}
+    ${drsPair() ? `<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of full height doors (no centre post).</p>`
+      : `<div class="muted">Hinge:</div><div class="row" style="gap:6px;flex-wrap:wrap">${btn('drsHinge', 'left', 'Left hinge', DRS.hinge === 'left')}${btn('drsHinge', 'right', 'Right hinge', DRS.hinge === 'right')}</div>`}
+    <label class="field"><span class="lbl">Void (mm)</span><input class="input" type="number" min="0" max="100" step="1" value="${DRS.v}" data-chg="drsDim" data-k="v"></label>
+    ${!drsHangers() ? `<div style="font-size:13px;line-height:1.5;font-weight:700">Void is under 20: this cabinet will have no wall hangers.</div>` : ''}`;
+}
+function drsCard() {
+  drsClamp();
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="drs" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', DRS.h)}${chip('W', DRS.w)}${chip('D', DRS.d)}${chip('Void', DRS.v)}</div>
+    <div style="height:300px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${drsArt({ doors: true })}</div>
+    <div class="row"><div><h3 style="margin:0">Dresser</h3><span class="mono">${drsCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="drsMore">More Details ${ic('chevR', 14)}</button></div>
+    ${drsPick(sel)}
+    ${bkRow('dresser')}
+  </article>`;
+}
+function drsDetails() {
+  drsClamp();
+  const n = drsShelves();
+  const row = (k, val) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${val}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const nd = drsRows() * drsCols();
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Wall Units</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(drsArt({ doors: false, noFronts: true }), 400)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', drsCode())}${row('Width', DRS.w + ' mm')}${row('Height', DRS.h + ' mm')}${row('Depth', DRS.d + ' mm')}${row('Void', DRS.v + ' mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${DRS.w}MM DRESSER, ${DRS.h} HIGH</h1>
+      <span class="mono">${drsCode()}</span>
+      <p class="muted" style="margin:0">${DRS.w}mm wide, ${DRS.h}mm high and ${DRS.d}mm deep dresser with ${drsPair() ? 'a pair of full height doors' : 'a full height door'}${nd ? ' and ' + (nd === 1 ? '1 drawer' : nd + ' drawers') + ' at the bottom' : ''}.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + drsCode())}${row('DOORS', drsPair() ? 'Pair of full height doors' : 'Single full height door, ' + DRS.hinge + ' hinge')}${row('DOOR HEIGHT', drsDoorH() + ' mm' + (nd ? ' (cabinet height less 5, less the drawers and a 3 mm gap)' : ' (cabinet height less 5)'))}${row('HINGES', 'Quantity: ' + (drsPair() ? 4 : 2) + ' x hinges')}${nd ? row('DRAWERS', drsDrawerText()) + row('DRAWER SYSTEM', 'Quantity: ' + nd + ' x ' + DRS.sys + ' drawer' + (nd === 1 ? '' : 's') + ', ' + 'M height, ' + DRS.fh + ' mm front') : ''}${row(DRS.glass ? 'GLASS SHELVES' : 'SHELVES', DRS.glass ? 'Quantity: ' + drsGlassText() : 'Quantity: ' + n + ' x shelves')}${row('WALL HANGERS', drsHangers() ? 'Quantity: 2 x hangers, 2 x wall plates, 2 x cover caps' : 'None, the void is under 20')}${row('CABINET COMPONENT', drsSide() ? 'Quantity: 1 x divider, 18 mm, between the two drawers' : 'None')}</div>
+      ${drsPick(sel)}
+      ${ocDetail(null)}
+      ${bkRow('dresser')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(drsArt({ doors: false, noFronts: true, dims: true }), 460)}</div>`;
+}
+const drsRefresh = () => { if (UI.orderCat === 'drsdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#drs'); if (el) el.outerHTML = drsCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.drsMore = () => { UI.orderCat = 'drsdetails'; render(); window.scrollTo(0, 0); };
+A.drsW = t => { DRS.w = +t.dataset.w; drsClamp(); drsRefresh(); };
+A.drsD = t => { DRS.d = +t.dataset.v; drsRefresh(); };
+A.drsHinge = t => { DRS.hinge = t.dataset.v; drsRefresh(); };
+A.drsDrawers = t => { DRS.drawers = +t.dataset.v; drsRefresh(); };
+A.drsGlass = t => { DRS.glass = t.dataset.v === 'yes'; drsRefresh(); };
+A.drsSys = t => { DRS.sys = t.dataset.v; drsRefresh(); };
+A.drsFront = t => { DRS.fh = +t.dataset.v; drsRefresh(); };
+A.drsLayout = t => { DRS.layout = t.dataset.v; drsRefresh(); };
+CH.drsDim = t => { const k = t.dataset.k; let val = Math.round(+t.value); if (!isFinite(val)) val = DRS[k]; DRS[k] = val; drsClamp(); drsRefresh(); };const wallCards = () => wallCard(false) + wallCard(true) + cwCard() + lwCard() + dwCard() + mwCard() + blCard() + drsCard();
 /* Kitchen > All Bases: Corner Base Unit, 800 to 1500 wide. One door, plus a fixed blank panel
    on the right or the left whose width the customer can change. Code is BCHL + width + RB or LB. */
 const CORNER = { w: 1000, side: 'right', door: 500, d: 570, v: 50, carousel: false };
@@ -10521,6 +10684,10 @@ A.bkAdd = t => {
     l = { name: 'L Shape Corner Base Unit', code: lshCode(), w: LSH.rh, d: LSH.d, v: LSH.v, opt: 'Right hand ' + LSH.rh + ' mm, left hand ' + LSH.lh + ' mm, full top, void ' + LSH.v + ' mm, doors ' + lshDoors().rh + ' and ' + lshDoors().lh + ' x ' + lshDoors().h + ' mm, ' + lshHingeText() + ', 8 legs' + (LSH.gola ? ', Gola ' + lshGolaText() : '') };
   } else if (key === 'oven') {
     l = { name: 'Built Under Oven Housing', code: ovenCode(), w: OVEN.w, d: OVEN.d, v: OVEN.v, opt: OVEN.drawer ? 'With ' + OVEN.sys + ' drawer' : 'Without drawer' };
+  } else if (key === 'dresser') {
+    drsClamp();
+    l = { name: 'Dresser', code: drsCode(), w: DRS.w, h: DRS.h, d: DRS.d, v: DRS.v, opt: (drsPair() ? 'Pair of full height doors' : 'Single full height door, ' + DRS.hinge + ' hinge') + ', door height ' + drsDoorH() + ' mm, ' + drsDrawerText().toLowerCase() + (drsRows() ? ', ' + DRS.sys + ' M height' : '') + ', ' + (DRS.glass ? drsGlassText() : drsShelves() + ' x shelves') + ', ' + (drsPair() ? 4 : 2) + ' x hinges' + (drsSide() ? ', 1 x divider' : '') + (drsHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };  } else if (key === 'blwall') {
+    l = { name: 'Boiler Wall Housing', code: BL_CODE, w: BL_W, h: BL_H, d: BL_D, v: 0, opt: 'No back, supplied flat pack, ' + blFittings() + ', 2 x wall hangers, 2 x wall plates' + ', 2 x hinges supplied' };
   } else if (key === 'mwall') {
     mwClamp();
     l = { name: 'Microwave Wall Unit', code: mwCode(), w: 600, h: MW.h, d: MW.d, v: MW.v, opt: 'Microwave opening ' + MW.open + ' mm high with no back behind it, 1 x fixed shelf, ' + mwFrontText().toLowerCase() + ' ' + mwFrontSize() + (mwKind() === 'tophung' ? ', 2 x hinges, 2 x gas stays' : mwKind() === 'door' ? ', ' + MW.hand + ' hinge, 2 x hinges' : '') + (mwHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
@@ -10720,6 +10887,8 @@ function cOrders() {
   if (UI.orderCat === 'lwalldetails') return lwDetails();
   if (UI.orderCat === 'dwalldetails') return dwDetails();
   if (UI.orderCat === 'mwalldetails') return mwDetails();
+  if (UI.orderCat === 'blwalldetails') return blDetails();
+  if (UI.orderCat === 'drsdetails') return drsDetails();
   if (UI.orderCat === 'robes') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Bedroom</button>
   <div class="page-head"><div><h1>Hanging Robes</h1><p>Choose a width from 300 to 1200, then the door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -10752,7 +10921,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', mwalldetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
