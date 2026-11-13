@@ -9049,7 +9049,8 @@ function baseArt(w, d, h, hinge, vd, opts) {
     out.push(`<ellipse cx="${f.x.toFixed(1)}" cy="${f.y.toFixed(1)}" rx="30" ry="15" fill="#0e0e0e"/><ellipse cx="${f.x.toFixed(1)}" cy="${(f.y - 9).toFixed(1)}" rx="24" ry="10" fill="#2a2a2a"/>`);
   });
   const yBack = o.backH != null ? Math.min(y1 - T, y0 + T + o.backH) : y1 - T;                                          // a custom back can be shorter than the cabinet, sitting on the floor
-  if (!o.noBack) q([P(T, y0 + T, vd), P(w - T, y0 + T, vd), P(w - T, yBack, vd), P(T, yBack, vd)], o.backCol || baseShade(col, -0.22));   // back panel, set in by the void
+  const yBackFrom = o.backFrom != null ? o.backFrom : y0 + T;
+  if (!o.noBack) q([P(T, yBackFrom, vd), P(w - T, yBackFrom, vd), P(w - T, yBack, vd), P(T, yBack, vd)], o.backCol || baseShade(col, -0.22));   // backFrom: a back that starts part way up (the microwave unit has none below its shelf)   // back panel, set in by the void
   q(notched(T, y0 + T, y1 - T, vd), baseShade(col, -0.1));                                                              // inside of the left side (with any Gola notches)
   const zfl = o.golaWall ? d - GOLA_WALL_SB : d;                                                                        // a Gola wall unit has its base set back from the front
   q([P(T, y0 + T, vd), P(w - T, y0 + T, vd), P(w - T, y0 + T, zfl), P(T, y0 + T, zfl)], baseShade(col, 0.04));            // floor
@@ -9070,6 +9071,15 @@ function baseArt(w, d, h, hinge, vd, opts) {
   };
   const bare = (!o.drawers || o.drawers.h) && !o.bins && !o.trays && !o.wine;     // a drawerline unit still has its shelf and centre posts; a bin unit has neither
   if (bare && !o.noShelf) shelf(T, w - T);
+  if (o.mwFront) {                                                                                                       // microwave unit: a filler, a top hung door or a hinged door across the top section only
+    const m = o.mwFront, yb = m.yb, yt = y1 - 2.5, xa = 2, xb = w - 2, z = d;
+    q([P(xa, yb + 2.5, z), P(xb, yb + 2.5, z), P(xb, yt, z), P(xa, yt, z)], baseShade(col, m.kind === 'filler' ? 0.18 : 0.24), 1.3);
+    if (m.kind !== 'filler') {
+      q([P(xa + 55, yb + 2.5 + 55, z), P(xb - 55, yb + 2.5 + 55, z), P(xb - 55, yt - 55, z), P(xa + 55, yt - 55, z)], baseShade(col, 0.08), 1);
+      if (m.kind === 'tophung') ln(P(w / 2 - 70, yb + 2.5 + 28, z), P(w / 2 + 70, yb + 2.5 + 28, z), '#3a3631', 4);          // top hung: hinged along the top, the handle sits low on the door
+      else { const hx = m.side === 'right' ? xa + 40 : xb - 40; ln(P(hx, yb + 2.5 + 40, z), P(hx, yb + 2.5 + 160, z), '#3a3631', 4); }
+    }
+  }
   if (!single && o.divider) {     // drawerline over 600: one 18mm divider, base to top and front to back, carrying the runners of the two drawers
     const cm = w / 2 - T / 2, cx = w / 2 + T / 2, yd = o.drawers && o.drawers.h ? y1 - o.drawers.h + 28 : y0 + T;   // hangs from the top down to the drawer box floor, where the runners sit
     q([P(cm, yd, vd), P(cm, yd, d), P(cm, y1, d), P(cm, y1, vd)], baseShade(col, -0.02));                              // side facing the left drawer
@@ -10254,7 +10264,78 @@ A.dwH = t => { DW.h = +t.dataset.v; dwRefresh(); };
 A.dwD = t => { DW.d = +t.dataset.v; dwRefresh(); };
 A.dwHand = t => { DW.hand = t.dataset.v; dwRefresh(); };
 CH.dwVoid = t => { let val = Math.round(+t.value); if (!isFinite(val)) val = DW.v; DW.v = val; dwClamp(); dwRefresh(); };
-const wallCards = () => wallCard(false) + wallCard(true) + cwCard() + lwCard() + dwCard();
+/* Kitchen > All Wall Units: Microwave Wall Unit. 600 wide, 720 or 900 high, 300 or 330 deep, one fixed shelf above the microwave,
+   no back behind the microwave, and a filler (575), a top hung door (720) or a door (900) above it. Codes: WM600MICRO / WT600MICRO, and WM600MICRO33 / WT600MICRO33 for the 330 deep. Void 20. The clear opening for
+   the microwave (the floor to the underside of the shelf) can be changed. */
+const MW = { h: 720, d: 300, v: 20, open: 380, hand: 'left' };
+const MW_HEIGHTS = [575, 720, 900], MW_DEPTHS = [300, 330], MW_OPEN = [280, 600];
+const MW_PANEL = 18.2;
+const mwOpenMax = () => Math.min(MW_OPEN[1], Math.floor(MW.h - 3 * MW_PANEL - 100));        // always leave at least 100 above the shelf for the filler or the door
+const mwClamp = () => { MW.v = Math.min(100, Math.max(0, MW.v)); MW.open = Math.min(mwOpenMax(), Math.max(MW_OPEN[0], MW.open)); };
+/* What closes the top section above the microwave: 575 a filler, 720 a top hung door on a gas stay, 900 a hinged door. It runs from the underside of the shelf to the top of the cabinet; the size is the width less 4 and the height less 5. */
+const mwKind = () => MW.h === 575 ? 'filler' : MW.h === 720 ? 'tophung' : 'door';
+const mwFrontH = () => Math.round((MW.h - MW_PANEL - MW.open - 5) * 10) / 10;
+const mwFrontText = () => mwKind() === 'filler' ? 'Filler panel' : mwKind() === 'tophung' ? 'Top hung door' : 'Door';
+const mwFrontSize = () => (600 - 4) + ' x ' + mwFrontH() + ' mm';
+const mwCode = () => WALL_PREFIX[MW.h] + '600MICRO' + (MW.d === 330 ? '33' : '');
+const mwHangers = () => MW.v >= 20;
+const mwAbove = () => Math.round((MW.h - 3 * MW_PANEL - MW.open) * 10) / 10;                 // clear space above the shelf, up to the top panel
+const mwArt = extra => { mwClamp(); return baseArt(600, MW.d, MW.h, 'left', MW.v, Object.assign({ noLegs: true, fullTop: true, doors: false, shelfAt: 18 + MW.open + 18, backFrom: 18 + MW.open + 18, mwFront: { kind: mwKind(), yb: 18 + MW.open, side: MW.hand } }, extra)); };       // no back below the shelf: the microwave stands in the open
+function mwPick(sel) {
+  const btn = (act, val, text, on) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 auto;min-width:max-content;padding:0 10px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${val}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  const num = (k, label, lo, hi) => `<label class="field" style="flex:1;min-width:110px"><span class="lbl">${label}</span><input class="input" type="number" min="${lo}" max="${hi}" step="1" value="${MW[k]}" data-chg="mwDim" data-k="${k}"></label>`;
+  return `<div class="muted">Height:</div><div class="row" style="gap:6px;flex-wrap:wrap">${MW_HEIGHTS.map(x => btn('mwH', x, x, MW.h === x)).join('')}</div>
+    <div class="muted">Depth:</div><div class="row" style="gap:6px;flex-wrap:wrap">${MW_DEPTHS.map(x => btn('mwD', x, x + ' deep', MW.d === x)).join('')}</div>
+    <div class="row" style="gap:10px;flex-wrap:wrap">${num('open', 'Microwave opening height (mm)', MW_OPEN[0], mwOpenMax())}${num('v', 'Void (mm)', 0, 100)}</div>
+    ${MW.h === 900 ? `<div class="muted">Door hinge:</div><div class="row" style="gap:6px;flex-wrap:wrap">${btn('mwHand', 'left', 'Left hinge', MW.hand === 'left')}${btn('mwHand', 'right', 'Right hinge', MW.hand === 'right')}</div>` : ''}
+    <div class="muted" style="font-size:13px;line-height:1.5">Microwave opening <b>${MW.open} mm</b> high, no back behind it. Above the shelf: <b>${mwFrontText().toLowerCase()} ${mwFrontSize()}</b>${mwKind() === 'tophung' ? ', with a gas stay' : ''}.</div>
+    ${!mwHangers() ? `<div style="font-size:13px;line-height:1.5;font-weight:700">Void is under 20: this cabinet will have no wall hangers.</div>` : ''}`;
+}
+function mwCard() {
+  mwClamp();
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="mw" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', MW.h)}${chip('W', 600)}${chip('D', MW.d)}${chip('Void', MW.v)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${mwArt()}</div>
+    <div class="row"><div><h3 style="margin:0">Microwave Wall Unit</h3><span class="mono">${mwCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="mwMore">More Details ${ic('chevR', 14)}</button></div>
+    ${mwPick(sel)}
+    ${bkRow('mwall')}
+  </article>`;
+}
+function mwDetails() {
+  mwClamp();
+  const row = (k, val) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${val}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Wall Units</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(mwArt(), 340)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', mwCode())}${row('Width', '600 mm')}${row('Height', MW.h + ' mm')}${row('Depth', MW.d + ' mm')}${row('Void', MW.v + ' mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">600MM MICROWAVE WALL UNIT, ${MW.h} HIGH</h1>
+      <span class="mono">${mwCode()}</span>
+      <p class="muted" style="margin:0">600mm wide, ${MW.h}mm high and ${MW.d}mm deep microwave wall unit with a fixed shelf, open below it for the microwave.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + mwCode())}${row('MICROWAVE OPENING', MW.open + ' mm high, open at the back, ' + mwAbove() + ' mm clear above the shelf')}${row(mwFrontText().toUpperCase(), mwFrontSize() + (mwKind() === 'door' ? ', ' + MW.hand + ' hinge' : '') + (mwKind() === 'filler' ? ', above the microwave' : ''))}${mwKind() === 'filler' ? '' : row('HINGES', 'Quantity: 2 x hinges' + (mwKind() === 'tophung' ? ' (top hung, along the top of the door)' : ''))}${mwKind() === 'tophung' ? row('GAS STAY', 'Quantity: 2 x gas stays (one each side)') : ''}${row('SHELF', 'Quantity: 1 x fixed shelf')}${row('WALL HANGERS', mwHangers() ? 'Quantity: 2 x hangers, 2 x wall plates, 2 x cover caps' : 'None, the void is under 20')}${row('CABINET COMPONENT', 'None')}</div>
+      ${mwPick(sel)}
+      ${ocDetail(null)}
+      ${bkRow('mwall')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(mwArt({ dims: true }), 380)}</div>`;
+}
+const mwRefresh = () => { if (UI.orderCat === 'mwalldetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#mw'); if (el) el.outerHTML = mwCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.mwMore = () => { UI.orderCat = 'mwalldetails'; render(); window.scrollTo(0, 0); };
+A.mwH = t => { MW.h = +t.dataset.v; mwRefresh(); };
+A.mwHand = t => { MW.hand = t.dataset.v; mwRefresh(); };
+A.mwD = t => { MW.d = +t.dataset.v; mwRefresh(); };
+CH.mwDim = t => { const k = t.dataset.k; let val = Math.round(+t.value); if (!isFinite(val)) val = MW[k]; MW[k] = val; mwClamp(); mwRefresh(); };
+const wallCards = () => wallCard(false) + wallCard(true) + cwCard() + lwCard() + dwCard() + mwCard();
 /* Kitchen > All Bases: Corner Base Unit, 800 to 1500 wide. One door, plus a fixed blank panel
    on the right or the left whose width the customer can change. Code is BCHL + width + RB or LB. */
 const CORNER = { w: 1000, side: 'right', door: 500, d: 570, v: 50, carousel: false };
@@ -10439,6 +10520,9 @@ A.bkAdd = t => {
     l = { name: 'L Shape Corner Base Unit', code: lshCode(), w: LSH.rh, d: LSH.d, v: LSH.v, opt: 'Right hand ' + LSH.rh + ' mm, left hand ' + LSH.lh + ' mm, full top, void ' + LSH.v + ' mm, doors ' + lshDoors().rh + ' and ' + lshDoors().lh + ' x ' + lshDoors().h + ' mm, ' + lshHingeText() + ', 8 legs' + (LSH.gola ? ', Gola ' + lshGolaText() : '') };
   } else if (key === 'oven') {
     l = { name: 'Built Under Oven Housing', code: ovenCode(), w: OVEN.w, d: OVEN.d, v: OVEN.v, opt: OVEN.drawer ? 'With ' + OVEN.sys + ' drawer' : 'Without drawer' };
+  } else if (key === 'mwall') {
+    mwClamp();
+    l = { name: 'Microwave Wall Unit', code: mwCode(), w: 600, h: MW.h, d: MW.d, v: MW.v, opt: 'Microwave opening ' + MW.open + ' mm high with no back behind it, 1 x fixed shelf, ' + mwFrontText().toLowerCase() + ' ' + mwFrontSize() + (mwKind() === 'tophung' ? ', 2 x hinges, 2 x gas stays' : mwKind() === 'door' ? ', ' + MW.hand + ' hinge, 2 x hinges' : '') + (mwHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
   } else if (key === 'dwall') {
     dwClamp();
     l = { name: 'Diagonal Wall Unit', code: dwCode(), w: 600, h: DW.h, d: DW.d, v: DW.v, opt: 'Right hand width 600 mm, left hand width 600 mm, diagonal front, ' + DW.hand + ' hinge, door ' + dwDoor().h + ' x ' + dwDoor().w + ' mm, ' + WALL_SHELVES[DW.h] + ' x shelves, 2 x hinges' + (dwHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
@@ -10634,6 +10718,7 @@ function cOrders() {
   if (UI.orderCat === 'cwalldetails') return cwDetails();
   if (UI.orderCat === 'lwalldetails') return lwDetails();
   if (UI.orderCat === 'dwalldetails') return dwDetails();
+  if (UI.orderCat === 'mwalldetails') return mwDetails();
   if (UI.orderCat === 'robes') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Bedroom</button>
   <div class="page-head"><div><h1>Hanging Robes</h1><p>Choose a width from 300 to 1200, then the door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -10666,7 +10751,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', mwalldetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
