@@ -9071,6 +9071,11 @@ function baseArt(w, d, h, hinge, vd, opts) {
   };
   const bare = (!o.drawers || o.drawers.h) && !o.bins && !o.trays && !o.wine;     // a drawerline unit still has its shelf and centre posts; a bin unit has neither
   if (bare && !o.noShelf) shelf(T, w - T);
+  if (o.fixedShelfAt != null) {                                                                                           // a fixed shelf, full depth to the front, sitting on top of the drawers
+    const ys = o.fixedShelfAt;
+    q([P(T, ys, vd), P(w - T, ys, vd), P(w - T, ys, d), P(T, ys, d)], baseShade(col, 0.12));
+    q([P(T, ys, d), P(w - T, ys, d), P(w - T, ys - T, d), P(T, ys - T, d)], baseShade(col, -0.05));                       // its front edge: the cabinet colour
+  }
   if (o.bottomDrawers) {                                                                                                  // dresser: drawer fronts across the bottom, one or two rows, one or two across (a divider between two across)
     const bd = o.bottomDrawers, z = d, g = 3;
     for (let rr = 0; rr < bd.rows; rr++) {
@@ -10425,6 +10430,7 @@ const drsPair = () => DRS.w > 600, drsDoors = () => drsPair() ? 2 : 1;
 const drsShelves = () => Math.max(1, Math.floor((DRS.h - drsZone()) / 270));               // about one shelf for every 270mm of height above the drawers
 const drsCode = () => drsPrefix() + DRS.w + drsDoors() + 'DR' + (DRS.d === 330 ? '33D' : '');
 const drsHangers = () => DRS.v >= 20;
+const drsFixedShelf = () => ({ w: Math.round((DRS.w - 2 * 18.2) * 10) / 10, d: Math.round((DRS.d - (DRS.v + 18.2)) * 10) / 10 });   // fixed shelf over the drawers: between the gables, from the back to the front
 const drsGlassSize = () => ({ w: DRS.w - 43, d: Math.round((DRS.d - (DRS.v + 18.2) - 20) * 10) / 10 });   // glass shelf: width - 43, depth - (void + 18.2 back) - 20 at the front
 const drsGlassText = () => drsShelves() + ' x glass shelf' + (drsShelves() === 1 ? '' : 's') + ', ' + drsGlassSize().w + ' x ' + drsGlassSize().d + ' mm each, ' + drsShelves() * 4 + ' x glass shelf pegs (4 for each shelf)';
 const drsDrawerText = () => DRS.drawers === 0 ? 'No drawers' : drsSide() ? '2 drawers side by side, ' + (DRS.w - 7) / 2 + ' x ' + DRS.fh + ' mm each' : drsRows() === 2 ? '2 drawers, one above the other, ' + (DRS.w - 4) + ' x ' + DRS.fh + ' mm each' : '1 drawer, ' + (DRS.w - 4) + ' x ' + DRS.fh + ' mm';
@@ -10432,7 +10438,7 @@ const drsArt = extra => {
   drsClamp();
   const z = drsRows() ? drsZone() + 2.5 : null;                                              // the top of the drawer fronts: the door starts 3 above it, the first shelf 18 above it
   return baseArt(DRS.w, DRS.d, DRS.h, hArt(DRS.hinge), DRS.v, Object.assign({ noLegs: true, fullTop: true, pair: drsPair(), noPost: true, shelfN: drsShelves(), glassShelves: DRS.glass,
-    bottomDrawers: drsRows() ? { rows: drsRows(), cols: drsCols(), fh: DRS.fh } : null, doorFrom: z, shelfFrom: z != null ? z + 18 : null }, extra));
+    bottomDrawers: drsRows() ? { rows: drsRows(), cols: drsCols(), fh: DRS.fh } : null, doorFrom: z, fixedShelfAt: z != null ? z + 5 + 18 : null, shelfFrom: z != null ? z + 5 + 18 : null }, extra));
 };
 function drsPick(sel) {
   const btn = (act, val, text, on, dis) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 auto;min-width:max-content;padding:0 10px;font-size:12px;white-space:nowrap;${dis ? 'opacity:.4;pointer-events:none;' : ''}${sel(on)}" data-act="${act}" data-v="${val}" ${dis ? 'disabled' : ''}>${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
@@ -10480,7 +10486,7 @@ function drsDetails() {
       <span class="mono">${drsCode()}</span>
       <p class="muted" style="margin:0">${DRS.w}mm wide, ${DRS.h}mm high and ${DRS.d}mm deep dresser with ${drsPair() ? 'a pair of full height doors' : 'a full height door'}${nd ? ' and ' + (nd === 1 ? '1 drawer' : nd + ' drawers') + ' at the bottom' : ''}.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + drsCode())}${row('DOORS', drsPair() ? 'Pair of full height doors' : 'Single full height door, ' + DRS.hinge + ' hinge')}${row('DOOR HEIGHT', drsDoorH() + ' mm' + (nd ? ' (cabinet height less 5, less the drawers and a 3 mm gap)' : ' (cabinet height less 5)'))}${row('HINGES', 'Quantity: ' + (drsPair() ? 4 : 2) + ' x hinges')}${nd ? row('DRAWERS', drsDrawerText()) + row('DRAWER SYSTEM', 'Quantity: ' + nd + ' x ' + DRS.sys + ' drawer' + (nd === 1 ? '' : 's') + ', ' + 'M height, ' + DRS.fh + ' mm front') : ''}${row(DRS.glass ? 'GLASS SHELVES' : 'SHELVES', DRS.glass ? 'Quantity: ' + drsGlassText() : 'Quantity: ' + n + ' x shelves')}${row('WALL HANGERS', drsHangers() ? 'Quantity: 2 x hangers, 2 x wall plates, 2 x cover caps' : 'None, the void is under 20')}${row('CABINET COMPONENT', drsSide() ? 'Quantity: 1 x divider, 18 mm, between the two drawers' : 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + drsCode())}${row('DOORS', drsPair() ? 'Pair of full height doors' : 'Single full height door, ' + DRS.hinge + ' hinge')}${row('DOOR HEIGHT', drsDoorH() + ' mm' + (nd ? ' (cabinet height less 5, less the drawers and a 3 mm gap)' : ' (cabinet height less 5)'))}${row('HINGES', 'Quantity: ' + (drsPair() ? 4 : 2) + ' x hinges')}${nd ? row('FIXED SHELF', 'Quantity: 1 x fixed shelf on top of the drawers, ' + drsFixedShelf().w + ' x ' + drsFixedShelf().d + ' mm') + row('DRAWERS', drsDrawerText()) + row('DRAWER SYSTEM', 'Quantity: ' + nd + ' x ' + DRS.sys + ' drawer' + (nd === 1 ? '' : 's') + ', ' + 'M height, ' + DRS.fh + ' mm front') : ''}${row(DRS.glass ? 'GLASS SHELVES' : 'SHELVES', DRS.glass ? 'Quantity: ' + drsGlassText() : 'Quantity: ' + n + ' x shelves')}${row('WALL HANGERS', drsHangers() ? 'Quantity: 2 x hangers, 2 x wall plates, 2 x cover caps' : 'None, the void is under 20')}${row('CABINET COMPONENT', drsSide() ? 'Quantity: 1 x divider, 18 mm, between the two drawers' : 'None')}</div>
       ${drsPick(sel)}
       ${ocDetail(null)}
       ${bkRow('dresser')}
@@ -10686,7 +10692,7 @@ A.bkAdd = t => {
     l = { name: 'Built Under Oven Housing', code: ovenCode(), w: OVEN.w, d: OVEN.d, v: OVEN.v, opt: OVEN.drawer ? 'With ' + OVEN.sys + ' drawer' : 'Without drawer' };
   } else if (key === 'dresser') {
     drsClamp();
-    l = { name: 'Dresser', code: drsCode(), w: DRS.w, h: DRS.h, d: DRS.d, v: DRS.v, opt: (drsPair() ? 'Pair of full height doors' : 'Single full height door, ' + DRS.hinge + ' hinge') + ', door height ' + drsDoorH() + ' mm, ' + drsDrawerText().toLowerCase() + (drsRows() ? ', ' + DRS.sys + ' M height' : '') + ', ' + (DRS.glass ? drsGlassText() : drsShelves() + ' x shelves') + ', ' + (drsPair() ? 4 : 2) + ' x hinges' + (drsSide() ? ', 1 x divider' : '') + (drsHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };  } else if (key === 'blwall') {
+    l = { name: 'Dresser', code: drsCode(), w: DRS.w, h: DRS.h, d: DRS.d, v: DRS.v, opt: (drsPair() ? 'Pair of full height doors' : 'Single full height door, ' + DRS.hinge + ' hinge') + ', door height ' + drsDoorH() + ' mm, ' + drsDrawerText().toLowerCase() + (drsRows() ? ', ' + DRS.sys + ' M height, 1 x fixed shelf on top of the drawers' : '') + ', ' + (DRS.glass ? drsGlassText() : drsShelves() + ' x shelves') + ', ' + (drsPair() ? 4 : 2) + ' x hinges' + (drsSide() ? ', 1 x divider' : '') + (drsHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };  } else if (key === 'blwall') {
     l = { name: 'Boiler Wall Housing', code: BL_CODE, w: BL_W, h: BL_H, d: BL_D, v: 0, opt: 'No back, supplied flat pack, ' + blFittings() + ', 2 x wall hangers, 2 x wall plates' + ', 2 x hinges supplied' };
   } else if (key === 'mwall') {
     mwClamp();
