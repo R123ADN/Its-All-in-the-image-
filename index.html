@@ -10267,28 +10267,29 @@ CH.dwVoid = t => { let val = Math.round(+t.value); if (!isFinite(val)) val = DW.
 /* Kitchen > All Wall Units: Microwave Wall Unit. 600 wide, 720 or 900 high, 300 or 330 deep, one fixed shelf above the microwave,
    no back behind the microwave, and a filler (575), a top hung door (720) or a door (900) above it. Codes: WM600MICRO / WT600MICRO, and WM600MICRO33 / WT600MICRO33 for the 330 deep. Void 20. The clear opening for
    the microwave (the floor to the underside of the shelf) can be changed. */
-const MW = { h: 720, d: 300, v: 20, open: 380, hand: 'left' };
+const MW_OPENING = 404.7;                                  // the internal gap for the microwave: the same on every microwave unit, not changeable
+const MW = { h: 720, d: 300, v: 20, open: MW_OPENING, hand: 'left' };
 const MW_HEIGHTS = [575, 720, 900], MW_DEPTHS = [300, 330], MW_OPEN = [280, 600];
 const MW_PANEL = 18.2;
 const mwOpenMax = () => Math.min(MW_OPEN[1], Math.floor(MW.h - 3 * MW_PANEL - 100));        // always leave at least 100 above the shelf for the filler or the door
-const mwClamp = () => { MW.v = Math.min(100, Math.max(0, MW.v)); MW.open = Math.min(mwOpenMax(), Math.max(MW_OPEN[0], MW.open)); };
-/* What closes the top section above the microwave: 575 a filler, 720 a top hung door on a gas stay, 900 a hinged door. It runs from the underside of the shelf to the top of the cabinet; the size is the width less 4 and the height less 5. */
+const mwClamp = () => { MW.v = Math.min(100, Math.max(0, MW.v)); MW.open = MW_OPENING; };
+/* What closes the top section above the microwave: 575 a filler, 720 a top hung door on a gas stay, 900 a hinged door. It sits on the cabinet, not inside it: the width is 600 less 4, the height is the gap above the shelf + the 18.2 top panel + 4 (720 high: 283). */
 const mwKind = () => MW.h === 575 ? 'filler' : MW.h === 720 ? 'tophung' : 'door';
-const mwFrontH = () => Math.round((MW.h - MW_PANEL - MW.open - 5) * 10) / 10;
+const mwFrontH = () => Math.round(mwAbove() + MW_PANEL + 4);                         // the front sits ON the cabinet: the gap above the shelf + the 18.2 top panel + 4, so 720 high gives 260.7 + 18.2 + 4 = 283
 const mwFrontText = () => mwKind() === 'filler' ? 'Filler panel' : mwKind() === 'tophung' ? 'Top hung door' : 'Door';
 const mwFrontSize = () => (600 - 4) + ' x ' + mwFrontH() + ' mm';
 const mwCode = () => WALL_PREFIX[MW.h] + '600MICRO' + (MW.d === 330 ? '33' : '');
 const mwHangers = () => MW.v >= 20;
 const mwAbove = () => Math.round((MW.h - 3 * MW_PANEL - MW.open) * 10) / 10;                 // clear space above the shelf, up to the top panel
-const mwArt = extra => { mwClamp(); return baseArt(600, MW.d, MW.h, 'left', MW.v, Object.assign({ noLegs: true, fullTop: true, doors: false, shelfAt: 18 + MW.open + 18, backFrom: 18 + MW.open + 18, mwFront: { kind: mwKind(), yb: 18 + MW.open, side: MW.hand } }, extra)); };       // no back below the shelf: the microwave stands in the open
+const mwArt = extra => { mwClamp(); return baseArt(600, MW.d, MW.h, 'left', MW.v, Object.assign({ noLegs: true, fullTop: true, doors: false, shelfAt: 18 + MW.open + 18, backFrom: 18 + MW.open + 18, mwFront: { kind: mwKind(), yb: MW.h - 5 - mwFrontH(), side: MW.hand } }, extra)); };       // no back below the shelf: the microwave stands in the open
 function mwPick(sel) {
   const btn = (act, val, text, on) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 auto;min-width:max-content;padding:0 10px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${val}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
   const num = (k, label, lo, hi) => `<label class="field" style="flex:1;min-width:110px"><span class="lbl">${label}</span><input class="input" type="number" min="${lo}" max="${hi}" step="1" value="${MW[k]}" data-chg="mwDim" data-k="${k}"></label>`;
   return `<div class="muted">Height:</div><div class="row" style="gap:6px;flex-wrap:wrap">${MW_HEIGHTS.map(x => btn('mwH', x, x, MW.h === x)).join('')}</div>
     <div class="muted">Depth:</div><div class="row" style="gap:6px;flex-wrap:wrap">${MW_DEPTHS.map(x => btn('mwD', x, x + ' deep', MW.d === x)).join('')}</div>
-    <div class="row" style="gap:10px;flex-wrap:wrap">${num('open', 'Microwave opening height (mm)', MW_OPEN[0], mwOpenMax())}${num('v', 'Void (mm)', 0, 100)}</div>
+    <div class="row" style="gap:10px;flex-wrap:wrap">${num('v', 'Void (mm)', 0, 100)}</div>
     ${MW.h === 900 ? `<div class="muted">Door hinge:</div><div class="row" style="gap:6px;flex-wrap:wrap">${btn('mwHand', 'left', 'Left hinge', MW.hand === 'left')}${btn('mwHand', 'right', 'Right hinge', MW.hand === 'right')}</div>` : ''}
-    <div class="muted" style="font-size:13px;line-height:1.5">Microwave opening <b>${MW.open} mm</b> high, no back behind it. Above the shelf: <b>${mwFrontText().toLowerCase()} ${mwFrontSize()}</b>${mwKind() === 'tophung' ? ', with a gas stay' : ''}.</div>
+    <div class="muted" style="font-size:13px;line-height:1.5">Microwave opening (internal gap) <b>${MW.open} mm</b>, no back behind it. Above the shelf: <b>${mwFrontText().toLowerCase()} ${mwFrontSize()}</b>${mwKind() === 'tophung' ? ', with a gas stay' : ''}.</div>
     ${!mwHangers() ? `<div style="font-size:13px;line-height:1.5;font-weight:700">Void is under 20: this cabinet will have no wall hangers.</div>` : ''}`;
 }
 function mwCard() {
