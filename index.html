@@ -8769,10 +8769,16 @@ function cQuotes() {
 function cqTable() {
   const f = UI.filters.cq, list = filterQuotes(DB.quotes.filter(q => q.customerId === me().id), f), size = 8;
   const page = Math.min(f.page, Math.max(1, Math.ceil(list.length / size)));
-  return `<div class="tbl-wrap"><table class="tbl">${custHead}<tbody>${custQuoteRows(list.slice((page - 1) * size, page * size), 'c-quote')}</tbody></table></div>${pager(list.length, page, size, 'cqPage')}`;
+  const ol = (DB.orders || []).filter(o => o.customerId === me().id && (!f.status || o.status === f.status) && (!f.s || (o.number + ' ' + (o.reference || '')).toLowerCase().includes(String(f.s).toLowerCase()))).sort((a, b) => String(b.submitted).localeCompare(String(a.submitted)));
+  const tab = f.tab || (ol.length ? 'orders' : 'quotes');
+  const tabs = `<div class="row" style="gap:6px;padding:10px 12px 0"><button class="btn ${tab === 'orders' ? 'btn-primary' : 'btn-secondary'} btn-sm" data-act="cqTab" data-tab="orders">Orders <span class="tag">${ol.length}</span></button><button class="btn ${tab === 'quotes' ? 'btn-primary' : 'btn-secondary'} btn-sm" data-act="cqTab" data-tab="quotes">Quotes <span class="tag">${list.length}</span></button></div>`;
+  const ordBlock = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Order</th><th>Reference</th><th>Submitted</th><th class="num">Cabinets</th><th>Status</th></tr></thead><tbody>${ol.map(o => `<tr class="click" data-act="go" data-to="c-orderdone:${o.id}"><td class="mono strong">${esc(o.number)}</td><td>${esc(o.reference || '—')}</td><td class="tnum">${esc(fmtDT(o.submitted))}</td><td class="num strong">${o.units.length}</td><td>${pill(o.status)}</td></tr>`).join('') || `<tr><td colspan="5"><div class="empty"><h4>No orders yet</h4><p>Orders you submit from New Orders appear here.</p></div></td></tr>`}</tbody></table></div>`;
+  if (tab === 'orders') return tabs + ordBlock;
+  return `${tabs}<div class="tbl-wrap"><table class="tbl">${custHead}<tbody>${custQuoteRows(list.slice((page - 1) * size, page * size), 'c-quote')}</tbody></table></div>${pager(list.length, page, size, 'cqPage')}`;
 }
 IN.cqf = t => { UI.filters.cq[t.dataset.k] = t.value; UI.filters.cq.page = 1; $('#cqTable').innerHTML = cqTable(); };
 CH.cqf = IN.cqf;
+A.cqTab = t => { UI.filters.cq.tab = t.dataset.tab; $('#cqTable').innerHTML = cqTable(); };
 A.cqPage = t => { UI.filters.cq.page = +t.dataset.p; $('#cqTable').innerHTML = cqTable(); };
 
 /* ---------- shared quote blocks ---------- */
@@ -10123,7 +10129,7 @@ CH.cwDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFi
 /* Kitchen > All Wall Units: L Shape Corner Wall Unit. The same L as the L shape base: a right hand wing and a left hand wing,
    each with its own door, one L shaped shelf and a full top. The door formula is the base one: gable width - depth - 22 - 4
    wide, cabinet height - 5 high. Heights 575, 720 and 900 give WS, WM and WT, then right hand width x left hand width. */
-const LW = { h: 720, rh: 700, lh: 700, d: 300, v: 20, hinge: '155', hand: 'right' };
+const LW = { h: 720, rh: 600, lh: 600, d: 300, v: 20, hinge: '155', hand: 'right' };
 const LW_LIM = { rh: [500, 1500], lh: [500, 1500], d: [300, 600], v: [0, 100] };
 const lwClamp = () => {
   LW.d = Math.min(LW_LIM.d[1], Math.max(LW_LIM.d[0], LW.d));
@@ -10815,11 +10821,12 @@ A.bkAdd = t => {
     l = { name: 'Single Sink Base Unit', code: sinkCode(SINK.w), w: SINK.w, d: SINK.d, v: SINK.v, opt: (SINK.w <= 600 ? hingeText(SINK.hinge, SINK.w) : 'Pair of doors') + ', ' + SINK.rail + ' front top rail' + (SINK.liner ? ', sink liner' : '') + (SINK.backOff ? ', removable back' : '') + (SINK.gola ? ', Gola J profile cut-out ' + GOLA_CUT.d + ' x ' + GOLA_CUT.h + ' mm' : '') };
   } else if (key === 'robe') {
     const it = robeWidths().find(i => i.w === ROBE.w) || robeWidths()[0]; if (!it) return;
-    l = { name: 'Single Hanging Robe', code: it.code, w: +it.w, d: ROBE.d, v: ROBE.v, opt: +it.w <= 600 ? ROBE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+    l = { name: 'Single Hanging Robe', code: it.code, w: +it.w, h: +it.h || 2150, d: ROBE.d, v: ROBE.v, opt: +it.w <= 600 ? ROBE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
   } else {
     const id = key.slice(3), tp = dpType(id), s = DPK[id]; if (!tp) return;
     l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers' + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
+  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
   Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? webGroup(col.group) : '', edging: ocEdgeText() });
@@ -10837,7 +10844,7 @@ A.bkClear = () => confirmBox('Empty the basket?', 'Every item will be removed fr
 /* A basket line with a quantity of 5 becomes 5 separate units, numbered through the whole order. */
 function ordUnits(lines) {
   const out = []; let n = 0;
-  (lines || []).forEach(l => { for (let i = 0; i < (+l.qty || 1); i++) { n++; out.push({ n, name: l.name, code: l.code, w: l.w, h: l.h || null, d: l.d, v: l.v, opt: l.opt, colour: l.colour, group: l.group, edging: l.edging }); } });
+  (lines || []).forEach(l => { for (let i = 0; i < (+l.qty || 1); i++) { n++; out.push({ n, name: l.name, code: l.code, w: l.w, h: l.h || null, d: l.d, v: l.v, opt: l.opt, colour: l.colour, group: l.group, edging: l.edging, edgeType: l.edgeType, edgeColour: l.edgeColour, spec: l.spec }); } });
   return out;
 }
 function ordSummary(units) {
@@ -10925,7 +10932,7 @@ A.orderSubmit = () => {
 function cOrderDone(id) {
   const o = (DB.orders || []).find(x => x.id === id);
   if (!o) return `<div class="empty"><h4>Order not found</h4><button class="btn btn-primary" data-act="orders">Go to New Orders</button></div>`;
-  return `<div class="page-head"><div><h1>Order submitted</h1><p>Thank you. Your order <b class="mono">${esc(o.number)}</b> has been sent to the factory.</p></div><div class="actions"><button class="btn btn-secondary" data-act="orderPdf" data-id="${o.id}">${ic('download', 15)} Download PDF</button><button class="btn btn-primary" data-act="orders">${ic('plus', 16)} Start another order</button></div></div>
+  return `<button class="btn btn-ghost btn-sm" data-act="go" data-to="c-quotes" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} My Quotes</button><div class="page-head"><div><h1>Order ${esc(o.number)}</h1><p>Thank you. Your order <b class="mono">${esc(o.number)}</b> has been sent to the factory.</p></div><div class="actions"><button class="btn btn-secondary" data-act="orderPdf" data-id="${o.id}">${ic('download', 15)} Download PDF</button><button class="btn btn-primary" data-act="orders">${ic('plus', 16)} Start another order</button></div></div>
   <div class="stack" style="gap:20px">${ordSummaryCard(o, o.units)}<section class="card"><div class="card-head"><h3>Cabinets</h3><span class="spacer"></span><span class="tag">${o.units.length}</span></div>${ordUnitsTable(o.units)}</section></div>`;
 }
 /* admin: all orders, and one order */
@@ -10940,7 +10947,7 @@ function aOrder(id) {
   const o = (DB.orders || []).find(x => x.id === id);
   if (!o) return `<div class="empty"><h4>Order not found</h4><button class="btn btn-secondary btn-sm" data-act="go" data-to="a-orderlist">Back to orders</button></div>`;
   const steps = ORD_FLOW.map(s => `<button class="btn ${o.status === s ? 'btn-primary' : 'btn-secondary'} btn-sm" data-act="ordStatus" data-id="${o.id}" data-s="${s}">${s}</button>`).join('') + `<button class="btn ${o.status === 'Rejected' ? 'btn-danger' : 'btn-secondary'} btn-sm" data-act="ordStatus" data-id="${o.id}" data-s="Rejected">Rejected</button>`;
-  const actions = `<div class="stack" style="gap:10px"><h4 style="margin:0">Status</h4><div class="row" style="gap:6px;flex-wrap:wrap">${steps}</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-act="orderPdf" data-id="${o.id}">${ic('download', 15)} Download PDF</button><button class="btn btn-secondary btn-sm" data-act="ordCsv" data-id="${o.id}">${ic('download', 15)} Download cabinets (CSV)</button></div></div>
+  const actions = `<div class="stack" style="gap:10px"><h4 style="margin:0">Status</h4><div class="row" style="gap:6px;flex-wrap:wrap">${steps}</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-act="orderPdf" data-id="${o.id}">${ic('download', 15)} Download PDF</button><button class="btn btn-secondary btn-sm" data-act="orderPo" data-id="${o.id}">${ic('download', 15)} Purchase Order (PDF)</button><button class="btn btn-secondary btn-sm" data-act="ordCsv" data-id="${o.id}">${ic('download', 15)} Download cabinets (CSV)</button></div></div>
     <div><h4 style="margin:0 0 6px">Timeline</h4>${o.timeline.slice().reverse().map(t => `<div class="muted" style="font-size:13px">${esc(fmtDT(t.at))} · ${esc(t.text)}${t.by ? ' · ' + esc(t.by) : ''}</div>`).join('')}</div>`;
   return `<button class="btn btn-ghost btn-sm" data-act="go" data-to="a-orderlist" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Orders</button>
   <div class="page-head"><div><h1>Order ${esc(o.number)}</h1><p>${esc(ordCustomer(o).company)} · ${o.units.length} cabinet${o.units.length === 1 ? '' : 's'}</p></div></div>
@@ -11009,40 +11016,41 @@ function pdfLogo(doc, cx, y) {
   if (o.notes) spec('Other', o.notes);
   y += 3;
   // every cabinet on its own row
-  T('CABINETS', M, y, { b: 1, s: 8, c: oak }); y += 3;
+  // every cabinet on its own row, laid out like the KBB order sheet: Pos, Qty, Code, L/R, Description, W, H, D, Notes, Price
+  T('Kitchen Units', M, y + 2, { b: 1, s: 11.5 }); y += 6;
+  const desc = u => { const m = String(u.opt || '').match(/right hand(?: width)? (\d+) mm, left hand(?: width)? (\d+) mm/i); return (m ? u.name + ' - Right Hand Width ' + m[1] + ', Left Hand Width ' + m[2] : u.w + ' ' + u.name) + ' - ' + (u.h ? u.h + ' High ' : '') + u.d + ' Deep'; };
+  const lr = u => { const o = u.opt || ''; if (/drawers/i.test(o) && !/hinge/i.test(o)) return 'Drawers'; const m = o.match(/^(left|right)\b/i) || o.match(/\b(left|right)\s+(?:door\s+)?hinge/i); return m ? m[1][0].toUpperCase() : ''; };
   doc.autoTable({
     startY: y, margin: { left: M, right: M, bottom: 22 }, theme: 'plain',
-    head: [['No.', 'Code', 'Cabinet', 'W', 'H', 'D', 'Details']],
-    body: units.map(u => [String(u.n), u.code, u.name, String(u.w), u.h ? String(u.h) : '-', String(u.d), u.opt || ''].map(pdfTxt)),
-    styles: { font: 'helvetica', fontSize: 7.8, cellPadding: { top: 2.2, bottom: 2.2, left: 1.8, right: 1.8 }, textColor: ink, lineColor: line, lineWidth: { bottom: .25 }, valign: 'top' },
-    headStyles: { fillColor: dark, textColor: [246, 244, 239], fontStyle: 'bold', fontSize: 7.6 },
-    alternateRowStyles: { fillColor: [248, 250, 249] },
-    columnStyles: { 0: { cellWidth: 10, textColor: muted }, 1: { cellWidth: 25, fontStyle: 'bold' }, 2: { cellWidth: 38 }, 3: { halign: 'right', cellWidth: 9 }, 4: { halign: 'right', cellWidth: 9 }, 5: { halign: 'right', cellWidth: 9 }, 6: { cellWidth: 'auto' } },
-    didParseCell: d => { if (d.section === 'head' && d.column.index >= 3 && d.column.index <= 5) d.cell.styles.halign = 'right'; }
-  });
-  y = doc.lastAutoTable.finalY + 9;
+    head: [['Pos', 'Qty', 'Code', 'L/R', 'Description', 'W', 'H', 'D', 'Notes', 'Price']],
+    body: units.map(u => [String(u.n), '1', u.code, lr(u), desc(u), String(u.w), u.h ? String(u.h) : '', String(u.d), (/^(left|right)\b/i.test(u.opt || '') || /drawers/i.test(u.opt || '')) && lr(u) ? '' : (u.opt || ''), 'TBC'].map(pdfTxt)),
+    styles: { font: 'helvetica', fontSize: 8.4, cellPadding: { top: 1.8, bottom: 1.8, left: 1, right: 1 }, textColor: [0, 0, 0], lineColor: [120, 120, 120], lineWidth: 0, valign: 'top', overflow: 'linebreak' },
+    headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8.6, lineWidth: { bottom: .35 } },
+    bodyStyles: { lineWidth: { bottom: .2 } },
+    columnStyles: { 0: { cellWidth: 9 }, 1: { cellWidth: 9 }, 2: { cellWidth: 22 }, 3: { cellWidth: 12 }, 4: { cellWidth: 46 }, 5: { cellWidth: 10 }, 6: { cellWidth: 9 }, 7: { cellWidth: 9 }, 8: { cellWidth: 'auto' }, 9: { halign: 'right', cellWidth: 12 } },
+    didParseCell: d => { if (d.column.index === 9 && d.section === 'head') d.cell.styles.halign = 'right'; }
+  });  y = doc.lastAutoTable.finalY + 9;
   // order summary
   if (y + 60 > 275) { doc.addPage(); y = 20; }
   doc.setFillColor(...soft); doc.roundedRect(M, y, CW, 20, 2, 2, 'F');
   [['CABINETS', s.total], ['DIFFERENT TYPES', s.types.length], ['MADE TO MEASURE', s.mtm]].forEach(([k, v], i) => { const x = M + 6 + i * (CW / 3); T(k, x, y + 7, { s: 7, b: 1, c: muted }); T(String(v), x, y + 15.5, { s: 16, b: 1, c: dark }); });
   y += 26;
-  T('ORDER SUMMARY', M, y, { b: 1, s: 8, c: oak }); y += 3;
+  T('Order Summary', M, y + 2, { b: 1, s: 11.5 }); y += 6;
   doc.autoTable({
     startY: y, margin: { left: M, right: M, bottom: 22 }, theme: 'plain',
-    head: [['Cabinet', 'Code', 'Size (mm)', 'Qty']],
-    body: s.types.map(t => [t.name + (t.opt ? '\n' + t.opt : ''), t.code, t.w + ' x ' + (t.h ? t.h + ' x ' : '') + t.d, String(t.count)].map(pdfTxt)),
-    foot: [['Total cabinets', '', '', String(s.total)]],
-    styles: { font: 'helvetica', fontSize: 8, cellPadding: { top: 2.2, bottom: 2.2, left: 1.8, right: 1.8 }, textColor: ink, lineColor: line, lineWidth: { bottom: .25 }, valign: 'top' },
-    headStyles: { fillColor: dark, textColor: [246, 244, 239], fontStyle: 'bold', fontSize: 7.6 },
-    footStyles: { fillColor: soft, textColor: ink, fontStyle: 'bold' },
-    columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 30, fontStyle: 'bold' }, 2: { cellWidth: 38 }, 3: { halign: 'right', cellWidth: 14, fontStyle: 'bold' } },
-    didParseCell: d => { if (d.column.index === 3 && d.section !== 'body') d.cell.styles.halign = 'right'; }
-  });
-  // footer on every page
+    head: [['Qty', 'Code', 'L/R', 'Description', 'W', 'H', 'D', 'Notes']],
+    body: s.types.map(t => { const lrv = lr(t), noteOnly = (/^(left|right)\b/i.test(t.opt || '') || /drawers/i.test(t.opt || '')) && lrv; return [String(t.count), t.code, lrv, desc(t), String(t.w), t.h ? String(t.h) : '', String(t.d), noteOnly ? '' : (t.opt || '')].map(pdfTxt); }),
+    foot: [[String(s.total), 'Total cabinets', '', '', '', '', '', '']],
+    styles: { font: 'helvetica', fontSize: 8.4, cellPadding: { top: 1.8, bottom: 1.8, left: 1, right: 1 }, textColor: [0, 0, 0], lineColor: [120, 120, 120], lineWidth: 0, valign: 'top', overflow: 'linebreak' },
+    headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8.6, lineWidth: { bottom: .35 } },
+    bodyStyles: { lineWidth: { bottom: .2 } },
+    footStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: { top: .35 } },
+    columnStyles: { 0: { cellWidth: 9 }, 1: { cellWidth: 24 }, 2: { cellWidth: 12 }, 3: { cellWidth: 50 }, 4: { cellWidth: 10 }, 5: { cellWidth: 9 }, 6: { cellWidth: 9 }, 7: { cellWidth: 'auto' } }
+  });  // footer on every page
   const n = doc.getNumberOfPages();
   for (let i = 1; i <= n; i++) {
     doc.setPage(i); doc.setDrawColor(...line); doc.setLineWidth(.3); doc.line(M, 284, W - M, 284);
-    T((o.number || 'Draft order') + ' · ' + c.company, M, 289, { s: 7.5, c: muted }); T('Page ' + i + ' of ' + n, W - M, 289, { s: 7.5, c: muted, a: 'right' });
+    T((o.number || 'Draft order') + ' · ' + c.company, M, 289, { s: 7.5, c: muted }); { const parts = [['Page ', 0], [String(i), 1], [' of ', 0], [String(n), 1]]; doc.setFontSize(9); let tw = 0; parts.forEach(p => { doc.setFont('helvetica', p[1] ? 'bold' : 'normal'); tw += doc.getTextWidth(p[0]); }); let px = W / 2 - tw / 2; parts.forEach(p => { doc.setFont('helvetica', p[1] ? 'bold' : 'normal'); doc.setTextColor(...ink); doc.text(p[0], px, 280.5); px += doc.getTextWidth(p[0]); }); }
     T('ITS Online Portal by Easy Cab Builder · Prices are added later. Made to measure sizes are checked before production.', M, 293, { s: 6.8, c: muted });
   }
   return doc;
@@ -11061,6 +11069,222 @@ A.orderPdf = async t => {
     const doc = buildOrderPdf(o, units);
     await saveFile(((o.number || 'Draft order') + (o.reference ? ' - ' + o.reference : '') + '.pdf').replace(/[\\/:*?"<>|]/g, ''), doc.output('blob'));
   } catch (e) { console.error(e); toast('The PDF couldn’t be created. Try again.', { err: 1 }); }
+  finally { t.classList.remove('loading'); t.innerHTML = lbl; }
+};
+/* ---------- Purchase Order: what the factory has to buy for one order (Admin) ----------
+   Every basket line keeps a copy of the options it was built with (spec). From that the parts of each cabinet are worked out: the board
+   pieces (nested onto sheets), the edging tape, the metal pins (MP), wooden dowels (WD), hinges, runners, legs, plinth clips and so on.
+   Edging: with 2mm chosen, 2mm goes on the front edges only (gable front, base, top, rail and shelf fronts, and all round every door and drawer
+   front) and every other loose edge is 0.8mm; with 0.8mm chosen, everything is 0.8mm. Backs, posts and the ends that butt into a gable are not edged. */
+const PO = { L: 2800, W: 2070, trim: 10, kerf: 4, waste: 0.10 };              // board 2800 x 2070, 10mm trim each side, 4mm saw cut, 10% on edging
+const PO_T = 18.2;
+const poR = n => Math.round(n * 10) / 10;
+function poCarcase(o) {
+  const T = PO_T, fe = o.fe, parts = [], glass = [];
+  const f = { mp: 0, wd: 0, pegs: 0, hinges: 0, legs: 0, clips: 0, runners: {}, hangers: 0, plates: 0, caps: 0, gas: 0, hk: 0, other: {}, glassPegs: 0 };
+  const add = (name, l, w, q, ef, er) => { if (q > 0 && l > 0 && w > 0) parts.push({ name, l: poR(l), w: poR(w), q, ef: ef || 0, er: er || 0 }); };
+  const inner = o.w - 2 * T, Dp = o.d - o.v - (o.back ? T : 0) - fe, n = Math.max(2, Math.ceil(Dp / 200));      // n pins + n dowels at each end of a panel
+  add('Gable', o.h, o.d, 2, o.h, o.h + 2 * o.d);
+  if (o.bottom !== false) { add('Base panel', inner, Dp, 1, inner, inner); f.mp += 2 * n; f.wd += 2 * n; }
+  if (o.top === 'full') { add('Top panel', inner, Dp, 1, inner, inner); f.mp += 2 * n; f.wd += 2 * n; }
+  else if (o.top === 'rail') { add('Front top rail', inner, o.rail || 160, 1, inner, inner); f.mp += 4; f.wd += 2; }
+  (o.fixed || 0) > 0 && (add('Fixed shelf', inner, Dp, o.fixed, inner, inner), f.mp += 2 * n * o.fixed, f.wd += 2 * n * o.fixed);
+  if (o.back) { add('Back', o.backH || o.h, inner, 1, 0, 0); f.mp += 6; }
+  if (o.shelves) {
+    const sd = o.d - o.v - (o.back ? T : 0) - (o.setback != null ? o.setback : 75);                 // the shelf sits back from the front (75 on a base, as in the Cabinet Vision file: 570 - 50 - 18.2 - 75 = 426.8)
+    if (o.glassShelves) { const gs = { w: poR(o.w - 43), d: poR(o.d - (o.v + T) - 20) }; for (let i = 0; i < o.shelves; i++) glass.push({ what: 'Glass shelf', w: gs.w, d: gs.d }); f.glassPegs += 4 * o.shelves; }
+    else { add('Shelf', inner - 1, sd, o.shelves, inner - 1, inner - 1); f.pegs += 4 * o.shelves; }
+  }
+  if (o.posts) { add('Centre post', o.postLen, 70, o.posts, 0, 0); f.mp += 2 * o.posts; f.wd += 2 * o.posts; }
+  (o.extra || []).forEach(p => { if (!/door|front/i.test(p.name)) add(p.name, p.l, p.w, p.q || 1, p.ef, p.er); });             // cabinets only: doors and drawer fronts are ordered separately (Doors), so they are not in the board, edging or cutting list
+  (o.doors || []).forEach(dd => { f.hinges += o.hingesPerDoor == null ? 2 : o.hingesPerDoor; });                                      // the hinges still come with the cabinet
+  (o.glassDoors || []).forEach(dd => { f.hinges += 2; });
+  if (o.legs) { f.legs = o.legCount || legQty(o.w); f.clips = o.clipCount != null ? o.clipCount : clipQty(o.w); }
+  if (o.hang) { f.hangers = 2; f.plates = 2; f.caps = 2; }
+  return { parts, f, glass, approx: !!o.approx, note: o.note || '' };
+}
+function poWith(obj, snap, fn) { return fn(); }                                   // (the snapshot is read directly; no global state is touched)
+function poUnit(u) {
+  const sp = u.spec; if (!sp || !sp.k) return null;
+  const T = PO_T, fe = u.edgeType === '0.8mm' ? 0.8 : 2, s = sp.s || {}, k = sp.k, w = u.w, d = u.d, v = u.v == null ? 0 : u.v, H = u.h || BASE_H;
+  const doorSet = (dw, dh, pair) => pair ? [[(dw - 7) / 2, dh - 5], [(dw - 7) / 2, dh - 5]] : [[dw - 4, dh - 5]];
+  const C = o => poCarcase(Object.assign({ w, h: H, d, v, fe }, o));
+  const pairBase = w > 600 || hingeSide(s.hinge, w) === 'both';
+  const wallBase = o => C(Object.assign({ top: 'full', back: true, hang: v >= 20, setback: 20 }, o));
+  const sup = (r, key, label) => { r.f.other[label] = (r.f.other[label] || 0) + 1; return r; };
+  if (k === 'base') return C({ top: 'rail', back: true, shelves: 1, doors: doorSet(w, H, pairBase), posts: w > 600 ? 2 : 0, postLen: H - T - 160, legs: true });
+  if (k === 'sink') return C({ top: 'rail', rail: s.rail === 'vertical' ? 70 : 160, back: true, shelves: 0, doors: doorSet(w, H, pairBase), posts: w > 600 ? 2 : 0, postLen: H - T - 160, legs: true });
+  if (k === 'dl') {
+    const dbl = w > 600, fr = dbl ? [[(w - 7) / 2, 200], [(w - 7) / 2, 200]] : [[w - 4, 200]];
+    const r = C({ top: 'rail', back: true, shelves: 1, fronts: fr, doors: doorSet(w, H - 204, pairBase), posts: dbl ? 2 : 0, postLen: H - T - 230, legs: true, extra: dbl ? [{ name: 'Drawer divider', l: 230, w: d - v - T - fe, q: 1, ef: 230, er: 230 }] : [] });
+    r.f.runners[s.sys || 'Antaro'] = fr.length; return r;
+  }
+  if (k === 'bin') return sup(C({ top: 'rail', back: true, shelves: 0, doors: [[w - 6, H - 6]], legs: true }), 'bin', 'Bin pull-out set (' + (u.opt || 'bins') + ')');
+  if (k === 'spo') return sup(C({ top: 'rail', back: true, shelves: 0, doors: [[w - 6, H - 6]], legs: true }), 'spo', 'Slim pull-out set');
+  if (k === 'bel') { const pair = w > 600 || s.doors === 'double'; return C({ top: 'full', back: true, shelves: 1, doors: doorSet(w, H, pair), posts: pair ? 2 : 0, postLen: H - 2 * T, legs: true }); }
+  if (k === 'wine') return C({ top: 'rail', back: true, shelves: 2, legs: true, approx: true, note: 'Wine rack parts are an estimate (2 shelves)' });
+  if (k === 'oven') {
+    const r = C({ top: 'none', back: false, shelves: 0, fixed: s.drawer ? 1 : 0, fronts: s.drawer ? [[w - 4, 115]] : [], legs: true });
+    if (s.drawer) r.f.runners[s.sys || 'Antaro'] = 1; return r;
+  }
+  if (k === 'mtm') return C({ top: s.top === 'full' ? 'full' : 'rail', back: true, backH: s.back === 'custom' ? Math.min(s.backH || 400, H - 36) : H, shelves: s.shelves || 0, posts: w > 600 ? 2 : 0, postLen: H - T - 160, legs: true });
+  if (k === 'corner') {
+    const door = Math.min(Math.max(s.door || 500, 300), Math.floor(w - T - 50)), blank = poR(w - door - T);
+    const r = C({ top: 'rail', back: true, shelves: s.carousel ? 0 : 1, doors: [[door - 4, H - 5]], legs: true, extra: [{ name: 'Blank panel', l: H - 2 * T, w: blank, q: 1, ef: H - 2 * T, er: 0 }] });
+    if (s.carousel) sup(r, 'car', 'Corner carousel (Signature Magic)'); return r;
+  }
+  if (k === 'lsh') {
+    const rh = s.rh, lh = s.lh, Dp = d - v - T - fe, di = rh - d - 26, dl = lh - d - 26;
+    const r = C({ top: 'none', bottom: false, back: false, legs: false, approx: true, note: 'L shape parts are an estimate',
+      extra: [{ name: 'Base panel (wing 1)', l: rh - T, w: Dp, ef: rh - T, er: rh - T }, { name: 'Base panel (wing 2)', l: lh - d, w: Dp, ef: lh - d, er: lh - d }, { name: 'Top panel (wing 1)', l: rh - T, w: Dp, ef: rh - T, er: rh - T }, { name: 'Top panel (wing 2)', l: lh - d, w: Dp, ef: lh - d, er: lh - d },
+        { name: 'Back (wing 1)', l: H, w: rh - T }, { name: 'Back (wing 2)', l: H, w: lh - d }, { name: 'Shelf (wing 1)', l: rh - T - 1, w: Dp - 75, ef: rh - T, er: rh - T }, { name: 'Shelf (wing 2)', l: lh - d - 1, w: Dp - 75, ef: lh - d, er: lh - d }], doors: [[di, H - 5], [dl, H - 5]], hingesPerDoor: 2 });
+    r.f.mp += 16; r.f.wd += 16; r.f.legs = 8; r.f.clips = clipQty(rh) + clipQty(lh) - 1; r.f.pegs += 8; return r;
+  }
+  if (k === 'robe') return C({ top: 'full', back: true, shelves: 1, setback: 20, doors: doorSet(w, H, w > 600), legs: true, extra: [{ name: 'Hanging rail (tube)', l: w - 2 * T, w: 25, q: 1 }] });
+  if (k.slice(0, 3) === 'dp:') {
+    const t = dpType(k.slice(3)) || { fronts: [1] }, n = t.fronts.length;
+    const avail = BASE_H - 5 - (n - 1) * 3, hs = t.hs ? t.hs : t.fronts.map(x => poR(avail * x));
+    const r = C({ top: 'rail', back: true, shelves: 0, fronts: hs.map(x => [w - 4, x]), legs: true });
+    r.f.runners[s.sys || 'Antaro'] = n + (t.internal ? 1 : 0); return r;
+  }
+  if (k === 'wall' || k === 'wallg') {
+    const g = k === 'wallg', sh = s.shelves != null ? s.shelves : WALL_SHELVES[s.h || H], pair = w > 600 || hingeSide(s.hinge, w) === 'both';
+    const dd = doorSet(w, H, pair);
+    return wallBase({ shelves: sh, glassShelves: g, doors: g ? [] : dd, glassDoors: g ? dd : [], posts: w > 700 ? 1 : 0, postLen: H - 2 * T });
+  }
+  if (k === 'cwall') {
+    const door = Math.min(Math.max(s.door || 300, 250), Math.floor(w - T - 50)), blank = poR(w - door - T);
+    return wallBase({ shelves: WALL_SHELVES[s.h || H], doors: [[door - 4, H - 5]], extra: [{ name: 'Blank panel', l: H - 2 * T, w: blank, q: 1, ef: H - 2 * T, er: 0 }] });
+  }
+  if (k === 'lwall') {
+    const rh = s.rh, lh = s.lh, Dp = d - v - T - fe, di = rh - d - 26, dl = lh - d - 26;
+    const r = C({ top: 'none', bottom: false, back: false, hang: v >= 20, approx: true, note: 'L shape wall unit parts are an estimate',
+      extra: [{ name: 'Base panel (wing 1)', l: rh - T, w: Dp, ef: rh - T, er: rh - T }, { name: 'Base panel (wing 2)', l: lh - d, w: Dp, ef: lh - d, er: lh - d }, { name: 'Top panel (wing 1)', l: rh - T, w: Dp, ef: rh - T, er: rh - T }, { name: 'Top panel (wing 2)', l: lh - d, w: Dp, ef: lh - d, er: lh - d },
+        { name: 'Back (wing 1)', l: H, w: rh - T }, { name: 'Back (wing 2)', l: H, w: lh - d }, { name: 'Shelf (wing 1)', l: rh - T - 1, w: Dp - 20, ef: rh - T, er: rh - T }, { name: 'Shelf (wing 2)', l: lh - d - 1, w: Dp - 20, ef: lh - d, er: lh - d }], doors: [[di, H - 5], [dl, H - 5]], hingesPerDoor: 2 });
+    r.f.mp += 16; r.f.wd += 16; r.f.pegs += 8; return r;
+  }
+  if (k === 'dwall') {
+    const D = d, diag = (600 - D) * Math.SQRT2, door = Math.round(diag - 28.28), tri = (600 - D) * (600 - D) / 2, Dp = D - fe;
+    const r = C({ top: 'none', bottom: false, back: false, hang: v >= 20, approx: true, note: 'Diagonal unit parts are an estimate',
+      extra: [{ name: 'Base panel (back strip)', l: 600 - 2 * T, w: Dp, ef: 600, er: 600 }, { name: 'Base panel (side strip)', l: D - T, w: 600 - D, ef: 0, er: D }, { name: 'Base panel (corner)', l: 600 - D, w: (600 - D) / 2, ef: 0, er: 0 },
+        { name: 'Top panel (back strip)', l: 600 - 2 * T, w: Dp, ef: 600, er: 600 }, { name: 'Top panel (side strip)', l: D - T, w: 600 - D, ef: 0, er: D }, { name: 'Top panel (corner)', l: 600 - D, w: (600 - D) / 2, ef: 0, er: 0 },
+        { name: 'Back', l: H, w: 600 - T, q: 2 }, { name: 'Shelf (centre)', l: 600 - 2 * T, w: Dp - 20, q: WALL_SHELVES[s.h || H], ef: 600, er: 600 }], doors: [[door, H - 5]], hingesPerDoor: 2 });
+    r.f.mp += 12; r.f.wd += 12; r.f.pegs += 4 * WALL_SHELVES[s.h || H]; return r;
+  }
+  if (k === 'mwall') {
+    const open = 404.7, shelfTop = 2 * T + open - T, kind = H === 575 ? 'filler' : H === 720 ? 'tophung' : 'door';
+    const frontH = Math.round(H - 3 * T - open + T + 4);
+    const r = wallBase({ shelves: 0, fixed: 1, backH: H - 3 * T - open, doors: kind === 'door' ? [[w - 4, frontH]] : [], extra: kind === 'door' ? [] : [{ name: kind === 'filler' ? 'Filler panel' : 'Top hung door', l: frontH, w: w - 4, q: 1, ef: 2 * (w - 4 + frontH), er: 0 }] });
+    if (kind === 'tophung') { r.f.gas = 2; r.f.hinges += 2; } return r;
+  }
+  if (k === 'blwall') { const r = C({ top: 'full', back: false, v: 0, hang: true, shelves: 0 }); r.f.mp = 8; r.f.wd = 8; r.f.hinges = 2; return r; }
+  if (k === 'brg') {
+    const r = wallBase({ shelves: 0, extra: [{ name: 'Flap door', l: 355, w: w - 4, q: 1, ef: 2 * (w - 4 + 355), er: 0 }] });
+    if (d === 330) { r.f.gas = 2; r.f.hinges += 2; } else r.f.hk = 1; return r;
+  }
+  if (k === 'dresser') {
+    const rows = s.drawers === 0 ? 0 : (s.drawers === 2 && !(s.layout === 'side' && w > 300) ? 2 : 1), cols = s.drawers === 2 && s.layout === 'side' && w > 300 ? 2 : 1;
+    const fh = s.fh || 140, zone = rows ? rows * fh + (rows - 1) * 3 : 0, dh = H - 5 - (rows ? zone + 3 : 0), pair = w > 600;
+    const sh = Math.max(1, Math.floor((H - zone) / 270)), fw = cols === 2 ? (w - 7) / 2 : w - 4, fr = [];
+    for (let i = 0; i < rows * cols; i++) fr.push([fw, fh]);
+    const r = wallBase({ shelves: sh, glassShelves: !!s.glass, fixed: rows ? 1 : 0, doors: doorSet(w, dh + 5, pair), fronts: fr, extra: cols === 2 ? [{ name: 'Drawer divider', l: zone, w: d - v - T - fe, q: 1, ef: zone, er: zone }] : [] });
+    if (rows) r.f.runners[s.sys || 'Antaro'] = rows * cols; return r;
+  }
+  return null;
+}
+/* board nesting: strips across the sheet, longest side along the sheet; a fair estimate of how many sheets the pieces need */
+function poNest(pieces) {
+  const L = PO.L - 2 * PO.trim, W = PO.W - 2 * PO.trim, kf = PO.kerf, sheets = [];
+  pieces.map(p => p.l >= p.w ? { a: p.l, b: p.w } : { a: p.w, b: p.l }).sort((x, y) => y.b - x.b || y.a - x.a).forEach(p => {
+    let placed = false;
+    for (const sh of sheets) {
+      for (const st of sh.strips) if (p.b <= st.b && st.used + p.a + kf <= L) { st.used += p.a + kf; placed = true; break; }
+      if (placed) break;
+      if (sh.usedB + p.b + kf <= W && p.a <= L) { sh.strips.push({ b: p.b, used: p.a + kf }); sh.usedB += p.b + kf; placed = true; break; }
+    }
+    if (!placed) sheets.push({ strips: [{ b: p.b, used: p.a + kf }], usedB: p.b + kf });
+  });
+  return sheets.length;
+}
+function poBuild(order) {
+  const R = { boards: {}, edge: {}, f: { mp: 0, wd: 0, pegs: 0, glassPegs: 0, hinges: 0, legs: 0, clips: 0, hangers: 0, plates: 0, caps: 0, gas: 0, hk: 0 }, runners: {}, other: {}, glass: {}, cut: {}, approx: [], missing: 0, units: order.units.length };
+  order.units.forEach(u => {
+    const r = poUnit(u); if (!r) { R.missing++; return; }
+    if (r.approx) R.approx.push('No. ' + u.n + ' ' + u.code + (r.note ? ': ' + r.note : ''));
+    const bk = u.colour || 'Cabinet colour', b = R.boards[bk] = R.boards[bk] || { pieces: [], area: 0, count: 0 };
+    const t2 = u.edgeType === '0.8mm' ? '0.8mm' : '2mm', ec = u.edgeColour || 'As cabinet colour';
+    r.parts.forEach(p => {
+      for (let i = 0; i < p.q; i++) b.pieces.push({ l: p.l, w: p.w });
+      b.area += p.l * p.w * p.q; b.count += p.q;
+      const k1 = ec + '|' + t2, k2 = ec + '|0.8mm';
+      R.edge[k1] = (R.edge[k1] || 0) + p.ef * p.q; R.edge[k2] = (R.edge[k2] || 0) + p.er * p.q;
+      const ck = bk + '|' + p.name + '|' + p.l + '|' + p.w; R.cut[ck] = R.cut[ck] || { board: bk, name: p.name, l: p.l, w: p.w, q: 0 }; R.cut[ck].q += p.q;
+    });
+    Object.keys(R.f).forEach(x => R.f[x] += r.f[x] || 0);
+    Object.entries(r.f.runners).forEach(([k, n]) => R.runners[k] = (R.runners[k] || 0) + n);
+    Object.entries(r.f.other).forEach(([k, n]) => R.other[k] = (R.other[k] || 0) + n);
+    r.glass.forEach(g => { const gk = g.what + ' ' + g.w + ' x ' + g.d + ' mm'; R.glass[gk] = (R.glass[gk] || 0) + 1; });
+  });
+  Object.values(R.boards).forEach(b => { b.sheets = poNest(b.pieces); b.util = b.sheets ? b.area / (b.sheets * PO.L * PO.W) : 0; });
+  return R;
+}
+function buildPoPdf(o) {
+  const { jsPDF } = window.jspdf, doc = new jsPDF({ unit: 'mm', format: 'a4' }), W = 210, M = 16, CW = W - 2 * M, S = DB.settings, c = ordCustomer(o), R = poBuild(o);
+  const ink = [29, 32, 28], muted = [105, 108, 100], oak = [168, 118, 74], line = [214, 218, 212], soft = [241, 245, 243], dark = [36, 52, 50];
+  const T = (txt, x, y, op = {}) => { doc.setFont(op.f || 'helvetica', op.b ? 'bold' : 'normal'); doc.setFontSize(op.s || 9); doc.setTextColor(...(op.c || ink)); doc.text(pdfTxt(txt), x, y, op.a ? { align: op.a } : undefined); };
+  let y = pdfLogo(doc, W / 2, 10) + 7;
+  T(S.company, W / 2, y, { b: 1, s: 11, a: 'center' }); y += 4.6; T([S.address, S.city, S.postcode].filter(Boolean).join(', '), W / 2, y, { s: 8, a: 'center' }); y += 11;
+  T('Purchase Order', M, y, { b: 1, s: 23 }); T('FOR THE FACTORY, NOT FOR THE CUSTOMER', W - M, y - 2, { b: 1, s: 7.5, c: oak, a: 'right' }); y += 9;
+  const lab = (k, v, x, yy, wv) => { T(k, x, yy, { b: 1, s: 9 }); const ls = doc.splitTextToSize(pdfTxt(v || '-'), wv); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...ink); doc.text(ls, x + 27, yy); return ls.length * 4.4 + 1.4; };
+  let yl = y, yr = y;
+  yl += lab('PO number:', 'PO-' + o.number, M, yl, 60); yl += lab('Order:', o.number, M, yl, 60); yl += lab('Date:', fmtDate(now()), M, yl, 60);
+  yr += lab('Customer:', c.company, 112, yr, 52); yr += lab('Reference:', o.reference, 112, yr, 52); yr += lab('Cabinets:', String(o.units.length), 112, yr, 52);
+  y = Math.max(yl, yr) + 4;
+  const tbl = (title, head, body, cols, foot) => {
+    if (y > 235) { doc.addPage(); y = 20; }
+    T(title, M, y, { b: 1, s: 8, c: oak }); y += 3;
+    doc.autoTable({ startY: y, margin: { left: M, right: M, bottom: 22 }, theme: 'plain', head: [head], body: body.map(r => r.map(pdfTxt)), foot: foot ? [foot.map(pdfTxt)] : undefined,
+      styles: { font: 'helvetica', fontSize: 8.2, cellPadding: { top: 2, bottom: 2, left: 1.8, right: 1.8 }, textColor: ink, lineColor: line, lineWidth: { bottom: .25 }, valign: 'top' },
+      headStyles: { fillColor: dark, textColor: [246, 244, 239], fontStyle: 'bold', fontSize: 7.8 }, footStyles: { fillColor: soft, textColor: ink, fontStyle: 'bold' }, alternateRowStyles: { fillColor: [248, 250, 249] }, columnStyles: cols });
+    y = doc.lastAutoTable.finalY + 8;
+  };
+  // 1. boards
+  const bk = Object.entries(R.boards), totSheets = bk.reduce((a, [, b]) => a + b.sheets, 0);
+  tbl('1. BOARD SHEETS (' + PO.L + ' x ' + PO.W + ' mm, 18 mm)', ['Board / colour', 'Pieces', 'Area m2', 'Fill', 'Sheets'], bk.map(([k, b]) => [k, String(b.count), (b.area / 1e6).toFixed(2), Math.round(b.util * 100) + '%', String(b.sheets)]), { 1: { halign: 'right', cellWidth: 22 }, 2: { halign: 'right', cellWidth: 24 }, 3: { halign: 'right', cellWidth: 20 }, 4: { halign: 'right', cellWidth: 22, fontStyle: 'bold' } }, ['Total sheets', '', '', '', String(totSheets)]);
+  // 2. edging
+  const ed = Object.entries(R.edge).filter(([, mm]) => mm > 0).map(([k, mm]) => { const [col, th] = k.split('|'); const net = mm / 1000; return { col, th, net, ord: Math.ceil(net * (1 + PO.waste)) }; }).sort((a, b) => a.col.localeCompare(b.col) || a.th.localeCompare(b.th));
+  tbl('2. EDGING TAPE', ['Edging colour', 'Thickness', 'Used (m)', 'To order (m, +' + Math.round(PO.waste * 100) + '%)'], ed.map(e => [e.col, e.th, e.net.toFixed(1), String(e.ord)]), { 1: { cellWidth: 24 }, 2: { halign: 'right', cellWidth: 26 }, 3: { halign: 'right', cellWidth: 38, fontStyle: 'bold' } });
+  // 3. fittings
+  const fit = [['Metal pins (MP)', R.f.mp], ['Wooden dowels (WD)', R.f.wd], ['Shelf pegs', R.f.pegs], ['Glass shelf pegs', R.f.glassPegs], ['Hinges (with mounting plates)', R.f.hinges]];
+  Object.entries(R.runners).forEach(([k, n]) => fit.push(['Drawer runners / drawer sets: ' + k, n]));
+  fit.push(['Legs', R.f.legs], ['Plinth clips', R.f.clips], ['Wall hangers', R.f.hangers], ['Wall plates', R.f.plates], ['Cover caps', R.f.caps], ['Gas stays', R.f.gas], ['HK Top lift-up fittings', R.f.hk]);
+  Object.entries(R.other).forEach(([k, n]) => fit.push([k, n]));
+  Object.entries(R.glass).forEach(([k, n]) => fit.push([k, n]));
+  tbl('3. FITTINGS AND HARDWARE', ['Item', 'Quantity'], fit.filter(r => r[1] > 0).map(r => [r[0], String(r[1])]), { 1: { halign: 'right', cellWidth: 30, fontStyle: 'bold' } });
+  // notes
+  if (y > 225) { doc.addPage(); y = 20; }
+  T('HOW THESE FIGURES ARE WORKED OUT', M, y, { b: 1, s: 8, c: oak }); y += 4;
+  const notes = ['Sheets are nested on ' + PO.L + ' x ' + PO.W + ' mm boards with ' + PO.trim + ' mm trim and a ' + PO.kerf + ' mm saw cut. Order a spare sheet if the board is hard to match.',
+    'Edging: if the customer chose 2mm, 2mm goes on the front edges only (gable fronts, base, top, rail and shelf fronts) and the other loose edges are 0.8mm. If they chose 0.8mm, everything is 0.8mm. Backs, posts and the ends that butt into a gable are not edged. Cabinets only: doors and drawer fronts are not included (they are ordered separately); hinges are. ' + Math.round(PO.waste * 100) + '% is added to the tape.',
+    'Metal pins and wooden dowels: one of each for about every 200 mm of panel depth at each end of a base, top or fixed shelf (2 minimum), 2 pins and 1 dowel at each end of a front rail, 6 pins for a back, 1 of each at each end of a post.',
+    'Legs and plinth clips follow the width rule (4 legs and 2 clips up to 600 wide). Hinges are 2 for each door. Backs are the same 18.2 mm board.'];
+  notes.forEach(n => { const ls = doc.splitTextToSize(pdfTxt(n), CW); if (y + ls.length * 3.8 > 275) { doc.addPage(); y = 20; } doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(ls, M, y); y += ls.length * 3.8 + 1.8; });
+  if (R.approx.length) { y += 2; const ls = doc.splitTextToSize(pdfTxt('Estimated (shapes that are not plain boxes): ' + R.approx.join('; ')), CW); if (y + ls.length * 3.8 > 275) { doc.addPage(); y = 20; } doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...oak); doc.text(ls, M, y); y += ls.length * 3.8 + 2; }
+  if (R.missing) { const ls = doc.splitTextToSize(pdfTxt(R.missing + ' of ' + R.units + ' cabinets in this order have no parts data (they were submitted before parts were recorded), so they are NOT counted above.'), CW); doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(180, 40, 40); doc.text(ls, M, y); y += ls.length * 3.8 + 2; }
+  // cutting list
+  doc.addPage(); y = 20;
+  const cut = Object.values(R.cut).sort((a, b) => a.board.localeCompare(b.board) || b.l - a.l || b.w - a.w);
+  tbl('4. CUTTING LIST (all cabinets)', ['Board', 'Part', 'Length', 'Width', 'Qty'], cut.map(p => [p.board, p.name, String(p.l), String(p.w), String(p.q)]), { 2: { halign: 'right', cellWidth: 20 }, 3: { halign: 'right', cellWidth: 20 }, 4: { halign: 'right', cellWidth: 16, fontStyle: 'bold' } });
+  const n = doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setDrawColor(...line); doc.setLineWidth(.3); doc.line(M, 284, W - M, 284); T('PO-' + o.number + ' · ' + c.company, M, 289, { s: 7.5, c: muted }); { const parts = [['Page ', 0], [String(i), 1], [' of ', 0], [String(n), 1]]; doc.setFontSize(9); let tw = 0; parts.forEach(p => { doc.setFont('helvetica', p[1] ? 'bold' : 'normal'); tw += doc.getTextWidth(p[0]); }); let px = W / 2 - tw / 2; parts.forEach(p => { doc.setFont('helvetica', p[1] ? 'bold' : 'normal'); doc.setTextColor(...ink); doc.text(p[0], px, 280.5); px += doc.getTextWidth(p[0]); }); } T('ITS Online Portal by Easy Cab Builder · Purchase order worked out from the cabinet options. Check before buying.', M, 293, { s: 6.8, c: muted }); }
+  return doc;
+}
+A.orderPo = async t => {
+  if (!window.jspdf || !window.jspdf.jsPDF || !window.jspdf.jsPDF.API.autoTable) { toast('The PDF tool is still loading. Try again in a moment.', { err: 1 }); return; }
+  const o = (DB.orders || []).find(x => x.id === t.dataset.id); if (!o) return;
+  const lbl = t.innerHTML; t.classList.add('loading'); t.textContent = 'Preparing PDF';
+  try { const doc = buildPoPdf(o); await saveFile(('PO-' + o.number + (o.reference ? ' - ' + o.reference : '') + '.pdf').replace(/[\\/:*?"<>|]/g, ''), doc.output('blob')); }
+  catch (e) { console.error(e); toast('The Purchase Order couldn’t be created. Try again.', { err: 1 }); }
   finally { t.classList.remove('loading'); t.innerHTML = lbl; }
 };
 function aOrdersCard() {
