@@ -7522,6 +7522,31 @@ window.PRICELIST = [
 ["Slider","Sliding Panel Door upto 1000 wide","cat-door","All rooms",2400,596,0,400.0,450.0,500.0,0,"DOORS","","Sliding Panel Door upto 1000 wide"],
 ["Delivery","Delivery","cat-acc","All rooms",0,0,0,120.0,120.0,120.0,0,"Services","","Delivery"]
 ];
+/* Oven housing larders (600 wide, 570 deep): a top door, the oven (and microwave) opening, then a bottom door or drawers.
+   top = top door height, bot = bottom door height, dr = drawer fronts from the top down, fil = filler panel above the drawers.
+   The Antaro code carries an A after OHM/OHS/OHT; Legrabox takes an L and Merivo an M. */
+window.OHL_P = [
+  { id: 'a', code: 'OHM450TX450B', h: 1970, ov: 's', mw: 460, top: 450, bot: 450 },
+  { id: 'b', code: 'OHM490TX490B', h: 1970, ov: 's', mw: 390, top: 490, bot: 490 },
+  { id: 'c', code: 'OHT570TX570B', h: 2150, ov: 's', mw: 380, top: 570, bot: 570 },
+  { id: 'd', code: 'OHS490TX715B', h: 1825, ov: 's', mw: 0, top: 490, bot: 715 },
+  { id: 'e', code: 'OHM645TX715B', h: 1970, ov: 's', mw: 0, top: 645, bot: 715 },
+  { id: 'f', code: 'OHM490TX570B', h: 1970, ov: 'd', mw: 0, top: 490, bot: 570 },
+  { id: 'g', code: 'OHMA1DRW490TX490B', h: 1970, ov: 's', mw: 390, top: 490, dr: [490] },
+  { id: 'h', code: 'OHMA2DRW645TX355B', h: 1970, ov: 's', mw: 0, top: 645, dr: [355, 355] },
+  { id: 'i', code: 'OHMA3DRW645TX140X283', h: 1970, ov: 's', mw: 0, top: 645, dr: [140, 283, 283] },
+  { id: 'j', code: 'OHSA1DRW570TX175B', h: 1825, ov: 's', mw: 460, top: 570, dr: [175] },
+  { id: 'k', code: 'OHSA2DRW450TX175X283', h: 1825, ov: 's', mw: 0, top: 450, dr: [175, 283, 283] },
+  { id: 'l', code: 'OHTA2DRW715TX355B', h: 2150, ov: 's', mw: 0, top: 715, fil: 110, dr: [355, 355] },
+  { id: 'm', code: 'OHTA3DRW715TX140X283', h: 2150, ov: 's', mw: 0, top: 715, fil: 110, dr: [140, 283, 283] },
+  { id: 'n', code: 'OHMA2DRW490TX283B', h: 1970, ov: 'd', mw: 0, top: 490, dr: [283, 283] }
+];
+window.OHL_CODE = (p, sys) => p.dr && sys && sys !== 'Antaro' ? p.code.replace(/^(OH[MST])A/, '$1' + (sys === 'Legrabox' ? 'L' : 'M')) : p.code;
+window.OHL_TEXT = p => (p.ov === 'd' ? 'Double Oven' : 'Single Oven' + (p.mw ? ' & ' + p.mw + ' Micro Wave' : '')) + ' Housing' + (p.dr ? ' Larder' : '') + ' ' + p.h + ' High 570 Deep';
+OHL_P.forEach(p => (p.dr ? ['Antaro', 'Legrabox', 'Merivo'] : [null]).forEach(s => {
+  const n = p.dr ? p.dr.length : 0;
+  PRICELIST.push([OHL_CODE(p, s), '600 ' + OHL_TEXT(p) + (s ? ' (' + s + ' drawers)' : ''), 'cat-appl', 'Kitchen', p.h, 600, 570, +(246.28 + 84 * n).toFixed(2), +(273.38 + 84 * n).toFixed(2), +(300.49 + 84 * n).toFixed(2), 1, 'Larders', 's', '600 ' + OHL_TEXT(p) + ', top door ' + p.top + (p.dr ? ', ' + n + ' ' + s + ' drawer' + (n > 1 ? 's' : '') : ', bottom door ' + p.bot)]);
+}));
 window.PL_GROUPS = [["Base", "Base Units"], ["CornerBase", "Corner Bases"], ["BaseDline", "Drawline Bases"], ["DrawPack", "Drawer Packs"], ["Larders", "Larders & Appliance Housings"], ["Wall575H", "Wall 575 High"], ["Wall720H", "Wall 720 High"], ["Wall900H", "Wall 900 High"], ["TopBox", "Top Boxes"], ["Dresser", "Dressers"], ["Panels", "Panels & Plinths"], ["DOORS", "Doors"], ["ROBES", "Robes"], ["Accessories", "Accessories"], ["Services", "Delivery & Services"]];
 
 </script>
@@ -9062,6 +9087,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
   const yBack = o.backH != null ? Math.min(y1 - T, y0 + T + o.backH) : y1 - T;                                          // a custom back can be shorter than the cabinet, sitting on the floor
   const yBackFrom = o.backFrom != null ? o.backFrom : y0 + T;
   if (!o.noBack) q([P(T, yBackFrom, vd), P(w - T, yBackFrom, vd), P(w - T, yBack, vd), P(T, yBack, vd)], o.backCol || baseShade(col, -0.22));   // backFrom: a back that starts part way up (the microwave unit has none below its shelf)   // back panel, set in by the void
+  (o.backParts || []).forEach(([ya, yz]) => q([P(T, ya, vd), P(w - T, ya, vd), P(w - T, yz, vd), P(T, yz, vd)], baseShade(col, -0.22)));   // backs on part of the height only (the oven housing larder has none where the oven goes)
   if (o.ffBack) {                 // fridge freezer larder: a fixed back on the top section, and a removable back across the appliance opening (shown in a darker tone so it reads as its own panel)
     const sy = o.ffBack.sy;
     q([P(T, sy, vd), P(w - T, sy, vd), P(w - T, y1 - T, vd), P(T, y1 - T, vd)], baseShade(col, -0.3));
@@ -9088,11 +9114,10 @@ function baseArt(w, d, h, hinge, vd, opts) {
   };
   const bare = (!o.drawers || o.drawers.h) && !o.bins && !o.trays && !o.wine;     // a drawerline unit still has its shelf and centre posts; a bin unit has neither
   if (bare && !o.noShelf) shelf(T, w - T);
-  if (o.fixedShelfAt != null) {                                                                                           // a fixed shelf, full depth to the front, sitting on top of the drawers
-    const ys = o.fixedShelfAt;
+  (o.fixedShelves || (o.fixedShelfAt != null ? [o.fixedShelfAt] : [])).forEach(ys => {                                    // fixed shelves, full depth to the front (one sitting on top of the drawers, or the two round an oven opening)
     q([P(T, ys, vd), P(w - T, ys, vd), P(w - T, ys, d), P(T, ys, d)], baseShade(col, 0.12));
     q([P(T, ys, d), P(w - T, ys, d), P(w - T, ys - T, d), P(T, ys - T, d)], baseShade(col, -0.05));                       // its front edge: the cabinet colour
-  }
+  });
   if (o.bottomDrawers) {                                                                                                  // dresser: drawer fronts across the bottom, one or two rows, one or two across (a divider between two across)
     const bd = o.bottomDrawers, z = d, g = 3;
     for (let rr = 0; rr < bd.rows; rr++) {
@@ -9309,8 +9334,8 @@ function baseArt(w, d, h, hinge, vd, opts) {
   } else if (o.doors) { if (single) door(0, 1, w - 4); else { door(0, 1, w / 2 - 3); door(w, -1, w / 2 - 3, 150 * Math.PI / 180); } }   // the right door swings wider so it opens clear of the right half
   if (o.ffOpen) {                 // fridge freezer larder: the two doors hinged on the same side, swung open together like one leaf
     const f = o.ffOpen, dw = w - 4, c = Math.cos(TH), s = Math.sin(TH), at = (t, y) => P(dw * c * t, y, d + dw * s * t), m = Math.min(0.2, 55 / dw);
-    const yb0 = y0 + 2.5, yb1 = yb0 + f.b, yt0 = yb1 + 5, yt1 = y1 - 2.5;
-    [[yb0, yb1, 'b'], [yt0, yt1, 't']].forEach(([ya, yz, k]) => {
+    const yb0 = y0 + 2.5, yb1 = yb0 + (f.b || 0), yt0 = yb1 + 5, yt1 = y1 - 2.5;
+    (f.panels ? f.panels.map(([a, b2, k]) => [y0 + a, y0 + b2, k]) : [[yb0, yb1, 'b'], [yt0, yt1, 't']]).forEach(([ya, yz, k]) => {
       q([at(0, ya), at(1, ya), at(1, yz), at(0, yz)], baseShade(col, 0.24), 1.3);
       q([at(m, ya + 75), at(1 - m, ya + 75), at(1 - m, yz - 75), at(m, yz - 75)], baseShade(col, 0.08), 1);
       const hy = k === 'b' ? yz - 160 : ya + 40; ln(at(1 - m / 2, hy), at(1 - m / 2, hy + 120), '#3a3631', 4);
@@ -9870,7 +9895,7 @@ function ffDetails() {
       <span class="mono">${ffCode()}</span>
       <p class="muted" style="margin:0">${w} Fridge Freezer Larder ${FF.h} High ${FF.d} Deep to suit a ${FF.split} split, with a fixed shelf above the ${FF_AP} mm opening.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + ffCode())}${row('OPENING', FF_AP + ' mm for the fridge freezer')}${row('SHELF', 'Quantity: 1 x fixed shelf, above the opening')}${row('DOORS', 'Bottom ' + dr.w + ' x ' + dr.b + ' mm, top ' + dr.w + ' x ' + dr.t + ' mm (' + FF.hinge + ' hinge)')}${row('TOP', 'Full top panel')}${row('BACK', 'Fixed back on the top section, removable back, ' + FF_RB + ' mm high, in the middle of the ' + FF_AP + ' mm opening')}${row('HINGES', 'Quantity: 5 x appliance hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + ffCode())}${row('OPENING', FF_AP + ' mm for the fridge freezer')}${row('SHELF', 'Quantity: 1 x fixed shelf, above the opening')}${row('BACK', 'Fixed back on the top section, removable back, ' + FF_RB + ' mm high, in the middle of the ' + FF_AP + ' mm opening')}${row('HINGES', 'Quantity: 5 x appliance hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${ffPick(sel)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', FF.d)}${num('v', 'Void (mm)', FF.v)}</div>
       ${ocDetail(null)}
@@ -9885,6 +9910,81 @@ A.ffMore = () => { UI.orderCat = 'ffdetails'; render(); window.scrollTo(0, 0); }
 A.ffH = t => { FF.h = +t.dataset.v; ffRefresh(); };
 A.ffSplit = t => { FF.split = t.dataset.v; ffRefresh(); };
 A.ffHinge = t => { FF.hinge = t.dataset.v; ffRefresh(); };
+/* Kitchen > All Larders: Oven Housing Larder. Pick the drawer type (or none), then the configuration:
+   the oven and microwave, the top door and the bottom door or drawers. The sizes come from the supplier's list (OHL_P). */
+const OHL = { sys: 'none', h: 1970, cfg: 'e', hinge: 'left', d: 570, v: 50 };
+const ohlList = () => OHL_P.filter(p => p.h === OHL.h && (OHL.sys === 'none' ? !p.dr : !!p.dr));
+const ohlP = () => { const l = ohlList(); return l.find(p => p.id === OHL.cfg) || l[0]; };
+const ohlCode = () => OHL_CODE(ohlP(), OHL.sys);
+const ohlOvenTxt = p => (p.ov === 'd' ? 'Double oven' : 'Single oven' + (p.mw ? ' and ' + p.mw + ' microwave' : ''));
+const ohlLabel = p => ohlOvenTxt(p) + (p.dr ? ', ' + p.dr.length + ' drawer' + (p.dr.length > 1 ? 's' : '') : ', bottom door') + ' (' + OHL_CODE(p, OHL.sys) + ')';
+const ohlDoors = () => { const p = ohlP(); return p.dr ? [[596, p.top]] : [[596, p.top], [596, p.bot]]; };
+const ohlHinges = () => ohlDoors().length * 2;
+const ohlZone = p => (p.dr ? p.dr.reduce((a, b) => a + b, 0) + 3 * (p.dr.length - 1) + 4 : p.bot + 2.5) + (p.fil ? p.fil + 5 : 0);   // the height of the bottom zone: the door, or the drawer fronts with their 3 mm gaps, and any filler
+const ohlArt = (extra, bare) => {
+  const p = ohlP(), H = p.h, n = p.dr ? p.dr.length : 0, T = 18, y0 = 150;
+  const zone = ohlZone(p), s1 = y0 + zone + 5 + T, s2 = y0 + H - p.top - 5;
+  const panels = [[H - 2.5 - p.top, H - 2.5, 't']].concat(p.dr ? [] : [[2.5, 2.5 + p.bot, 'b']]);
+  return baseArt(600, OHL.d, H, hArt(OHL.hinge), OHL.v, Object.assign({ doors: false, noBack: true, noShelf: !p.mw, shelfAt: s1 + 600 + T, fullTop: true, noRail: true,
+    fixedShelves: [s1, s2], backParts: [[y0 + T, s1 - T], [s2, y0 + H - T]] }, p.dr ? { drawers: { fronts: p.dr.slice(), open: p.dr.map((x, i) => bare ? 0 : i === 0 ? 170 : 0), h: zone - (p.fil ? p.fil + 5 : 0) - 4 + 0, bottom: true }, noFronts: !!bare } : {},
+    bare ? {} : { ffOpen: { panels } }, extra));
+};
+function ohlPick(sel) {
+  const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  const grid = items => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${items.join('')}</div>`;
+  return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(h => btn('ohlH', h, h + ' high', OHL.h === h)).join('')}</div>
+    <div class="muted">Drawer type:</div>${grid([['none', 'No drawer'], ['Antaro', 'Antaro'], ['Legrabox', 'Legrabox'], ['Merivo', 'Merivo']].map(([v, t]) => btn('ohlSys', v, t, OHL.sys === v)))}
+    <label class="field"><span class="lbl">Configuration</span><select class="select" data-chg="ohlCfg">${ohlList().map(p => `<option value="${p.id}" ${p.id === ohlP().id ? 'selected' : ''}>${esc(ohlLabel(p))}</option>`).join('')}</select></label>
+    <div class="muted">Door hinge:</div>${grid(['left', 'right'].map(h => btn('ohlHinge', h, h === 'left' ? 'Left hinge' : 'Right hinge', OHL.hinge === h)))}`;
+}
+function ohlCard() {
+  const p = ohlP(), chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="ohlDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="ohl" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', p.h)}${chip('W', 600)}${chip('D', OHL.d)}${chip('Void', OHL.v)}</div>
+    <div style="height:480px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${ohlArt()}</div>
+    <div class="row"><div><h3 style="margin:0">Oven Housing Larder</h3><span class="mono">${ohlCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="ohlMore">More Details ${ic('chevR', 14)}</button></div>
+    ${ohlPick(sel)}
+    <div class="row" style="gap:10px">${num('d', 'Depth (mm)', OHL.d)}${num('v', 'Void (mm)', OHL.v)}</div>
+    ${bkRow('ohl')}
+  </article>`;
+}
+function ohlDetails() {
+  const p = ohlP(), n = p.dr ? p.dr.length : 0;
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="ohlDim" data-k="${k}"></label>`;
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Larders</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(ohlArt({}, true), 520)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', ohlCode())}${row('Width', '600 mm')}${row('Height (without legs)', p.h + ' mm')}${row('Height (with legs)', (p.h + 150) + ' mm')}${row('Depth', OHL.d + ' mm')}${row('Void', OHL.v + ' mm')}${row('Leg height', '150 mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">600MM ${ohlOvenTxt(p).toUpperCase()} HOUSING${p.dr ? ' LARDER' : ''} ${p.h}</h1>
+      <span class="mono">${ohlCode()}</span>
+      <p class="muted" style="margin:0">${esc(ohlOvenTxt(p))} housing, ${p.h} high, ${OHL.d} deep, ${p.dr ? 'with ' + n + ' ' + OHL.sys + ' drawer' + (n > 1 ? 's' : '') + ' underneath' : 'with a door above and below'}.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + ohlCode())}${row('OVEN', ohlOvenTxt(p))}${p.dr ? row('DRAWERS', 'Quantity: ' + n + ' x ' + OHL.sys + ' drawer' + (n > 1 ? 's' : '')) : ''}${p.fil ? row('FILLER', 'Quantity: 1 x ' + p.fil + ' mm filler panel') : ''}${row('SHELF', 'Quantity: 2 x fixed shelf, one under and one over the oven opening')}${p.mw ? row('LOOSE SHELF', 'Quantity: 1 x loose shelf, between the oven and the microwave') : ''}${row('BACK', 'Back on the top and bottom sections, none where the oven goes')}${row('HINGES', 'Quantity: ' + ohlHinges() + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(600) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(600) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      ${ohlPick(sel)}
+      <div class="row" style="gap:10px">${num('d', 'Depth (mm)', OHL.d)}${num('v', 'Void (mm)', OHL.v)}</div>
+      ${ocDetail(null)}
+      ${bkRow('ohl')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(ohlArt({ dims: true }, true), 640)}</div>`;
+}
+const ohlRefresh = () => { if (UI.orderCat === 'ohldetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#ohl'); if (el) el.outerHTML = ohlCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.ohlMore = () => { UI.orderCat = 'ohldetails'; render(); window.scrollTo(0, 0); };
+A.ohlSys = t => { OHL.sys = t.dataset.v; OHL.cfg = ohlP().id; ohlRefresh(); };
+A.ohlH = t => { OHL.h = +t.dataset.v; OHL.cfg = ohlP().id; ohlRefresh(); };
+A.ohlHinge = t => { OHL.hinge = t.dataset.v; ohlRefresh(); };
+CH.ohlCfg = t => { OHL.cfg = t.value; ohlRefresh(); };
+CH.ohlDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = OHL[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), OHL.d - 200); OHL[k] = v; ohlRefresh(); };
 CH.ffDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = FF[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), FF.d - 200); FF[k] = v; ffRefresh(); };
 /* Kitchen > All Bases: L Shape Corner Base Unit. Two wings meeting at the corner: the right hand
    wing runs along the back wall, the left hand wing along the left wall. The customer sets both
@@ -10877,6 +10977,9 @@ A.bkAdd = t => {
   } else if (key === 'ff') {
     const fd = ffDoors();
     l = { name: 'Fridge Freezer Larder', code: ffCode(), w: FF.w, h: FF.h, d: FF.d, v: FF.v, opt: FF.split + ' split, ' + FF.hinge + ' door hinge, doors ' + fd.w + ' x ' + fd.b + ' and ' + fd.w + ' x ' + fd.t + ' mm, ' + FF_AP + ' mm appliance opening with 1 x fixed shelf above, full top, fixed back on the top section, removable back ' + FF_RB + ' mm high in the middle of the opening, 5 x appliance hinges' };
+  } else if (key === 'ohl') {
+    const p = ohlP(), n = p.dr ? p.dr.length : 0;
+    l = { name: 'Oven Housing Larder', code: ohlCode(), w: 600, h: p.h, d: OHL.d, v: OHL.v, opt: ohlOvenTxt(p) + ', top door ' + p.top + ' mm, ' + (p.dr ? n + ' x ' + OHL.sys + ' drawer' + (n > 1 ? 's' : '') + ' (' + p.dr.join(' + ') + ' mm)' + (p.fil ? ', ' + p.fil + ' mm filler' : '') : 'bottom door ' + p.bot + ' mm') + ', ' + OHL.hinge + ' door hinge, 2 x fixed shelf, ' + (p.mw ? '1 x loose shelf between the oven and the microwave, ' : '') + 'back on the top and bottom sections only, ' + ohlHinges() + ' x hinges' };
   } else if (key === 'dresser') {
     drsClamp();
     l = { name: 'Dresser', code: drsCode(), w: DRS.w, h: DRS.h, d: DRS.d, v: DRS.v, opt: (drsPair() ? 'Pair of full height doors' : 'Single full height door, ' + DRS.hinge + ' hinge') + ', door height ' + drsDoorH() + ' mm, ' + drsDrawerText().toLowerCase() + (drsRows() ? ', ' + DRS.sys + ' M height, 1 x fixed shelf on top of the drawers' : '') + ', ' + (DRS.glass ? drsGlassText() : drsShelves() + ' x shelves') + ', ' + (drsPair() ? 4 : 2) + ' x hinges' + (drsSide() ? ', 1 x divider' : '') + (drsHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
@@ -10921,7 +11024,7 @@ A.bkAdd = t => {
     const id = key.slice(3), tp = dpType(id), s = DPK[id]; if (!tp) return;
     l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers' + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
-  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
+  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
   Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? webGroup(col.group) : '', edging: ocEdgeText() });
@@ -11221,6 +11324,13 @@ function poUnit(u) {
   if (k === 'oven') {
     const r = C({ top: 'none', back: false, shelves: 0, fixed: s.drawer ? 1 : 0, fronts: s.drawer ? [[w - 4, 115]] : [], legs: true });
     if (s.drawer) r.f.runners[s.sys || 'Antaro'] = 1; return r;
+  }
+  if (k === 'ohl') {                                                                                    // top door, oven opening between two fixed shelves, then a bottom door or drawers; no back
+    const p = (window.OHL_P || []).find(x => x.id === s.cfg) || OHL_P[0], dd = p.dr ? [[w - 4, p.top]] : [[w - 4, p.top], [w - 4, p.bot]];
+    const inner = w - 2 * T, zone = ohlZone(p), upBack = p.top + 5 - T, lowBack = zone + 5 - T;      // a back above the top shelf and one below the bottom shelf, none where the oven goes
+    const r = C({ top: 'full', back: false, v: v + T, shelves: p.mw ? 1 : 0, fixed: 2, doors: dd, legs: true, extra: [{ name: 'Back (top section)', l: upBack, w: inner, q: 1 }, { name: 'Back (bottom section)', l: lowBack, w: inner, q: 1 }].concat(p.fil ? [{ name: 'Filler panel', l: p.fil, w: w - 4, q: 1, ef: 2 * (w - 4 + p.fil), er: 0 }] : []) });
+    r.f.mp += 12;
+    if (p.dr) r.f.runners[s.sys || 'Antaro'] = p.dr.length; return r;
   }
   if (k === 'ff') {                                                                                     // full top, fixed shelf over the 1800 opening, a fixed back above the shelf and a removable back across the opening
     const inner = w - 2 * T, up = H - 1800 - 3 * T;
@@ -11591,6 +11701,7 @@ function cOrders() {
   if (UI.orderCat === 'cornerdetails') return cornerDetails();
   if (UI.orderCat === 'ovendetails') return ovenDetails();
   if (UI.orderCat === 'ffdetails') return ffDetails();
+  if (UI.orderCat === 'ohldetails') return ohlDetails();
   if (UI.orderCat === 'lshdetails') return lshDetails();
   if (UI.orderCat === 'walldetails') return wallDetails();
   if (UI.orderCat === 'cwalldetails') return cwDetails();
@@ -11619,7 +11730,7 @@ function cOrders() {
   if (UI.orderCat === 'larders') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Larders</h1><p>Choose a width, then the height and door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${ffCard()}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${ffCard()}${ohlCard()}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -11636,7 +11747,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
