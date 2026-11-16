@@ -7076,7 +7076,50 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
             { name: 'Drawer Types', rows: d, cols: [{ wch: 20 }, { wch: 32 }, { wch: 7 }, { wch: 8 }, { wch: 11 }] }];
   }
 
+  /* ---------- full inventory export: Rooms, Categories and Items as three workbooks, each with a Format sheet ---------- */
+  var YN = function (v) { return v ? 'Yes' : 'No'; };
+  var blankNum = function (v) { return v === undefined || v === null || v === '' || +v === 0 ? '' : Math.round(+v * 100) / 100; };
+  var ICONS = ['Base', 'Wall', 'Tall', 'Drawer', 'Corner', 'Appliance', 'Robe', 'Panel', 'Door', 'Shelf', 'Acc', 'Custom'];
+  function iconName(v) { var s = String(v || '').toLowerCase(), hit = ICONS.filter(function (n) { return n.toLowerCase() === s; })[0]; return hit || 'Custom'; }
+  function formatSheet(cols, key) {
+    var rows = [['Column', 'Required', 'What goes in it']].concat(cols.map(function (c) { return [c[0], c[1], c[2]]; }));
+    rows.push([], ['How it works'],
+      ['Rows are matched on ' + key + ' (or on ID when you kept it), so importing the same sheet twice updates rather than duplicates.'],
+      ['Only the columns your sheet has are touched. Delete a column to leave that setting alone.'],
+      ['Nothing is saved until you press Import in the preview.']);
+    return { name: 'Format', rows: rows, cols: [{ wch: 44 }, { wch: 10 }, { wch: 90 }] };
+  }
+  function book(sheetName, rows, fmt) {
+    var x = X(), wb = x.utils.book_new(), ws = x.utils.aoa_to_sheet(rows);
+    ws['!cols'] = rows[0].map(function (h) { return { wch: Math.max(12, String(h).length + 2) }; });
+    x.utils.book_append_sheet(wb, ws, sheetName);
+    var f = x.utils.aoa_to_sheet(fmt.rows); f['!cols'] = fmt.cols; x.utils.book_append_sheet(wb, f, 'Format');
+    return wb;
+  }
+  function exportThree(DB, supplierName) {
+    var roomName = {}; (DB.rooms || []).forEach(function (r) { roomName[r.id] = r.name; });
+    var catName = {}; (DB.categories || []).forEach(function (c) { catName[c.id] = c.name; });
+    var rooms = [['ID', 'Room name', 'Sort order', 'Active']].concat((DB.rooms || []).map(function (r) { return [r.id, r.name, +r.sort || 0, YN(r.active !== false)]; }));
+    var cats = [['ID', 'Name', 'Sort order', 'Description', 'Rooms', 'Icon', 'Active']].concat((DB.categories || []).map(function (c) {
+      var rl = (c.rooms || ['all']), rt = rl.indexOf('all') >= 0 ? 'All rooms' : rl.map(function (id) { return roomName[id] || id; }).join(', ');
+      return [c.id, c.name, +c.sort || 0, c.desc || '', rt, iconName(c.icon), YN(c.active !== false)];
+    }));
+    var ih = ['ID', 'Item name', 'Item code', 'Category', 'Room', 'Supplier group', 'Description', 'Default height (mm)', 'Default width (mm)', 'Default depth (mm)', 'Base price, Plain (£)', 'Woodgrain price (£)', 'Structure price (£)', 'Finish compatibility', 'Takes door fronts', 'Ask for blank size (blind corner units)', 'Ask for top door size and bottom door/drawer (appliance housings)', 'Ask for left and right side widths (curved and splayed specials)', 'Active (shown to customers)', 'Internal notes'];
+    var items = [ih].concat((DB.items || []).map(function (i) {
+      return [i.id, i.name, i.code, catName[i.cat] || i.cat || '', i.room || 'All rooms', (supplierName && supplierName(i.pl)) || 'Not set', i.desc || '',
+        blankNum(i.h), blankNum(i.w), blankNum(i.d), (i.plain === '' || i.plain === null || i.plain === undefined ? '' : Math.round((+i.plain || 0) * 100) / 100), blankNum(i.wood), blankNum(i.struct), i.finishes || 'All finishes',
+        YN(i.doors), YN(i.blank), YN(i.sections), YN(i.sides), YN(i.active !== false), i.notes || ''];
+    }));
+    var fmtRooms = formatSheet([['ID', 'No', 'Stable id, e.g. rm-1'], ['Room name', 'Yes', 'Text'], ['Sort order', 'No', 'Number'], ['Active', 'No', 'Yes / No']], 'Room name');
+    var fmtCats = formatSheet([['ID', 'No', 'Stable id, e.g. cat-base'], ['Name', 'Yes', 'Text'], ['Sort order', 'No', 'Number'], ['Description', 'No', 'Free text'], ['Rooms', 'No', 'Room names separated by a comma and a space, or All rooms'], ['Icon', 'No', ICONS.join(' · ')], ['Active', 'No', 'Yes / No']], 'Name');
+    var fmtItems = formatSheet(ih.map(function (h, n) { return [h, n === 1 || n === 2 || n === 10 ? 'Yes' : 'No', n === 14 || n === 15 || n === 16 || n === 17 || n === 18 ? 'Yes / No' : n >= 7 && n <= 12 ? 'Number' : 'Text']; }), 'Item code');
+    var out = [[book('Rooms', rooms, fmtRooms), 'easy-cab-builder-rooms.xlsx'], [book('Categories', cats, fmtCats), 'easy-cab-builder-categories.xlsx'], [book('Items', items, fmtItems), 'easy-cab-builder-items.xlsx']];
+    out.forEach(function (o, n) { setTimeout(function () { download(o[0], o[1]); }, n * 600); });          // spaced out so the browser allows all three downloads
+    return { rooms: rooms.length - 1, categories: cats.length - 1, items: items.length - 1 };
+  }
+
   window.CatalogueIO = {
+    exportThree: exportThree,
     ready: function () { return !!X(); },
     mapHeader: mapHeader,
     readSheet: readSheet,
@@ -7547,6 +7590,17 @@ OHL_P.forEach(p => (p.dr ? ['Antaro', 'Legrabox', 'Merivo'] : [null]).forEach(s 
   const n = p.dr ? p.dr.length : 0;
   PRICELIST.push([OHL_CODE(p, s), '600 ' + OHL_TEXT(p) + (s ? ' (' + s + ' drawers)' : ''), 'cat-appl', 'Kitchen', p.h, 600, 570, +(246.28 + 84 * n).toFixed(2), +(273.38 + 84 * n).toFixed(2), +(300.49 + 84 * n).toFixed(2), 1, 'Larders', 's', '600 ' + OHL_TEXT(p) + ', top door ' + p.top + (p.dr ? ', ' + n + ' ' + s + ' drawer' + (n > 1 ? 's' : '') : ', bottom door ' + p.bot)]);
 }));
+/* Pantry larders, 1000 wide, 570 deep: LMP (1970) or LTP (2150) + A, L or M for the drawer system + 1000. Priced like the plain pantry larder. */
+[[1970, 'LMP', 'PL1000'], [2150, 'LTP', 'PL1000']].forEach(([hh, cp, pr]) => [['A', 'Antaro'], ['L', 'Legra'], ['M', 'Merivo']].forEach(([c, sys]) => {
+  const sl = PRICELIST.find(r => r[0] === pr) || [], nm = '1000 Pantry Larder With 2 Shelves & 3 ' + sys + ' Internal scalloped fronts ' + hh + ' High 570 Deep';
+  PRICELIST.push([cp + c + '1000', nm, 'cat-tall', 'Kitchen', hh, 1000, 570, sl[7] || 0, sl[8] || 0, sl[9] || 0, 1, 'Larders', '', nm]);
+}));
+[[1970, 'LMP'], [2150, 'LTP']].forEach(([hh, cp]) => { const sl = PRICELIST.find(r => r[0] === 'PL1000') || [], nm = '1000 Pantry Larder With 5 Adjustable Shelves ' + hh + ' High 570 Deep'; PRICELIST.push([cp + '1000', nm, 'cat-tall', 'Kitchen', hh, 1000, 570, sl[7] || 0, sl[8] || 0, sl[9] || 0, 1, 'Larders', '', nm]); });
+/* Corner larders, 1970 high, 570 deep: LMC + width + LB or RB (left or right hand blank). Priced like the plain larder of the same width. */
+[[1970, 'SL', 'LMC'], [2150, 'TL', 'LTC']].forEach(([hh, pr, cp]) => [800, 900, 1000, 1100, 1200].forEach(w => ['L', 'R'].forEach(s => {
+  const sl = PRICELIST.find(r => r[0] === pr + w) || [], dn = w >= 1100 ? 550 : 500, nm = w + ' Corner Larder ' + dn + ' ' + (s === 'L' ? 'Left' : 'Right') + ' Hand Blank ' + hh + ' High 570 Deep';
+  PRICELIST.push([cp + w + s + 'B', nm, 'cat-tall', 'Kitchen', hh, w, 570, sl[7] || 0, sl[8] || 0, sl[9] || 0, 1, 'Larders', 'b', nm]);
+})));
 window.PL_GROUPS = [["Base", "Base Units"], ["CornerBase", "Corner Bases"], ["BaseDline", "Drawline Bases"], ["DrawPack", "Drawer Packs"], ["Larders", "Larders & Appliance Housings"], ["Wall575H", "Wall 575 High"], ["Wall720H", "Wall 720 High"], ["Wall900H", "Wall 900 High"], ["TopBox", "Top Boxes"], ["Dresser", "Dressers"], ["Panels", "Panels & Plinths"], ["DOORS", "Doors"], ["ROBES", "Robes"], ["Accessories", "Accessories"], ["Services", "Delivery & Services"]];
 
 </script>
@@ -9064,7 +9118,9 @@ function baseArt(w, d, h, hinge, vd, opts) {
     NOT.push({ a: y1 - GN.h, b: y1, d: GN.d });
   }
   // a side panel's outline seen from the front, with the notches cut out of its front edge, between heights ylo and yhi
-  const notched = (x, ylo, yhi, zback) => {
+  const D0 = d, GS = o.golaSet ? Object.assign({}, o.golaSet, { side: o.golaSet.side === 'both' ? 'both' : FL === -1 ? (o.golaSet.side === 'left' ? 'right' : 'left') : o.golaSet.side }) : null, zL = GS && (GS.side === 'left' || GS.side === 'both') ? d - GS.d : d, zR = GS && (GS.side === 'right' || GS.side === 'both') ? d - GS.d : d;   // FL = -1 draws the cabinet mirrored, so the side is swapped to keep the chosen side true   // larder Gola: the gable on the Gola side stops 20 short of the front
+  const notched = (x, ylo, yhi, zback, dd) => {
+    const d = dd == null ? D0 : dd;
     const a = [P(x, ylo, zback), P(x, ylo, d)]; let open = false;
     NOT.forEach(n => {
       if (open || n.a >= yhi || n.b <= ylo) return;
@@ -9094,7 +9150,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     const yc = y0 + T + FF_AP / 2, hh = FF_RB / 2;                                                                       // the removable back is only a panel in the middle of the opening, fixed with 4 clips
     q([P(T, yc - hh, vd), P(w - T, yc - hh, vd), P(w - T, yc + hh, vd), P(T, yc + hh, vd)], baseShade(col, -0.22));          // the same tone as the other backs, in the cabinet colour
   }
-  q(notched(T, y0 + T, y1 - T, vd), baseShade(col, -0.1));                                                              // inside of the left side (with any Gola notches)
+  q(notched(T, y0 + T, y1 - T, vd, zL), baseShade(col, -0.1));                                                              // inside of the left side (with any Gola notches)
   const zfl = o.golaWall ? d - GOLA_WALL_SB : d;                                                                        // a Gola wall unit has its base set back from the front
   q([P(T, y0 + T, vd), P(w - T, y0 + T, vd), P(w - T, y0 + T, zfl), P(T, y0 + T, zfl)], baseShade(col, 0.04));            // floor
   const ym = (y0 + y1) / 2, zs = d - 22;
@@ -9210,17 +9266,19 @@ function baseArt(w, d, h, hinge, vd, opts) {
       q([P(xr, yb, zA), P(xr, yb, zB), P(xr, yt, zB), P(xr, yt, zA)], '#c9ced2');                                      // right
     });
   }
-  q(notched(w, y0, y1, 0), baseShade(col, 0.08));                                                                       // right side (with any Gola notches)
+  q(notched(w, y0, y1, 0, zR), baseShade(col, 0.08));                                                                       // right side (with any Gola notches)
   // a base unit has no full top: just one flat front top rail (160 deep, 18 thick) and the edges of the side panels
   const vRail = o.rail === 'vertical', rf = vRail ? T : 160, topCol = baseShade(col, 0.28);   // a vertical top rail stands on edge: 70 high, 18 thick
   const zt = GN ? d - GN.d : d;                                                                                           // with a Gola notch the top edges of the side panels stop 27 short of the front
-  q([P(0, y1, 0), P(T, y1, 0), P(T, y1, zt), P(0, y1, zt)], topCol);                                                       // side panel edges
-  q([P(w - T, y1, 0), P(w, y1, 0), P(w, y1, zt), P(w - T, y1, zt)], topCol);
+  q([P(0, y1, 0), P(T, y1, 0), P(T, y1, Math.min(zt, zL)), P(0, y1, Math.min(zt, zL))], topCol);                           // side panel edges
+  q([P(w - T, y1, 0), P(w, y1, 0), P(w, y1, Math.min(zt, zR)), P(w - T, y1, Math.min(zt, zR))], topCol);
   const yr = GN ? y1 - GN.h : y1;                                                                                         // with Gola the front rail starts at the bottom of the notch, so its top is 57 down
   if (!o.noRail) q([P(T, yr, d - rf), P(w - T, yr, d - rf), P(w - T, yr, d), P(T, yr, d)], topCol);                          // front rail, top
   if (o.fullTop) q([P(T, y1, 0), P(w - T, y1, 0), P(w - T, y1, d), P(T, y1, d)], topCol);                                  // a Belfast sink base keeps a full top panel
   [[0, T], [w - T, w]].forEach(([xa, xb]) => {                                                                            // front of each side panel
-    if (!GN) { q([P(xa, y0, d), P(xb, y0, d), P(xb, y1, d), P(xa, y1, d)], baseShade(eh, 0.1), esw); return; }       // the gable fronts take the edging colour
+    if (!GN) { const zg = xa === 0 ? zL : zR; q([P(xa, y0, zg), P(xb, y0, zg), P(xb, y1, zg), P(xa, y1, zg)], zg !== d ? '#e0a45f' : baseShade(eh, 0.1), esw);        // a Gola gable's front face is tinted so the 20 mm set back can be seen
+      if (zg !== d) { const a = P(xa, y1, zg); pts.push({ x: a.x, y: a.y - 80 }); out.push(`<text x="${(a.x + (xa === 0 ? -6 : 6)).toFixed(1)}" y="${(a.y - 40).toFixed(1)}" font-size="30" fill="#b86a1a" stroke="#f4f4f2" stroke-width="6" paint-order="stroke" text-anchor="${(xa === 0) === (FL === 1) ? 'end' : 'start'}" font-family="sans-serif">Gola 20</text>`); }
+      return; }       // the gable fronts take the edging colour (a Gola larder's gable on the Gola side stops 20 short)
     let lo = y0;
     NOT.forEach(n => {
       q([P(xa, lo, d), P(xb, lo, d), P(xb, n.a, d), P(xa, n.a, d)], baseShade(eh, 0.1), esw);                              // front face up to the notch
@@ -9240,7 +9298,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     else dr.fronts.forEach((f, i) => { const hf = avail * f / sum; jobs.push({ ytop: top, ybot: top - hf + 4, pull: (dr.open || [])[i] || 0, front: true }); top -= hf; });
     if (dr.internal) jobs.push({ ytop: yt, ybot: yt - zone + 4, pull: dr.internalPull || 150, front: false });
     // a double drawer (wide units) is two drawers side by side, either side of the centre post
-    const two = dr.cols === 2, boxes = two ? [[T + 14, w / 2 - T - 6], [w / 2 + T + 6, w - T - 14]] : [[T + 14, w - T - 14]], faces = two ? [[3, w / 2 - 2], [w / 2 + 2, w - 3]] : [[3, w - 3]];
+    const ins = dr.inset || 0, two = dr.cols === 2, boxes = two ? [[T + 14, w / 2 - T - 6], [w / 2 + T + 6, w - T - 14]] : [[T + 14 + ins, w - T - 14 - ins]], faces = two ? [[3, w / 2 - 2], [w / 2 + 2, w - 3]] : [[3 + ins, w - 3 - ins]];
     jobs.sort((a, b) => a.ybot - b.ybot).forEach(j => {
       const zf = d + j.pull, sh = Math.min(110, (j.ytop - j.ybot) * 0.7), yf = j.ybot + 28, zb = Math.max(vd + 30, zf - 460);
       boxes.forEach(([xl, xr]) => {
@@ -9256,12 +9314,20 @@ function baseArt(w, d, h, hinge, vd, opts) {
         if (j.pull > 0) q([P(fa, j.ytop, zf - T), P(fb, j.ytop, zf - T), P(fb, j.ytop, zf), P(fa, j.ytop, zf)], baseShade(eh, 0.32), esw);
         if (j.ytop - j.ybot > 130 && fb - fa > 260) q([P(fa + 52, j.ybot + 35, zf), P(fb - 52, j.ybot + 35, zf), P(fb - 52, j.ytop - 35, zf), P(fa + 52, j.ytop - 35, zf)], baseShade(col, 0.08), 1);   // shaker panel
         const hm = (fa + fb) / 2, hw = (fb - fa) * 0.12;
-        if (!o.gola) ln(P(hm - hw, j.ytop - 30, zf), P(hm + hw, j.ytop - 30, zf), '#3a3631', 4);                            // handle (Gola is handleless)
+        if (dr.scallop) {                                                                                                  // a scalloped front: a curved scoop cut into the top edge, centred, as in the Cabinet Vision picture
+          const sw = Math.min(170, (fb - fa) * 0.18), sd = Math.min(42, (j.ytop - j.ybot) * 0.3), N = 14, edge = [];
+          for (let k = 0; k <= N; k++) { const x = hm - sw + 2 * sw * k / N, u = Math.min(1, Math.max(0, (sw - Math.abs(x - hm)) / (sw * 0.6))), s = u * u * (3 - 2 * u); edge.push(P(x, j.ytop - sd * s, zf)); }
+          q(edge, baseShade(col, -0.4), 1.2);
+        } else if (!o.gola) ln(P(hm - hw, j.ytop - 30, zf), P(hm + hw, j.ytop - 30, zf), '#3a3631', 4);                            // handle (Gola is handleless)
       });
     });
   }
-  const door = (hx, sgn, dw, ang) => {
-    const c = Math.cos(ang || TH), s = Math.sin(ang || TH), cl = o.blank && o.blank.inside ? 2.5 : 3, yb = (o.doorFrom != null ? o.doorFrom : y0) + cl, yt = y1 - cl - (o.gola ? GOLA_CUT.h : 0) - (o.drawers && o.drawers.h ? o.drawers.h + 4 : 0);   // a Gola door stops below the notch; a drawerline unit keeps its drawer above the door
+  if (o.fillers) {                // internal chest: a filler panel on each side of the drawer fronts, flush with the front
+    const f = o.fillers;
+    [[T, T + f.w], [w - T - f.w, w - T]].forEach(([xa, xb]) => q([P(xa, y0 + T, d), P(xb, y0 + T, d), P(xb, y0 + f.h, d), P(xa, y0 + f.h, d)], baseShade(col, 0.16), 1.2));
+  }
+  const door = (hx, sgn, dw, ang, ylo, yhi) => {
+    const c = Math.cos(ang || TH), s = Math.sin(ang || TH), cl = o.blank && o.blank.inside ? 2.5 : 3, yb = ylo != null ? ylo : (o.doorFrom != null ? o.doorFrom : y0) + cl, yt = yhi != null ? yhi : y1 - cl - (o.gola ? GOLA_CUT.h : 0) - (o.drawers && o.drawers.h ? o.drawers.h + 4 : 0);   // a Gola door stops below the notch; a drawerline unit keeps its drawer above the door
     const at = (t, y) => P(hx + sgn * dw * c * t, y, d + dw * s * t);
     const m = Math.min(0.2, 55 / dw);
     if (o.glass) {                                                                                                          // a framed glass door on standard hinges: the cabinet-colour frame round a clear glass panel
@@ -9331,6 +9397,9 @@ function baseArt(w, d, h, hinge, vd, opts) {
     q([P(3, yb, zf), P(w - 3, yb, zf), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(col, 0.24), 1.3);                    // door face
     q([P(3 + m, yb + 75, zf), P(w - 3 - m, yb + 75, zf), P(w - 3 - m, yt - 75, zf), P(3 + m, yt - 75, zf)], baseShade(col, 0.08), 1);   // shaker panel
     q([P(3, yt, zf - T), P(w - 3, yt, zf - T), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(eh, 0.32), esw);                  // top edge
+  } else if (o.doors && o.splitDoors) {          // a pair, each side split in two: the lower door, then the upper door, with a 5 mm gap between
+    const sd = o.splitDoors, ya = y0 + 2.5, yb1 = ya + sd.bot, yt0 = yb1 + 5, yt1 = y1 - 2.5;
+    [[ya, yb1], [yt0, yt1]].forEach(([a, b]) => { door(0, 1, w / 2 - 3, null, a, b); door(w, -1, w / 2 - 3, 150 * Math.PI / 180, a, b); });
   } else if (o.doors) { if (single) door(0, 1, w - 4); else { door(0, 1, w / 2 - 3); door(w, -1, w / 2 - 3, 150 * Math.PI / 180); } }   // the right door swings wider so it opens clear of the right half
   if (o.ffOpen) {                 // fridge freezer larder: the two doors hinged on the same side, swung open together like one leaf
     const f = o.ffOpen, dw = w - 4, c = Math.cos(TH), s = Math.sin(TH), at = (t, y) => P(dw * c * t, y, d + dw * s * t), m = Math.min(0.2, 55 / dw);
@@ -9850,19 +9919,28 @@ A.ovenSys = t => { OVEN.sys = t.dataset.v; ovenRefresh(); };
 /* Kitchen > All Larders: Fridge Freezer Larder, 600 wide, 1970 (FFM) or 2150 (FFT) high, for a 50/50 or 70/30 fridge freezer.
    The heights are the cabinet without legs. Inside, 1800 mm from the base panel is the opening for the appliance, with a fixed shelf on top of it.
    Two doors: the lower one over the freezer, the upper one over the fridge. */
-const FF = { h: 2150, split: '50/50', hinge: 'left', w: 600, d: 570, v: 50 };
+const FF = { h: 2150, split: '50/50', hinge: 'left', w: 600, d: 570, v: 50, gola: 'none' };
 const FF_AP = 1800;                                                // the opening for the appliance, from the top of the base panel to the underside of the fixed shelf
 const FF_T = 18.2;
 const FF_RB = 400;                                                 // the removable back: just a panel in the middle of the opening, 400 high (a guess)
 const ffCode = () => (FF.h === 2150 ? 'FFT' : 'FFM') + FF.w + FF.split;
 const ffDoors = () => { const fz = FF.split === '70/30' ? 0.3 : 0.5, b = Math.round(FF_T + fz * FF_AP); return { w: FF.w - 4, b, t: FF.h - 10 - b }; };   // doors sit on the cabinet: width less 4, and the two heights add up to the height less 5 top and bottom plus a 5 gap
-const ffArt = (extra, bare) => baseArt(FF.w, FF.d, FF.h, hArt(FF.hinge), FF.v, Object.assign({ doors: false, noBack: true, noShelf: true, fullTop: true, noRail: true, fixedShelfAt: 150 + 2 * 18 + FF_AP, ffBack: { sy: 150 + 2 * 18 + FF_AP } }, bare ? {} : { ffOpen: { b: ffDoors().b } }, extra));
+/* Larder Gola: the customer picks the gable (left or right) that carries the Gola; that gable is set back 20 mm from the front. */
+const LGOLA_SB = 20;
+const lgSet = s => s && s.gola && s.gola !== 'none' ? { side: s.gola, d: LGOLA_SB } : null;
+const lgText = s => s.gola && s.gola !== 'none' ? 'Gola on ' + (s.gola === 'both' ? 'both gables' : 'the ' + s.gola + ' gable') + ', set back ' + LGOLA_SB + ' mm' : '';
+function lgPick(act, s, sel) {
+  const btn = (v, t) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 4px;font-size:12px;white-space:nowrap;${sel((s.gola || 'none') === v)}" data-act="${act}" data-v="${v}">${(s.gola || 'none') === v ? '&#9745;' : '&#9744;'} ${t}</button>`;
+  return `<div class="muted">Gola (the gable is set back ${LGOLA_SB} mm):</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('none', 'No Gola')}${btn('both', 'Both gables')}${btn('left', 'Left gable')}${btn('right', 'Right gable')}</div>`;
+}
+const ffArt = (extra, bare) => baseArt(FF.w, FF.d, FF.h, hArt(FF.hinge), FF.v, Object.assign({ golaSet: lgSet(FF), doors: false, noBack: true, noShelf: true, fullTop: true, noRail: true, fixedShelfAt: 150 + 2 * 18 + FF_AP, ffBack: { sy: 150 + 2 * 18 + FF_AP } }, bare ? {} : { ffOpen: { b: ffDoors().b } }, extra));
 function ffPick(sel) {
   const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
   const grid = items => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${items.join('')}</div>`;
   return `<div class="muted">Height:</div>${grid([2150, 1970].map(h => btn('ffH', h, h + ' high', FF.h === h)))}
     <div class="muted">Fridge freezer split:</div>${grid(['50/50', '70/30'].map(s => btn('ffSplit', s, s, FF.split === s)))}
-    <div class="muted">Door hinge:</div>${grid(['left', 'right'].map(h => btn('ffHinge', h, h === 'left' ? 'Left hinge' : 'Right hinge', FF.hinge === h)))}`;
+    <div class="muted">Door hinge:</div>${grid(['left', 'right'].map(h => btn('ffHinge', h, h === 'left' ? 'Left hinge' : 'Right hinge', FF.hinge === h)))}
+    ${lgPick('ffGola', FF, sel)}`;
 }
 function ffCard() {
   const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
@@ -9895,7 +9973,7 @@ function ffDetails() {
       <span class="mono">${ffCode()}</span>
       <p class="muted" style="margin:0">${w} Fridge Freezer Larder ${FF.h} High ${FF.d} Deep to suit a ${FF.split} split, with a fixed shelf above the ${FF_AP} mm opening.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + ffCode())}${row('OPENING', FF_AP + ' mm for the fridge freezer')}${row('SHELF', 'Quantity: 1 x fixed shelf, above the opening')}${row('BACK', 'Fixed back on the top section, removable back, ' + FF_RB + ' mm high, in the middle of the ' + FF_AP + ' mm opening')}${row('HINGES', 'Quantity: 5 x appliance hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + ffCode())}${row('OPENING', FF_AP + ' mm for the fridge freezer')}${row('SHELF', 'Quantity: 1 x fixed shelf, above the opening')}${row('BACK', 'Fixed back on the top section, removable back, ' + FF_RB + ' mm high, in the middle of the ' + FF_AP + ' mm opening')}${row('HINGES', 'Quantity: 5 x appliance hinges')}${FF.gola !== 'none' ? row('GOLA', lgText(FF)) : ''}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${ffPick(sel)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', FF.d)}${num('v', 'Void (mm)', FF.v)}</div>
       ${ocDetail(null)}
@@ -9908,14 +9986,21 @@ function ffDetails() {
 const ffRefresh = () => { if (UI.orderCat === 'ffdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#ff'); if (el) el.outerHTML = ffCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 A.ffMore = () => { UI.orderCat = 'ffdetails'; render(); window.scrollTo(0, 0); };
 A.ffH = t => { FF.h = +t.dataset.v; ffRefresh(); };
+A.ffGola = t => { FF.gola = t.dataset.v; ffRefresh(); };
+A.ohlGola = t => { OHL.gola = t.dataset.v; ohlRefresh(); };
+A.lcGola = t => { LC.gola = t.dataset.v; lcRefresh(); };
 A.ffSplit = t => { FF.split = t.dataset.v; ffRefresh(); };
 A.ffHinge = t => { FF.hinge = t.dataset.v; ffRefresh(); };
 /* Kitchen > All Larders: Oven Housing Larder. Pick the drawer type (or none), then the configuration:
    the oven and microwave, the top door and the bottom door or drawers. The sizes come from the supplier's list (OHL_P). */
-const OHL = { sys: 'none', h: 1970, cfg: 'e', hinge: 'left', d: 570, v: 50 };
+const OHL = { sys: 'none', h: 1970, cfg: 'e', hinge: 'left', d: 570, v: 50, gola: 'none', mtm: false, top: null };
 const ohlList = () => OHL_P.filter(p => p.h === OHL.h && (OHL.sys === 'none' ? !p.dr : !!p.dr));
-const ohlP = () => { const l = ohlList(); return l.find(p => p.id === OHL.cfg) || l[0]; };
-const ohlCode = () => OHL_CODE(ohlP(), OHL.sys);
+const ohlBase = () => { const l = ohlList(); return l.find(p => p.id === OHL.cfg) || l[0]; };
+/* MTM: the customer types the top door size and the cabinet height follows (the preset height plus the change in the top door). */
+const ohlTopMax = b => Math.min(1100, b.top + 2400 - b.h);
+const ohlP = () => { const b = ohlBase(); if (!OHL.mtm) return b; const top = Math.min(Math.max(Math.round(OHL.top || b.top), 200), ohlTopMax(b)); return Object.assign({}, b, { top, h: b.h + top - b.top }); };
+const ohlCode = () => OHL_CODE(ohlBase(), OHL.sys) + mtmTag('ohl');
+const ohlResetTop = () => { OHL.top = ohlBase().top; };
 const ohlOvenTxt = p => (p.ov === 'd' ? 'Double oven' : 'Single oven' + (p.mw ? ' and ' + p.mw + ' microwave' : ''));
 const ohlLabel = p => ohlOvenTxt(p) + (p.dr ? ', ' + p.dr.length + ' drawer' + (p.dr.length > 1 ? 's' : '') : ', bottom door') + ' (' + OHL_CODE(p, OHL.sys) + ')';
 const ohlDoors = () => { const p = ohlP(); return p.dr ? [[596, p.top]] : [[596, p.top], [596, p.bot]]; };
@@ -9925,17 +10010,24 @@ const ohlArt = (extra, bare) => {
   const p = ohlP(), H = p.h, n = p.dr ? p.dr.length : 0, T = 18, y0 = 150;
   const zone = ohlZone(p), s1 = y0 + zone + 5 + T, s2 = y0 + H - p.top - 5;
   const panels = [[H - 2.5 - p.top, H - 2.5, 't']].concat(p.dr ? [] : [[2.5, 2.5 + p.bot, 'b']]);
-  return baseArt(600, OHL.d, H, hArt(OHL.hinge), OHL.v, Object.assign({ doors: false, noBack: true, noShelf: !p.mw, shelfAt: s1 + 600 + T, fullTop: true, noRail: true,
+  return baseArt(600, OHL.d, H, hArt(OHL.hinge), OHL.v, Object.assign({ golaSet: lgSet(OHL), doors: false, noBack: true, noShelf: !p.mw, shelfAt: s1 + 600 + T, fullTop: true, noRail: true,
     fixedShelves: [s1, s2], backParts: [[y0 + T, s1 - T], [s2, y0 + H - T]] }, p.dr ? { drawers: { fronts: p.dr.slice(), open: p.dr.map((x, i) => bare ? 0 : i === 0 ? 170 : 0), h: zone - (p.fil ? p.fil + 5 : 0) - 4 + 0, bottom: true }, noFronts: !!bare } : {},
     bare ? {} : { ffOpen: { panels } }, extra));
 };
+function ohlMtmBlock() {
+  const b = ohlBase(), p = ohlP();
+  return `<label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="ohlMtm" ${OHL.mtm ? 'checked' : ''}><span><b>MTM cabinet</b> (made to measure)</span></label>
+    ${OHL.mtm ? `<label class="field"><span class="lbl">Top door size (mm)</span><input class="input" type="number" min="200" max="${ohlTopMax(b)}" step="1" value="${p.top}" data-chg="ohlTop"></label>
+    <div class="muted" style="font-size:13px;line-height:1.5">The cabinet height follows the top door: <b>${p.h} mm</b> (${b.h} ${p.top >= b.top ? '+' : '-'} ${Math.abs(p.top - b.top)}). The oven opening and the bottom stay as the standard cabinet. The code ends in ${MTM_SUFFIX}.</div>` : ''}`;
+}
 function ohlPick(sel) {
   const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
   const grid = items => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${items.join('')}</div>`;
   return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(h => btn('ohlH', h, h + ' high', OHL.h === h)).join('')}</div>
     <div class="muted">Drawer type:</div>${grid([['none', 'No drawer'], ['Antaro', 'Antaro'], ['Legrabox', 'Legrabox'], ['Merivo', 'Merivo']].map(([v, t]) => btn('ohlSys', v, t, OHL.sys === v)))}
     <label class="field"><span class="lbl">Configuration</span><select class="select" data-chg="ohlCfg">${ohlList().map(p => `<option value="${p.id}" ${p.id === ohlP().id ? 'selected' : ''}>${esc(ohlLabel(p))}</option>`).join('')}</select></label>
-    <div class="muted">Door hinge:</div>${grid(['left', 'right'].map(h => btn('ohlHinge', h, h === 'left' ? 'Left hinge' : 'Right hinge', OHL.hinge === h)))}`;
+    <div class="muted">Door hinge:</div>${grid(['left', 'right'].map(h => btn('ohlHinge', h, h === 'left' ? 'Left hinge' : 'Right hinge', OHL.hinge === h)))}
+    ${lgPick('ohlGola', OHL, sel)}`;
 }
 function ohlCard() {
   const p = ohlP(), chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
@@ -9968,7 +10060,7 @@ function ohlDetails() {
       <span class="mono">${ohlCode()}</span>
       <p class="muted" style="margin:0">${esc(ohlOvenTxt(p))} housing, ${p.h} high, ${OHL.d} deep, ${p.dr ? 'with ' + n + ' ' + OHL.sys + ' drawer' + (n > 1 ? 's' : '') + ' underneath' : 'with a door above and below'}.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + ohlCode())}${row('OVEN', ohlOvenTxt(p))}${p.dr ? row('DRAWERS', 'Quantity: ' + n + ' x ' + OHL.sys + ' drawer' + (n > 1 ? 's' : '')) : ''}${p.fil ? row('FILLER', 'Quantity: 1 x ' + p.fil + ' mm filler panel') : ''}${row('SHELF', 'Quantity: 2 x fixed shelf, one under and one over the oven opening')}${p.mw ? row('LOOSE SHELF', 'Quantity: 1 x loose shelf, between the oven and the microwave') : ''}${row('BACK', 'Back on the top and bottom sections, none where the oven goes')}${row('HINGES', 'Quantity: ' + ohlHinges() + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(600) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(600) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + ohlCode())}${row('OVEN', ohlOvenTxt(p))}${p.dr ? row('DRAWERS', 'Quantity: ' + n + ' x ' + OHL.sys + ' drawer' + (n > 1 ? 's' : '')) : ''}${p.fil ? row('FILLER', 'Quantity: 1 x ' + p.fil + ' mm filler panel') : ''}${row('SHELF', 'Quantity: 2 x fixed shelf, one under and one over the oven opening')}${p.mw ? row('LOOSE SHELF', 'Quantity: 1 x loose shelf, between the oven and the microwave') : ''}${row('BACK', 'Back on the top and bottom sections, none where the oven goes')}${row('HINGES', 'Quantity: ' + ohlHinges() + ' x hinges')}${OHL.gola !== 'none' ? row('GOLA', lgText(OHL)) : ''}${row('LEGS', 'Quantity: ' + legQty(600) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(600) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${ohlPick(sel)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', OHL.d)}${num('v', 'Void (mm)', OHL.v)}</div>
       ${ocDetail(null)}
@@ -9980,11 +10072,155 @@ function ohlDetails() {
 }
 const ohlRefresh = () => { if (UI.orderCat === 'ohldetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#ohl'); if (el) el.outerHTML = ohlCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 A.ohlMore = () => { UI.orderCat = 'ohldetails'; render(); window.scrollTo(0, 0); };
-A.ohlSys = t => { OHL.sys = t.dataset.v; OHL.cfg = ohlP().id; ohlRefresh(); };
-A.ohlH = t => { OHL.h = +t.dataset.v; OHL.cfg = ohlP().id; ohlRefresh(); };
+A.ohlSys = t => { OHL.sys = t.dataset.v; OHL.cfg = ohlBase().id; ohlResetTop(); ohlRefresh(); };
+A.ohlH = t => { OHL.h = +t.dataset.v; OHL.cfg = ohlBase().id; ohlResetTop(); ohlRefresh(); };
+CH.ohlMtm = t => { OHL.mtm = !!t.checked; ohlResetTop(); ohlRefresh(); };
+CH.ohlTop = t => { let v = Math.round(+t.value); if (!isFinite(v)) v = OHL.top; OHL.top = Math.min(Math.max(v, 200), ohlTopMax(ohlBase())); ohlRefresh(); };
 A.ohlHinge = t => { OHL.hinge = t.dataset.v; ohlRefresh(); };
-CH.ohlCfg = t => { OHL.cfg = t.value; ohlRefresh(); };
+CH.ohlCfg = t => { OHL.cfg = t.value; ohlResetTop(); ohlRefresh(); };
 CH.ohlDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = OHL[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), OHL.d - 200); OHL[k] = v; ohlRefresh(); };
+/* Kitchen > All Larders: Corner Larder, 800 to 1200 wide, 1970 high, 570 deep. One door plus a fixed blank panel on the left or right,
+   the same rule as the corner base: the blank is entered by the customer (it starts at 600) and the door is what is left, width - blank - 18.2. */
+const LC = { w: 1000, h: 1970, side: 'right', door: 500, d: 570, v: 50, gola: 'none', mtm: false };
+const LC_WIDTHS = [800, 900, 1000, 1100, 1200], LC_MIN_DOOR = 300;
+const lcDoorMax = () => Math.floor(LC.w - 18.2 - 50);                  // leaves at least a 50 mm blank
+const lcDoor = () => Math.min(Math.max(Math.round(LC.door), LC_MIN_DOOR), lcDoorMax());
+const lcBlank = () => Math.round((LC.w - lcDoor() - 18.2) * 10) / 10;    // blank = cabinet width - door size - 18.2, worked out for the customer
+const lcBlankH = () => Math.round((LC.h - 36.4) * 10) / 10;               // the blank runs between the base and the top: cabinet height - 36.4
+const lcBlankTxt = () => lcBlank() + ' x ' + lcBlankH() + ' mm';
+const lcCode = () => (LC.h === 2150 ? 'LTC' : 'LMC') + LC.w + (LC.side === 'right' ? 'RB' : 'LB') + mtmTag('lc');
+const lcHinges = () => 4;                                                // a full height door: 4 blank corner hinges
+const lcArt = extra => baseArt(LC.w, LC.d, LC.h, 'left', LC.v, Object.assign({ golaSet: lgSet(LC), blank: { side: LC.side, w: lcBlank(), inside: true, door: lcDoor() }, shelfN: 5, fullTop: true, noRail: true }, extra));
+function lcPick(sel) {
+  return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(h => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(LC.h === h)}" data-act="lcH" data-v="${h}">${LC.h === h ? '&#9745;' : '&#9744;'} ${h} high</button>`).join('')}</div>
+    <div class="muted">Blank:</div><div class="row" style="gap:6px">${[['right', 'Right hand blank'], ['left', 'Left hand blank']].map(([k, t]) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(LC.side === k)}" data-act="lcSide" data-v="${k}">${LC.side === k ? '&#9745;' : '&#9744;'} ${t}</button>`).join('')}</div>
+    <label class="field"><span class="lbl">Door size (mm)</span><input class="input" type="number" min="${LC_MIN_DOOR}" max="${lcDoorMax()}" step="1" value="${lcDoor()}" data-chg="lcDoor"></label>
+    <div class="muted">Blank size: <b>${lcBlankTxt()}</b> (width ${LC.w} - ${lcDoor()} - 18.2, height ${LC.h} - 36.4)</div>
+    ${lgPick('lcGola', LC, sel)}`;
+}
+function lcCard() {
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="lcDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="lc" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', LC.h)}${chip('W', LC.w)}${chip('D', LC.d)}${chip('Void', LC.v)}</div>
+    <div style="height:480px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${lcArt({ doors: true })}</div>
+    <div class="row"><div><h3 style="margin:0">Corner Larder</h3><span class="mono">${lcCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="lcMore">More Details ${ic('chevR', 14)}</button></div>
+    <div class="muted">Width:</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">${LC_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="padding:0 2px;${sel(x === LC.w)}" data-act="lcW" data-w="${x}">${x}</button>`).join('')}</div>
+    ${lcPick(sel)}
+    <div class="row" style="gap:10px">${num('d', 'Depth (mm)', LC.d)}${num('v', 'Void (mm)', LC.v)}</div>
+    ${mtmBlock('lc')}
+    ${bkRow('lc')}
+  </article>`;
+}
+function lcDetails() {
+  const w = LC.w, bl = lcBlank();
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="lcDim" data-k="${k}"></label>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Larders</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(lcArt({ doors: false }), 520)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', lcCode())}${row('Width', w + ' mm')}${row('Height (without legs)', LC.h + ' mm')}${row('Height (with legs)', (LC.h + 150) + ' mm')}${row('Depth', LC.d + ' mm')}${row('Void', LC.v + ' mm')}${row('Leg height', '150 mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${w}MM CORNER LARDER ${LC.h}</h1>
+      <span class="mono">${lcCode()}</span>
+      <p class="muted" style="margin:0">${w}mm wide corner larder with a ${LC.side} hand blank of ${lcBlankTxt()}.</p>
+      <div class="muted">Available widths:</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">${LC_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="padding:0 2px;${sel(x === w)}" data-act="lcW" data-w="${x}">${x}</button>`).join('')}</div>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + lcCode())}${row('BLANK', (LC.side === 'right' ? 'Right' : 'Left') + ' hand, ' + lcBlankTxt() + ' (width ' + w + ' - ' + lcDoor() + ' - 18.2, height ' + LC.h + ' - 36.4)')}${row('DOOR SIZE', lcDoor() + ' mm')}${row('SHELVES', 'Quantity: 5 x shelves')}${row('HINGES', 'Quantity: ' + lcHinges() + ' x blank corner hinges')}${LC.gola !== 'none' ? row('GOLA', lgText(LC)) : ''}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'Quantity: 1 x blank panel, ' + lcBlankTxt() + ', carries the door hinges')}</div>
+      ${lcPick(sel)}
+      ${ocDetail(null)}
+      <div class="row" style="gap:10px">${num('d', 'Depth (mm)', LC.d)}${num('v', 'Void (mm)', LC.v)}</div>
+      ${mtmBlock('lc')}
+      ${bkRow('lc')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(lcArt({ doors: false, dims: true }), 640)}</div>`;
+}
+const lcRefresh = () => { if (UI.orderCat === 'lcdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#lc'); if (el) el.outerHTML = lcCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.lcMore = () => { UI.orderCat = 'lcdetails'; render(); window.scrollTo(0, 0); };
+A.lcW = t => { LC.w = +t.dataset.w; LC.door = lcDoor(); lcRefresh(); };
+A.lcH = t => { LC.h = +t.dataset.v; lcRefresh(); };
+A.lcSide = t => { LC.side = t.dataset.v; lcRefresh(); };
+CH.lcDoor = t => { let v = Math.round(+t.value); if (!isFinite(v)) v = LC.door; LC.door = Math.min(Math.max(v, LC_MIN_DOOR), lcDoorMax()); lcRefresh(); };
+CH.lcDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = LC[k]; if (k === 'd') v = Math.min(800, Math.max(LC.mtm ? 200 : 300, v)); else v = Math.min(Math.max(0, v), LC.d - 200); LC[k] = v; lcRefresh(); };
+/* Kitchen > All Larders: Pantry Larder, 1000 wide, 1970 (LMP) or 2150 (LTP) high, 570 deep. A pair of full height doors over 2 shelves and
+   3 internal drawers with scalloped fronts. Codes: LMP / LTP + A, L or M (Antaro, Legrabox, Merivo) + 1000, e.g. LMPA1000. */
+const PAN = { h: 1970, sys: 'Antaro', chest: true, doors: 'split', d: 570, v: 50, gola: 'none' };
+/* Doors: a pair of full height doors, or split doors (each side a top door of 1245 and a bottom door: 715 on the 1970, 895 on the 2150). No centre post. */
+const panSplit = () => PAN.doors === 'split';
+const panDoorSizes = () => panSplit() ? { w: 496.5, top: 1245, bot: PAN.h - 10 - 1245 } : { w: 496.5, full: PAN.h - 5 };
+const panDoorTxt = () => panSplit() ? 'Split doors, 4 doors: top 1245 and bottom ' + panDoorSizes().bot + ' on each side' : 'Pair of full height doors';
+const PAN_W = 1000, PAN_DR = 160, PAN_ZONE = 3 * 160 + 2 * 3 + 4, PAN_FILL = 32;   // three internal drawers of 160 (a guess), with their gaps; a 32 filler each side of the chest
+const panCode = () => (PAN.h === 2150 ? 'LTP' : 'LMP') + (PAN.chest ? ({ Antaro: 'A', Legrabox: 'L', Merivo: 'M' })[PAN.sys] : '') + PAN_W;
+const panHinges = () => panSplit() ? 12 : 8;                                 // full height: 4 each; split: 4 on each top door and 2 on each bottom door
+const panArt = (extra, bare) => baseArt(PAN_W, PAN.d, PAN.h, 'left', PAN.v, Object.assign({ golaSet: lgSet(PAN), doors: !bare, noPost: true, fullTop: true, noRail: true, splitDoors: panSplit() ? { bot: panDoorSizes().bot } : null },
+  PAN.chest ? { shelfN: 2, shelfFrom: 150 + 18 + PAN_ZONE + 10 + 18, fixedShelfAt: 150 + PAN_ZONE + 18, fillers: { w: PAN_FILL, h: PAN_ZONE },
+    drawers: { fronts: [1, 1, 1], open: [170, 0, 0], h: PAN_ZONE - 4, bottom: true, inset: PAN_FILL, scallop: true } } : { shelfN: 5 }, extra));      // with the chest: a fixed shelf on top of the drawers and 2 shelves above; without: 5 equal adjustable shelves
+function panPick(sel) {
+  const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(h => btn('panH', h, h + ' high', PAN.h === h)).join('')}</div>
+    <div class="muted">Doors:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('panDoors', 'split', 'Split doors', panSplit())}${btn('panDoors', 'full', 'Full height doors', !panSplit())}</div>
+    <div class="muted">Internal chest:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('panChest', 'yes', 'With internal chest', PAN.chest)}${btn('panChest', 'no', 'Without chest', !PAN.chest)}</div>
+    ${PAN.chest ? `<div class="muted">Drawer type:</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${DP_SYSTEMS.map(s => btn('panSys', s, s, PAN.sys === s)).join('')}</div>` : ''}
+    ${lgPick('panGola', PAN, sel)}`;
+}
+function panCard() {
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="panDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="pan" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', PAN.h)}${chip('W', PAN_W)}${chip('D', PAN.d)}${chip('Void', PAN.v)}</div>
+    <div style="height:480px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${panArt()}</div>
+    <div class="row"><div><h3 style="margin:0">Pantry Larder</h3><span class="mono">${panCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="panMore">More Details ${ic('chevR', 14)}</button></div>
+    ${panPick(sel)}
+    <div class="row" style="gap:10px">${num('d', 'Depth (mm)', PAN.d)}${num('v', 'Void (mm)', PAN.v)}</div>
+    ${bkRow('pan')}
+  </article>`;
+}
+function panDetails() {
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="panDim" data-k="${k}"></label>`;
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Larders</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(panArt({}, true), 520)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', panCode())}${row('Width', PAN_W + ' mm')}${row('Height (without legs)', PAN.h + ' mm')}${row('Height (with legs)', (PAN.h + 150) + ' mm')}${row('Depth', PAN.d + ' mm')}${row('Void', PAN.v + ' mm')}${row('Leg height', '150 mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${PAN_W}MM PANTRY LARDER ${PAN.h}</h1>
+      <span class="mono">${panCode()}</span>
+      <p class="muted" style="margin:0">${PAN_W} Pantry Larder ${PAN.chest ? 'with 2 shelves and 3 ' + PAN.sys + ' internal scalloped fronts' : 'without an internal chest, with 5 equal adjustable shelves'}, ${PAN.h} High ${PAN.d} Deep.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + panCode())}${row('DOORS', panSplit() ? 'Split doors, a top and a bottom door on each side' : 'Pair of full height doors')}${PAN.chest ? row('INTERNAL CHEST', 'Quantity: 3 x ' + PAN.sys + ' internal drawers, scalloped fronts') + row('FILLERS', 'Quantity: 2 x ' + PAN_FILL + ' mm fillers, one on each side of the chest') + row('FIXED SHELF', 'Quantity: 1 x fixed shelf, on top of the internal drawers') + row('SHELVES', 'Quantity: 2 x adjustable shelves above') : row('SHELVES', 'Quantity: 5 x equal adjustable shelves')}${row('HINGES', 'Quantity: ' + panHinges() + ' x hinges')}${PAN.gola !== 'none' ? row('GOLA', lgText(PAN)) : ''}${row('LEGS', 'Quantity: ' + legQty(PAN_W) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(PAN_W) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      ${panPick(sel)}
+      ${ocDetail(null)}
+      <div class="row" style="gap:10px">${num('d', 'Depth (mm)', PAN.d)}${num('v', 'Void (mm)', PAN.v)}</div>
+      ${bkRow('pan')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(panArt({ dims: true }, true), 640)}</div>`;
+}
+const panRefresh = () => { if (UI.orderCat === 'pandetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#pan'); if (el) el.outerHTML = panCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.panMore = () => { UI.orderCat = 'pandetails'; render(); window.scrollTo(0, 0); };
+A.panH = t => { PAN.h = +t.dataset.v; panRefresh(); };
+A.panDoors = t => { PAN.doors = t.dataset.v; panRefresh(); };
+A.panChest = t => { PAN.chest = t.dataset.v === 'yes'; panRefresh(); };
+A.panSys = t => { PAN.sys = t.dataset.v; panRefresh(); };
+A.panGola = t => { PAN.gola = t.dataset.v; panRefresh(); };
+CH.panDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = PAN[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), PAN.d - 200); PAN[k] = v; panRefresh(); };
 CH.ffDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = FF[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), FF.d - 200); FF[k] = v; ffRefresh(); };
 /* Kitchen > All Bases: L Shape Corner Base Unit. Two wings meeting at the corner: the right hand
    wing runs along the back wall, the left hand wing along the left wall. The customer sets both
@@ -10976,10 +11212,14 @@ A.bkAdd = t => {
     l = { name: 'Built Under Oven Housing', code: ovenCode(), w: OVEN.w, d: OVEN.d, v: OVEN.v, opt: OVEN.drawer ? 'With ' + OVEN.sys + ' drawer' : 'Without drawer' };
   } else if (key === 'ff') {
     const fd = ffDoors();
-    l = { name: 'Fridge Freezer Larder', code: ffCode(), w: FF.w, h: FF.h, d: FF.d, v: FF.v, opt: FF.split + ' split, ' + FF.hinge + ' door hinge, doors ' + fd.w + ' x ' + fd.b + ' and ' + fd.w + ' x ' + fd.t + ' mm, ' + FF_AP + ' mm appliance opening with 1 x fixed shelf above, full top, fixed back on the top section, removable back ' + FF_RB + ' mm high in the middle of the opening, 5 x appliance hinges' };
+    l = { name: 'Fridge Freezer Larder', code: ffCode(), w: FF.w, h: FF.h, d: FF.d, v: FF.v, opt: FF.split + ' split, ' + FF.hinge + ' door hinge, doors ' + fd.w + ' x ' + fd.b + ' and ' + fd.w + ' x ' + fd.t + ' mm, ' + FF_AP + ' mm appliance opening with 1 x fixed shelf above, full top, fixed back on the top section, removable back ' + FF_RB + ' mm high in the middle of the opening, 5 x appliance hinges' + (FF.gola !== 'none' ? ', ' + lgText(FF) : '') };
+  } else if (key === 'pan') {
+    l = { name: 'Pantry Larder', code: panCode(), w: PAN_W, h: PAN.h, d: PAN.d, v: PAN.v, opt: panDoorTxt() + ', no centre post, ' + (PAN.chest ? 'internal chest of 3 x ' + PAN.sys + ' drawers with scalloped fronts and a ' + PAN_FILL + ' mm filler each side, 1 x fixed shelf on top of the drawers, 2 x adjustable shelves' : 'no internal chest, 5 x equal adjustable shelves') + ', ' + panHinges() + ' x hinges' + (PAN.gola !== 'none' ? ', ' + lgText(PAN) : '') };
+  } else if (key === 'lc') {
+    l = { name: 'Corner Larder', code: lcCode(), w: LC.w, h: LC.h, d: LC.d, v: LC.v, opt: (LC.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + lcBlankTxt() + ', door ' + lcDoor() + ' x ' + (LC.h - 5) + ' mm, 5 x shelves, ' + lcHinges() + ' x blank corner hinges' + (LC.gola !== 'none' ? ', ' + lgText(LC) : '') };
   } else if (key === 'ohl') {
     const p = ohlP(), n = p.dr ? p.dr.length : 0;
-    l = { name: 'Oven Housing Larder', code: ohlCode(), w: 600, h: p.h, d: OHL.d, v: OHL.v, opt: ohlOvenTxt(p) + ', top door ' + p.top + ' mm, ' + (p.dr ? n + ' x ' + OHL.sys + ' drawer' + (n > 1 ? 's' : '') + ' (' + p.dr.join(' + ') + ' mm)' + (p.fil ? ', ' + p.fil + ' mm filler' : '') : 'bottom door ' + p.bot + ' mm') + ', ' + OHL.hinge + ' door hinge, 2 x fixed shelf, ' + (p.mw ? '1 x loose shelf between the oven and the microwave, ' : '') + 'back on the top and bottom sections only, ' + ohlHinges() + ' x hinges' };
+    l = { name: 'Oven Housing Larder', code: ohlCode(), w: 600, h: p.h, d: OHL.d, v: OHL.v, opt: ohlOvenTxt(p) + ', top door ' + p.top + ' mm, ' + (p.dr ? n + ' x ' + OHL.sys + ' drawer' + (n > 1 ? 's' : '') + ' (' + p.dr.join(' + ') + ' mm)' + (p.fil ? ', ' + p.fil + ' mm filler' : '') : 'bottom door ' + p.bot + ' mm') + ', ' + OHL.hinge + ' door hinge, 2 x fixed shelf, ' + (p.mw ? '1 x loose shelf between the oven and the microwave, ' : '') + 'back on the top and bottom sections only, ' + ohlHinges() + ' x hinges' + (OHL.gola !== 'none' ? ', ' + lgText(OHL) : '') };
   } else if (key === 'dresser') {
     drsClamp();
     l = { name: 'Dresser', code: drsCode(), w: DRS.w, h: DRS.h, d: DRS.d, v: DRS.v, opt: (drsPair() ? 'Pair of full height doors' : 'Single full height door, ' + DRS.hinge + ' hinge') + ', door height ' + drsDoorH() + ' mm, ' + drsDrawerText().toLowerCase() + (drsRows() ? ', ' + DRS.sys + ' M height, 1 x fixed shelf on top of the drawers' : '') + ', ' + (DRS.glass ? drsGlassText() : drsShelves() + ' x shelves') + ', ' + (drsPair() ? 4 : 2) + ' x hinges' + (drsSide() ? ', 1 x divider' : '') + (drsHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
@@ -11024,7 +11264,7 @@ A.bkAdd = t => {
     const id = key.slice(3), tp = dpType(id), s = DPK[id]; if (!tp) return;
     l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers' + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
-  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
+  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
   Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? webGroup(col.group) : '', edging: ocEdgeText() });
@@ -11309,6 +11549,12 @@ function poUnit(u) {
   const C = o => poCarcase(Object.assign({ w, h: H, d, v, fe }, o));
   const pairBase = w > 600 || hingeSide(s.hinge, w) === 'both';
   const wallBase = o => C(Object.assign({ top: 'full', back: true, hang: v >= 20, setback: 20 }, o));
+  const lgPo = (r, sp) => {                                                                         // larder Gola: the gable on the Gola side is 20 shallower
+    if (!sp || !sp.gola || sp.gola === 'none') return r;
+    const g = r.parts.find(x => x.name === 'Gable'); if (!g) return r;
+    const gw = poR(g.w - 20), n = sp.gola === 'both' ? 2 : 1; g.q = 2 - n; if (!g.q) r.parts.splice(r.parts.indexOf(g), 1);
+    r.parts.push({ name: 'Gable (Gola side, set back 20)', l: g.l, w: gw, q: n, ef: g.ef, er: g.l + 2 * gw }); return r;
+  };
   const sup = (r, key, label) => { r.f.other[label] = (r.f.other[label] || 0) + 1; return r; };
   if (k === 'base') return C({ top: 'rail', back: true, shelves: 1, doors: doorSet(w, H, pairBase), posts: w > 600 ? 2 : 0, postLen: H - T - 160, legs: true });
   if (k === 'sink') return C({ top: 'rail', rail: s.rail === 'vertical' ? 70 : 160, back: true, shelves: 0, doors: doorSet(w, H, pairBase), posts: w > 600 ? 2 : 0, postLen: H - T - 160, legs: true });
@@ -11325,17 +11571,28 @@ function poUnit(u) {
     const r = C({ top: 'none', back: false, shelves: 0, fixed: s.drawer ? 1 : 0, fronts: s.drawer ? [[w - 4, 115]] : [], legs: true });
     if (s.drawer) r.f.runners[s.sys || 'Antaro'] = 1; return r;
   }
+  if (k === 'pan') {                                                                                    // pair of full height doors, 2 shelves, 3 internal drawers, centre posts, full top and back
+    const chest = s.chest !== false, z = 3 * 160 + 2 * 3 + 4;
+    const r = lgPo(C({ top: 'full', back: true, shelves: chest ? 2 : 5, fixed: chest ? 1 : 0, doors: s.doors === 'full' ? doorSet(w, H, true) : [[496.5, 1245], [496.5, 1245], [496.5, H - 10 - 1245], [496.5, H - 10 - 1245]], hingesPerDoor: 4, legs: true,
+      extra: chest ? [{ name: 'Chest filler', l: z, w: 32, q: 2, ef: z, er: 0 }] : [] }), s);
+    r.f.hinges = s.doors === 'full' ? 8 : 12;                                                       // no centre post; split doors: 4 on each top door, 2 on each bottom door
+    if (chest) r.f.runners[s.sys || 'Antaro'] = 3; return r;
+  }
+  if (k === 'lc') {                                                                                     // corner larder: one door, a blank panel carrying its hinges, 5 shelves, full top and back
+    const door = Math.min(Math.max(Math.round(s.door || 500), 300), Math.floor(w - 18.2 - 50)), bl = Math.round((w - door - 18.2) * 10) / 10;
+    return lgPo(C({ top: 'full', back: true, shelves: 5, doors: [[door - 4, H - 5]], hingesPerDoor: 4, legs: true, extra: [{ name: 'Blank panel', l: H - 2 * T, w: bl, q: 1, ef: H - 2 * T, er: 0 }] }), s);
+  }
   if (k === 'ohl') {                                                                                    // top door, oven opening between two fixed shelves, then a bottom door or drawers; no back
-    const p = (window.OHL_P || []).find(x => x.id === s.cfg) || OHL_P[0], dd = p.dr ? [[w - 4, p.top]] : [[w - 4, p.top], [w - 4, p.bot]];
+    const p0 = (window.OHL_P || []).find(x => x.id === s.cfg) || OHL_P[0], p = s.mtm ? Object.assign({}, p0, { top: Math.round(s.top || p0.top), h: H }) : p0, dd = p.dr ? [[w - 4, p.top]] : [[w - 4, p.top], [w - 4, p.bot]];
     const inner = w - 2 * T, zone = ohlZone(p), upBack = p.top + 5 - T, lowBack = zone + 5 - T;      // a back above the top shelf and one below the bottom shelf, none where the oven goes
     const r = C({ top: 'full', back: false, v: v + T, shelves: p.mw ? 1 : 0, fixed: 2, doors: dd, legs: true, extra: [{ name: 'Back (top section)', l: upBack, w: inner, q: 1 }, { name: 'Back (bottom section)', l: lowBack, w: inner, q: 1 }].concat(p.fil ? [{ name: 'Filler panel', l: p.fil, w: w - 4, q: 1, ef: 2 * (w - 4 + p.fil), er: 0 }] : []) });
     r.f.mp += 12;
-    if (p.dr) r.f.runners[s.sys || 'Antaro'] = p.dr.length; return r;
+    if (p.dr) r.f.runners[s.sys || 'Antaro'] = p.dr.length; return lgPo(r, s);
   }
   if (k === 'ff') {                                                                                     // full top, fixed shelf over the 1800 opening, a fixed back above the shelf and a removable back across the opening
     const inner = w - 2 * T, up = H - 1800 - 3 * T;
     const r = C({ top: 'full', back: false, v: v + T, shelves: 0, fixed: 1, legs: true, extra: [{ name: 'Back (top section)', l: up, w: inner, q: 1 }, { name: 'Removable back', l: FF_RB, w: inner - 60, q: 1 }] });
-    r.f.mp += 6; r.f.hinges = 5; return r;
+    r.f.mp += 6; r.f.hinges = 5; return lgPo(r, s);
   }      // the 5 appliance hinges come with the cabinet
   if (k === 'mtm') return C({ top: s.top === 'full' ? 'full' : 'rail', back: true, backH: s.back === 'custom' ? Math.min(s.backH || 400, H - 36) : H, shelves: s.shelves || 0, posts: w > 600 ? 2 : 0, postLen: H - T - 160, legs: true });
   if (k === 'corner') {
@@ -11653,6 +11910,8 @@ function mtmCfg(key) {
     case 'cwall': return { s: CW, ref: () => cwRefresh(), depth: false, wLim: [400, 1500], dLim: [200, 600], dStd: [300, 600], heightNote: 'one of the three wall heights (575, 720 or 900), picked above', widths: () => CW_WIDTHS, afterW: () => { CW.door = Math.round(CW.w / 2); }, after: () => cwClamp() };
     case 'dresser': return { s: DRS, ref: () => drsRefresh(), depth: true, wLim: [200, 1500], dLim: [200, 600], dStd: [300, 330], heightNote: 'locked to 1065, 1210 or 1390', widths: () => DRS_WIDTHS, after: () => drsClamp() };
   }
+  if (key === 'ohl') return { s: OHL };                                  // handled by its own block (top door size), only the flag and the code suffix are shared
+  if (key === 'lc') return { s: LC, ref: () => lcRefresh(), depth: false, wLim: [400, 1800], dLim: [200, 800], dStd: [570], heightNote: 'one of 1970 or 2150, picked above', widths: () => LC_WIDTHS, afterW: () => { LC.door = lcDoor(); }, after: () => { LC.door = lcDoor(); } };
   if (key.slice(0, 3) === 'dp:') { const id = key.slice(3); return { s: DPK[id], ref: () => dpRefresh(id), depth: false, wLim: [100, 1500], dLim: [200, 800], dStd: [300, 800], heightNote: 'locked at 720', widths: () => DP_WIDTHS }; }
   return null;
 }
@@ -11702,6 +11961,8 @@ function cOrders() {
   if (UI.orderCat === 'ovendetails') return ovenDetails();
   if (UI.orderCat === 'ffdetails') return ffDetails();
   if (UI.orderCat === 'ohldetails') return ohlDetails();
+  if (UI.orderCat === 'lcdetails') return lcDetails();
+  if (UI.orderCat === 'pandetails') return panDetails();
   if (UI.orderCat === 'lshdetails') return lshDetails();
   if (UI.orderCat === 'walldetails') return wallDetails();
   if (UI.orderCat === 'cwalldetails') return cwDetails();
@@ -11730,7 +11991,7 @@ function cOrders() {
   if (UI.orderCat === 'larders') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Larders</h1><p>Choose a width, then the height and door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${ffCard()}${ohlCard()}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${ffCard()}${ohlCard()}${lcCard()}${panCard()}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -11747,7 +12008,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
@@ -12828,7 +13089,7 @@ const ENT = {
 const entColl = key => ENT[key].coll || key;
 function entPage(key) {
   const E = ENT[key], f = UI.filters['e-' + key] = Object.assign({ s: '', act: '', x: '' }, UI.filters['e-' + key]);
-  const io = key === 'items' ? `<button class="btn btn-ghost" data-act="catImport">${ic('upload', 17)} Import from Excel</button><button class="btn btn-ghost" data-act="catExport">${ic('download', 17)} Export</button>` : '';
+  const io = key === 'items' ? `<button class="btn btn-ghost" data-act="catImport">${ic('upload', 17)} Import from Excel</button><button class="btn btn-ghost" data-act="catExport">${ic('download', 17)} Export</button><button class="btn btn-ghost" data-act="catExport3">${ic('download', 17)} Export New Order cabinets (3 files)</button>` : '';
   return `<div class="page-head"><div><h1>${E.title}</h1><p>${E.sub}</p></div><div class="actions">${io}<button class="btn btn-primary" data-act="entNew" data-key="${key}">${ic('plus', 17)} New ${E.one}</button></div></div>
   <section class="card"><div class="filters"><div class="input-wrap">${ic('search', 16)}<input class="input" data-in="entf" data-key="${key}" data-k="s" placeholder="Search ${E.title.toLowerCase()}" value="${esc(f.s)}"></div>
     ${E.filter ? `<select class="select" data-chg="entf" data-key="${key}" data-k="x" aria-label="Filter"><option value="">${E.filter.all}</option>${E.filter.opts().map(([v, l]) => `<option value="${v}" ${String(f.x) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>` : ''}
@@ -13302,6 +13563,47 @@ A.catExport = () => {
   if (!window.CatalogueIO || !CatalogueIO.ready()) { toast('The spreadsheet reader did not load.', { err: 1 }); return; }
   CatalogueIO.exportAll(DB, 'easy-cab-builder-catalogue.xlsx');
   toast(`${DB.items.length} items, ${DB.edgingColours.length} edging colours and ${DB.drawerTypes.length} drawer types exported. Edit the sheets and import the file back.`);
+};
+/* Every cabinet the New Order pages can produce, one row per code. The code functions are used where they depend on the page state (the state is put back afterwards).
+   Prices are left blank because the New Order pages do not hold prices yet. */
+function newOrderInventory() {
+  const rows = [], add = (name, code, cat, pl, desc, h, w, d, o) => { o = o || {}; rows.push({ id: 'no-' + String(rows.length + 1).padStart(3, '0'), name, code, cat, room: o.room || 'Kitchen', pl, desc, h, w, d, plain: '', wood: '', struct: '', finishes: 'All finishes', doors: o.doors !== false, blank: !!o.blank, sections: !!o.sections, sides: !!o.sides, active: true, notes: 'New Order cabinet. ' + (o.note || '') }); };
+  const WP = { 575: 'Wall 575 High', 720: 'Wall 720 High', 900: 'Wall 900 High' }, WPK = { 575: 'Wall575H', 720: 'Wall720H', 900: 'Wall900H' };
+  baseWidths().forEach(i => { const w = +i.w; add('Highline Base Unit ' + w, 'BHL' + w, 'cat-base', 'Base', 'Single or pair of doors, 1 shelf. Gola option available.', BASE_H, w, 570); add('Gola Highline Base Unit ' + w, 'GBCHL' + w, 'cat-base', 'Base', 'Highline base with the Gola J profile cut-out.', BASE_H, w, 570); });
+  SINK_WIDTHS.forEach(w => add('Single Sink Base Unit ' + w, 'BHL' + w + 'S', 'cat-base', 'Base', 'Sink base, horizontal or vertical front top rail, optional sink liner and removable back.', BASE_H, w, 560));
+  DL_WIDTHS.forEach(w => add('Drawerline Single Base Unit ' + w, 'BDL' + w, 'cat-base', 'BaseDline', 'Top drawer over a door. Antaro, Legrabox or Merivo.', BASE_H, w, 560));
+  BIN_WIDTHS.forEach(w => add('Highline Bin Unit ' + w, 'BHL' + w + 'BS', 'cat-base', 'Base', 'Pull-out bins.', BASE_H, w, 570));
+  SPO_WIDTHS.forEach(w => add('Highline Slim Pull-out Unit ' + w, 'BHL' + w + 'SPO', 'cat-base', 'Base', 'Slim pull-out.', BASE_H, w, 570));
+  Object.keys(BEL_HEIGHTS).forEach(w => BEL_HEIGHTS[w].forEach(h => add('Belfast Sink Base Unit ' + w, belCode(+w, h), 'cat-base', 'Base', 'Belfast sink base, full top, 1 shelf.', h, +w, 560)));
+  WINE_OPTS.forEach(o => add('Base ' + (o.x ? 'X ' : '') + 'Wine Rack ' + o.w, o.code, 'cat-base', 'Base', o.label, BASE_H, o.w, 570, { doors: false }));
+  [['', 'No drawer'], ['A', 'Antaro drawer'], ['L', 'Legrabox drawer'], ['M', 'Merivo drawer']].forEach(([s, t]) => add('Built Under Oven Housing, ' + t, '600_BUOH' + s, 'cat-appl', 'Larders', 'Open oven space on top' + (s ? ', drawer underneath' : '') + '.', BASE_H, 600, 570, { doors: false }));
+  DP_TYPES.forEach(t => DP_WIDTHS.forEach(w => add(t.name + ' ' + w, dpCode(t, w), 'cat-drawer', 'DrawPack', 'Drawer pack. Antaro, Legrabox or Merivo.' + (t.gola ? ' Gola.' : ''), BASE_H, w, 570, { doors: false })));
+  CORNER_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Base Unit ' + w + ' ' + s + ' hand blank', 'BCHL' + w + (s === 'right' ? 'RB' : 'LB'), 'cat-corner', 'CornerBase', 'One door and a blank panel; the customer sets the door size. Optional corner carousel.', BASE_H, w, 570, { blank: true })));
+  add('L Shape Corner Base Unit', 'BCHL' + LSH.rh + 'x' + LSH.lh, 'cat-corner', 'CornerBase', 'Right hand and left hand widths set by the customer (code BCHL + right width x left width). Gola option GBCHL.', BASE_H, LSH.rh, LSH.d);
+  [false, true].forEach(g => WALL_HEIGHTS.forEach(h => WALL_WIDTHS.forEach(w => add((g ? 'Glass Wall Unit ' : 'Wall Unit ') + h + ' x ' + w, (g ? WALL_GPREFIX : WALL_PREFIX)[h] + w, 'cat-wall', WPK[h], g ? 'Glass door wall unit with glass shelves.' : 'Wall unit.', h, w, 300))));
+  WALL_HEIGHTS.forEach(h => CW_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Wall Unit ' + h + ' x ' + w + ' ' + s + ' hand blank', WALL_PREFIX[h] + w + (s === 'right' ? 'RB' : 'LB'), 'cat-wall', WPK[h], 'Corner wall unit, one door and a blank.', h, w, 300, { blank: true }))));
+  WALL_HEIGHTS.forEach(h => add('L Shape Corner Wall Unit ' + h, WALL_PREFIX[h] + LW.rh + 'x' + LW.lh, 'cat-wall', WPK[h], 'Right hand and left hand widths set by the customer; starts at 600 x 600.', h, LW.rh, 300));
+  WALL_HEIGHTS.forEach(h => add('Diagonal Wall Unit ' + h, WALL_PREFIX[h] + '6X6D', 'cat-wall', WPK[h], 'Diagonal corner wall unit, 600 x 600.', h, 600, 300));
+  WALL_HEIGHTS.forEach(h => add('Microwave Wall Unit ' + h, WALL_PREFIX[h] + '600MICRO', 'cat-wall', WPK[h], 'Microwave opening, no back behind it, 1 fixed shelf.', h, 600, 300));
+  add('Boiler Wall Housing', 'WT600BOILER', 'cat-wall', 'Wall900H', 'No back, supplied flat pack.', 900, 600, 400);
+  { const s = { h: DRS.h, w: DRS.w }; DRS_HEIGHTS.forEach(h => DRS_WIDTHS.forEach(w => { DRS.h = h; DRS.w = w; add('Dresser ' + h + ' x ' + w, drsCode(), 'cat-wall', 'Dresser', 'Dresser with doors, shelves and optional drawers.', h, w, 300); })); DRS.h = s.h; DRS.w = s.w; }
+  BRG_WIDTHS.forEach(w => BRG_TYPES.forEach(t => add('Bridging Unit ' + w + ' ' + t.label, 'BUS' + w + (t.d === 330 ? '33D' : 'HKT'), 'cat-wall', 'Wall575H', 'Bridging unit with a flap door, ' + t.label + '.', BRG_H, w, t.d)));
+  robeWidths().forEach(i => add('Single Hanging Robe ' + i.w, i.code, 'cat-robe', 'ROBES', 'Hanging robe.', +i.h || 2150, +i.w, 570, { room: 'Bedroom' }));
+  [[2150, 'FFT'], [1970, 'FFM']].forEach(([h, p]) => ['50/50', '70/30'].forEach(s => add('Fridge Freezer Larder ' + h + ' ' + s, p + '600' + s, 'cat-tall', 'Larders', '600 Fridge Freezer Larder ' + h + ' High 570 Deep to suit a ' + s + ' split. 1800 opening, fixed shelf above, 5 appliance hinges. Gola option.', h, 600, 570)));
+  OHL_P.forEach(p => (p.dr ? ['Antaro', 'Legrabox', 'Merivo'] : [null]).forEach(s => add('600 ' + OHL_TEXT(p) + (s ? ' (' + s + ' drawers)' : ''), OHL_CODE(p, s), 'cat-appl', 'Larders', 'Oven housing larder. Gola option.', p.h, 600, 570)));
+  [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => [['A', 'Antaro'], ['L', 'Legrabox'], ['M', 'Merivo']].forEach(([c, sys]) => add('Pantry Larder 1000 ' + h + ' ' + sys, p + c + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 2 shelves and 3 ' + sys + ' internal scalloped fronts, ' + h + ' High 570 Deep. Pair of doors. Gola option.', h, 1000, 570)));
+  [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => add('Pantry Larder 1000 ' + h + ' without internal chest', p + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 5 equal adjustable shelves, ' + h + ' High 570 Deep. Pair of doors. Gola option.', h, 1000, 570));
+  [[1970, 'LMC'], [2150, 'LTC']].forEach(([h, p]) => LC_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Larder ' + w + ' ' + h + ' ' + s + ' hand blank', p + w + (s === 'right' ? 'RB' : 'LB'), 'cat-tall', 'Larders', 'Corner larder, one door and a blank; the customer sets the door size. MTM option.', h, w, 570, { blank: true }))));
+  const rooms = DB.rooms.filter(r => ['Kitchen', 'Bedroom'].includes(r.name));
+  const usedCats = new Set(rows.map(r => r.cat)), cats = DB.categories.filter(c => usedCats.has(c.id));
+  return { rooms, categories: cats, items: rows };
+}
+A.catExport3 = () => {
+  if (!window.CatalogueIO || !CatalogueIO.ready()) { toast('The spreadsheet reader did not load.', { err: 1 }); return; }
+  const inv = newOrderInventory(), dup = {}, dups = [];
+  inv.items.forEach(i => { if (dup[i.code]) dups.push(i.code); dup[i.code] = 1; });
+  const n = CatalogueIO.exportThree(inv, g => (typeof PL_LABEL !== 'undefined' && PL_LABEL[g]) || '');
+  toast(`Exporting 3 files: ${n.rooms} rooms, ${n.categories} categories, ${n.items} New Order cabinets.` + (dups.length ? ` ${dups.length} duplicate codes: ${[...new Set(dups)].slice(0, 5).join(', ')}` : ''));
 };
 A.catTemplate = () => { CatalogueIO.template(); toast('Blank template downloaded. Fill the Items, Edging Colours and Drawer Types sheets and import it.'); };
 
