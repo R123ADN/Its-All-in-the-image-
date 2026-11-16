@@ -9289,6 +9289,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     if (lo < y1) q([P(xa, lo, d), P(xb, lo, d), P(xb, y1, d), P(xa, y1, d)], baseShade(eh, 0.1), esw);                   // front face above the last notch
   });
   if (!o.noRail) q([P(T, yr - (vRail ? 70 : T), d), P(w - T, yr - (vRail ? 70 : T), d), P(w - T, yr, d), P(T, yr, d)], baseShade(eh, 0.1), esw);   // front rail, face
+  else if (o.fullTop) q([P(T, y1 - T, d), P(w - T, y1 - T, d), P(w - T, y1, d), P(T, y1, d)], baseShade(eh, 0.1), esw);                          // a full top panel shows its 18 mm front edge, so the top reads as closed
   q([P(T, y0, zfl), P(w - T, y0, zfl), P(w - T, y0 + T, zfl), P(T, y0 + T, zfl)], baseShade(eh, 0.1), esw);
   if (o.drawers) {                // drawer pack: stacked fronts, the pulled-out ones show their metal-sided box
     const dr = o.drawers, yb = dr.h && !dr.bottom ? y1 - 4 - dr.h : y0 + 4, yt = dr.h && dr.bottom ? y0 + 4 + dr.h : o.gola && !dr.h ? y1 - GOLA_CUT.h : y1 - 4, zone = dr.internal ? (yt - yb) * 0.26 : 0, avail = yt - yb - zone;
