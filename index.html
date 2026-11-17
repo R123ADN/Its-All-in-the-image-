@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -2522,7 +2522,7 @@ body.rp-open .demo-bar{display:none!important}
     var cat = (it && it.cat) || '', code = String((it && it.code) || '').toUpperCase(),
       name = String((it && it.name) || '').toUpperCase();
     if (u && u.shape) return u.shape;              // set by hand in the planner
-    if (/DIAG/.test(name) || /DIAG/.test(code) || /^BDC/.test(code) || /^[ST]DW/.test(code) || /^DR\d*X/.test(code)) return 'diag';
+    if (/DIAG/.test(name) || /DIAG/.test(code) || /^BDC/.test(code) || /^[ST]DW/.test(code) || /^DR\d*X/.test(code) || /^L[MT]D\d/.test(code)) return 'diag';
     if (/L.?SHAPE/.test(name) || /^BLC/.test(code)) return 'L';
     var isCorner = cat === 'cat-corner' || /CORNER/.test(name) || (u && u.kind === 'corner');
     if (!isCorner) return 'box';
@@ -4147,7 +4147,7 @@ body.rp-open .demo-bar{display:none!important}
     var cat = it.cat || '', code = String(it.code || '').toUpperCase(), nm = String(it.name || '').toUpperCase();
     if (u.shape) return u.shape === 'blind' ? 'box' : u.shape;
     // a diagonal or L-shaped unit keeps its shape whatever category it sits in
-    if (/DIAG/.test(nm) || /DIAG/.test(code) || /^BDC/.test(code) || /^[ST]DW/.test(code) || /^DR\d*X/.test(code)) return 'diag';
+    if (/DIAG/.test(nm) || /DIAG/.test(code) || /^BDC/.test(code) || /^[ST]DW/.test(code) || /^DR\d*X/.test(code) || /^L[MT]D\d/.test(code)) return 'diag';
     if (/L.?SHAPE/.test(nm) || /^BLC/.test(code)) return 'L';
     if (!(cat === 'cat-corner' || /CORNER/.test(nm) || u.kind === 'corner')) return 'box';
     // at a normal carcass depth a corner unit is a blind corner, so it keeps
@@ -7601,6 +7601,11 @@ OHL_P.forEach(p => (p.dr ? ['Antaro', 'Legrabox', 'Merivo'] : [null]).forEach(s 
   const sl = PRICELIST.find(r => r[0] === pr + w) || [], dn = w >= 1100 ? 550 : 500, nm = w + ' Corner Larder ' + dn + ' ' + (s === 'L' ? 'Left' : 'Right') + ' Hand Blank ' + hh + ' High 570 Deep';
   PRICELIST.push([cp + w + s + 'B', nm, 'cat-tall', 'Kitchen', hh, w, 570, sl[7] || 0, sl[8] || 0, sl[9] || 0, 1, 'Larders', 'b', nm]);
 })));
+/* Diagonal larders: LMD / LTD + right hand width + X + left hand width. Priced like the plain larder of the wider side. */
+[[1970, 'SL', 'LMD'], [2150, 'TL', 'LTD']].forEach(([hh, pr, cp]) => [1013].forEach(rw => [1013].forEach(lw => {
+  const sl = PRICELIST.find(r => r[0] === pr + 1000) || [], nm = 'Diagonal Larder ' + rw + ' x ' + lw + ' ' + hh + ' High 570 Deep';
+  PRICELIST.push([cp + rw + 'X' + lw, nm, 'cat-tall', 'Kitchen', hh, rw, 570, sl[7] || 0, sl[8] || 0, sl[9] || 0, 1, 'Larders', '', 'Diagonal larder with a diagonal top, base and 5 diagonal shelves, one door on the diagonal.']);
+})));
 window.PL_GROUPS = [["Base", "Base Units"], ["CornerBase", "Corner Bases"], ["BaseDline", "Drawline Bases"], ["DrawPack", "Drawer Packs"], ["Larders", "Larders & Appliance Housings"], ["Wall575H", "Wall 575 High"], ["Wall720H", "Wall 720 High"], ["Wall900H", "Wall 900 High"], ["TopBox", "Top Boxes"], ["Dresser", "Dressers"], ["Panels", "Panels & Plinths"], ["DOORS", "Doors"], ["ROBES", "Robes"], ["Accessories", "Accessories"], ["Services", "Delivery & Services"]];
 
 </script>
@@ -10223,6 +10228,127 @@ A.panSys = t => { PAN.sys = t.dataset.v; panRefresh(); };
 A.panGola = t => { PAN.gola = t.dataset.v; panRefresh(); };
 CH.panDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = PAN[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), PAN.d - 200); PAN[k] = v; panRefresh(); };
 CH.ffDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = FF[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), FF.d - 200); FF[k] = v; ffRefresh(); };
+/* Kitchen > All Larders: Diagonal Larder. Two gables (each as deep as the cabinet) and one door across the diagonal. The customer sets the
+   right hand and left hand widths (start from 1000). The top, the base and all 5 shelves are diagonal too. Height 1970 (LMD) or 2150 (LTD),
+   code LMD / LTD + right hand width + X + left hand width, e.g. LMD1000X1000. Diagonal = the straight line between the two gables' front corners,
+   and the door is the diagonal less 4 (width - 4, height - 5); the diagonal is (wall width - gable depth) x 1.4142; the door height is the cabinet height less 5. */
+const DLR = { h: 1970, rh: 1013, lh: 1013, d: 570, v: 50, hand: 'left' };
+const DLR_START = 1013, DLR_MIN = 700, DLR_MAX = 2000, DLR_LEG = 150, DLR_SHELVES = 5;      // both widths are typed in, starting from 1015
+const dlrDiag = () => Math.hypot(DLR.rh - DLR.d, DLR.lh - DLR.d);
+const dlrDoorOf = (rh, lh, d, h) => ({ w: Math.round(Math.hypot(rh - 18.2 - d, lh - 18.2 - d) - 4), h: h - 4 });   // door width = ((wall width - 18.2 - gable depth) x 1.4142) - 4, door height = cabinet height - 4
+const dlrDoor = () => dlrDoorOf(DLR.rh, DLR.lh, DLR.d, DLR.h);
+const dlrCode = () => (DLR.h === 2150 ? 'LTD' : 'LMD') + DLR.rh + 'X' + DLR.lh;
+const dlrHinges = () => 5;                                                   // 5 hinges, 155 degree
+const dlrClamp = () => { DLR.v = Math.min(100, Math.max(0, DLR.v)); };
+function dlrArt(o) {
+  o = Object.assign({ doors: true, dims: false }, o);
+  const RH = DLR.rh, LH = DLR.lh, D = DLR.d, H = DLR.h, T = 18, v = DLR.v, y0 = DLR_LEG, y1 = y0 + H, col = ocHex(), s2 = Math.SQRT1_2;
+  const R = (x, z) => [(x - z) * s2, (x + z) * s2];                                  // the plan turned 45 degrees so the diagonal faces the viewer
+  const pts = [], out = [];
+  const P = (x, y, z) => { const r = R(x, z), p = { x: r[0] - 0.32 * r[1], y: 0.3 * r[1] - y }; pts.push(p); return p; };
+  const f1 = n => n.toFixed(1), poly = a => a.map(p => f1(p.x) + ',' + f1(p.y)).join(' ');
+  const q = (a, fill, sw) => out.push(`<polygon points="${poly(a)}" fill="${fill}" stroke="${baseShade(col, -0.55)}" stroke-width="${sw || 1.2}" stroke-linejoin="round"/>`);
+  const ln = (a, b, c, sw) => out.push(`<line x1="${f1(a.x)}" y1="${f1(a.y)}" x2="${f1(b.x)}" y2="${f1(b.y)}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`);
+  const plan = [[0, 0], [RH, 0], [RH, D], [D, LH], [0, LH]];                          // wall A along the back, wall B down the left, the diagonal across the front
+  const eh = (ocEdge() || {}).hex || col, esw = ocEdgeType() === '0.8mm' ? 0.8 : 1.8;
+  const dg = dlrDiag(), u = [(D - RH) / dg, (LH - D) / dg], nn = [(LH - D) / dg, (RH - D) / dg];   // along the diagonal, and out of it
+  const at = (s, y, o22) => P(RH + u[0] * s + nn[0] * o22, y, D + u[1] * s + nn[1] * o22);
+  out.push(`<polygon points="${[[-30, -20], [RH + 30, -20], [RH + 30, D], [D, LH + 40], [-30, LH + 40]].map(([x, z]) => { const p = P(x, 0, z); return f1(p.x) + ',' + f1(p.y); }).join(' ')}" fill="#000" opacity="0.08"/>`);   // floor shadow
+  [[60, 60], [RH - 60, 60], [60, LH - 60], [RH + u[0] * dg * 0.1 - nn[0] * 70, D + u[1] * dg * 0.1 - nn[1] * 70], [RH + u[0] * dg * 0.9 - nn[0] * 70, D + u[1] * dg * 0.9 - nn[1] * 70]]
+    .forEach(([x, z]) => { const f = P(x, 12, z);                                      // the 5 legs, drawn like the other larders: a black stem on a wide round foot
+      ln(P(x, y0, z), P(x, 14, z), '#1d1d1d', 20);
+      out.push(`<ellipse cx="${f1(f.x)}" cy="${f1(f.y)}" rx="30" ry="15" fill="#0e0e0e"/><ellipse cx="${f1(f.x)}" cy="${f1(f.y - 9)}" rx="24" ry="10" fill="#2a2a2a"/>`); });
+  q(plan.map(([x, z]) => P(x, y0 + T, z)), baseShade(col, 0.04));                     // base panel, diagonal at the front
+  q([P(0, y0 + T, v), P(RH, y0 + T, v), P(RH, y1 - T, v), P(0, y1 - T, v)], baseShade(col, -0.22));   // inside of the back wall A, set in by the void
+  q([P(v, y0 + T, 0), P(v, y0 + T, LH), P(v, y1 - T, LH), P(v, y1 - T, 0)], baseShade(col, -0.1));    // inside of the back wall B
+  const sd = 22;
+  for (let i = 1; i <= DLR_SHELVES; i++) {                                           // 5 diagonal shelves, set back from the diagonal by the door thickness
+    const ys = y0 + T + i * (H - 2 * T) / (DLR_SHELVES + 1);
+    const zA = D + (T * nn[0] - sd) / nn[1], xB = RH + (-sd - nn[1] * (LH - T - D)) / nn[0];
+    q([[T, T], [RH - T, T], [RH - T, zA], [xB, LH - T], [T, LH - T]].map(([x, z]) => P(x, ys, z)), baseShade(col, 0.12));
+  }
+  q([P(RH, y0, 0), P(RH, y0, D), P(RH, y1, D), P(RH, y1, 0)], baseShade(col, 0.08));  // gable on wall A's side
+  q([P(0, y0, LH), P(D, y0, LH), P(D, y1, LH), P(0, y1, LH)], baseShade(col, 0.1));   // gable on wall B's side
+  if (o.doors) {
+    const dd = dlrDoor(), s1 = (dg - dd.w) / 2, s3 = s1 + dd.w, pr = 22;
+    q([at(s1, y0 + 2.5, pr), at(s3, y0 + 2.5, pr), at(s3, y1 - 2.5, pr), at(s1, y1 - 2.5, pr)], baseShade(col, 0.24), 1.3);
+    q([at(s1 + 55, y0 + 90, pr), at(s3 - 55, y0 + 90, pr), at(s3 - 55, y1 - 90, pr), at(s1 + 55, y1 - 90, pr)], baseShade(col, 0.08), 1);
+    const hs = DLR.hand === 'left' ? s1 + 45 : s3 - 45;                               // the handle is on the side away from the hinges
+    ln(at(hs, y0 + H / 2 - 90, pr), at(hs, y0 + H / 2 + 90, pr), '#3a3631', 4);
+  } else {
+    q([at(0, y0, 0), at(dg, y0, 0), at(dg, y0 + T, 0), at(0, y0 + T, 0)], baseShade(eh, 0.1), esw);   // the bare front edge of the base panel
+  }
+  q(plan.map(([x, z]) => P(x, y1, z)), baseShade(col, 0.28));                         // top, diagonal at the front
+  q([at(0, y1 - T, 0), at(dg, y1 - T, 0), at(dg, y1, 0), at(0, y1, 0)], baseShade(eh, 0.1), esw);
+  if (o.dims) {
+    const ink = '#3b4a52', fs = 34, off = 70;
+    const dim = (a, b, dx, dy, label) => {
+      const A = { x: a.x + dx, y: a.y + dy }, B = { x: b.x + dx, y: b.y + dy }, m = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+      pts.push(A, B); ln(a, A, ink, 1.2); ln(b, B, ink, 1.2); ln(A, B, ink, 1.6);
+      out.push(`<text x="${f1(m.x)}" y="${f1(m.y - 10)}" font-size="${fs}" fill="${ink}" stroke="#f4f4f2" stroke-width="7" paint-order="stroke" text-anchor="middle" font-family="sans-serif">${label}</text>`);
+    };
+    dim(P(RH, y1, D), P(D, y1, LH), 0, -off, 'Diagonal ' + Math.round(dg) + 'mm');
+    dim(P(0, y1, 0), P(RH, y1, 0), 0, -off, 'RH ' + RH);
+    dim(P(0, y1, 0), P(0, y1, LH), 0, -off, 'LH ' + LH);
+    dim(P(RH, y0, 0), P(RH, y1, 0), off, 0, H + 'mm');
+  }
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y), bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...ys), by1 = Math.max(...ys), pad = Math.max(bx1 - bx0, by1 - by0) * 0.06;
+  return `<svg viewBox="${(bx0 - pad).toFixed(0)} ${(by0 - pad).toFixed(0)} ${(bx1 - bx0 + 2 * pad).toFixed(0)} ${(by1 - by0 + 2 * pad).toFixed(0)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Diagonal larder" style="width:100%;height:100%">${out.join('')}</svg>`;
+}
+function dlrPick(sel) {
+  const btn = (act, val, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 4px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${val}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  const dd = dlrDoor();
+  return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(h => btn('dlrH', h, h + ' high', DLR.h === h)).join('')}</div>
+    <div class="row" style="gap:10px"><label class="field" style="flex:1"><span class="lbl">Right hand width (mm)</span><input class="input" type="number" min="${DLR_MIN}" max="${DLR_MAX}" step="1" value="${DLR.rh}" data-chg="dlrDim" data-k="rh"></label><label class="field" style="flex:1"><span class="lbl">Left hand width (mm)</span><input class="input" type="number" min="${DLR_MIN}" max="${DLR_MAX}" step="1" value="${DLR.lh}" data-chg="dlrDim" data-k="lh"></label></div>
+    <div class="muted">Hinge:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('dlrHand', 'left', 'Left hinge', DLR.hand === 'left')}${btn('dlrHand', 'right', 'Right hinge', DLR.hand === 'right')}</div>
+    <div class="muted" style="font-size:13px;line-height:1.5">Diagonal: <b>${Math.round(dlrDiag())} mm</b>. Door size: <b>${dd.h} x ${dd.w} mm</b> ((wall width - 18.2 - depth) x 1.4142 - 4 wide, height - 4).</div>`;
+}
+function dlrCard() {
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="dlrDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="dlr" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', DLR.h)}${chip('RH', DLR.rh)}${chip('LH', DLR.lh)}${chip('D', DLR.d)}${chip('Void', DLR.v)}</div>
+    <div style="height:480px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${dlrArt({ doors: true })}</div>
+    <div class="row"><div><h3 style="margin:0">Diagonal Larder</h3><span class="mono">${dlrCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="dlrMore">More Details ${ic('chevR', 14)}</button></div>
+    ${dlrPick(sel)}
+    <div class="row" style="gap:10px">${num('d', 'Depth (mm)', DLR.d)}${num('v', 'Void (mm)', DLR.v)}</div>
+    ${bkRow('dlr')}
+  </article>`;
+}
+function dlrDetails() {
+  const dd = dlrDoor();
+  const row = (k, val) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${val}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="dlrDim" data-k="${k}"></label>`;
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Larders</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(dlrArt({ doors: false }), 520)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', dlrCode())}${row('Right hand width', DLR.rh + ' mm')}${row('Left hand width', DLR.lh + ' mm')}${row('Diagonal', Math.round(dlrDiag()) + ' mm')}${row('Height (without legs)', DLR.h + ' mm')}${row('Height (with legs)', (DLR.h + DLR_LEG) + ' mm')}${row('Depth', DLR.d + ' mm')}${row('Void', DLR.v + ' mm')}${row('Leg height', DLR_LEG + ' mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">DIAGONAL LARDER ${DLR.h}</h1>
+      <span class="mono">${dlrCode()}</span>
+      <p class="muted" style="margin:0">Diagonal larder, ${DLR.rh} right hand width and ${DLR.lh} left hand width, ${DLR.h}mm high and ${DLR.d}mm deep, with a diagonal top, base and ${DLR_SHELVES} diagonal shelves.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + dlrCode())}${row('DOOR SIZE', dd.h + ' x ' + dd.w + ' mm, ' + DLR.hand + ' hinge ((wall width - 18.2 - depth) x 1.4142 - 4 wide, height - 4)')}${row('DIAGONAL TOP AND BASE', 'Quantity: 1 x diagonal top, 1 x diagonal base')}${row('SHELVES', 'Quantity: ' + DLR_SHELVES + ' x diagonal shelves')}${row('HINGES', 'Quantity: ' + dlrHinges() + ' x 155 degree hinges')}${row('LEGS', 'Quantity: 5 x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(dlrDiag()) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      ${dlrPick(sel)}
+      ${ocDetail(null)}
+      <div class="row" style="gap:10px">${num('d', 'Depth (mm)', DLR.d)}${num('v', 'Void (mm)', DLR.v)}</div>
+      ${bkRow('dlr')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(dlrArt({ doors: false, dims: true }), 640)}</div>`;
+}
+const dlrRefresh = () => { if (UI.orderCat === 'dlrdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#dlr'); if (el) el.outerHTML = dlrCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.dlrMore = () => { UI.orderCat = 'dlrdetails'; render(); window.scrollTo(0, 0); };
+A.dlrH = t => { DLR.h = +t.dataset.v; dlrRefresh(); };
+A.dlrHand = t => { DLR.hand = t.dataset.v; dlrRefresh(); };
+CH.dlrDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = DLR[k]; if (k === 'd') v = Math.min(650, Math.max(300, v)); else if (k === 'v') v = Math.min(Math.max(0, v), 100); else v = Math.min(Math.max(v, DLR_MIN), DLR_MAX); DLR[k] = v; dlrRefresh(); };
 /* Kitchen > All Bases: L Shape Corner Base Unit. Two wings meeting at the corner: the right hand
    wing runs along the back wall, the left hand wing along the left wall. The customer sets both
    widths and the depth; the height is fixed at 720 and the top is always a full top. Code is
@@ -11216,6 +11342,9 @@ A.bkAdd = t => {
     l = { name: 'Fridge Freezer Larder', code: ffCode(), w: FF.w, h: FF.h, d: FF.d, v: FF.v, opt: FF.split + ' split, ' + FF.hinge + ' door hinge, doors ' + fd.w + ' x ' + fd.b + ' and ' + fd.w + ' x ' + fd.t + ' mm, ' + FF_AP + ' mm appliance opening with 1 x fixed shelf above, full top, fixed back on the top section, removable back ' + FF_RB + ' mm high in the middle of the opening, 5 x appliance hinges' + (FF.gola !== 'none' ? ', ' + lgText(FF) : '') };
   } else if (key === 'pan') {
     l = { name: 'Pantry Larder', code: panCode(), w: PAN_W, h: PAN.h, d: PAN.d, v: PAN.v, opt: panDoorTxt() + ', no centre post, ' + (PAN.chest ? 'internal chest of 3 x ' + PAN.sys + ' drawers with scalloped fronts and a ' + PAN_FILL + ' mm filler each side, 1 x fixed internal top on top of the drawers, 3 x equal adjustable shelves above' : 'no internal chest, 5 x equal adjustable shelves') + ', ' + panHinges() + ' x hinges' };
+  } else if (key === 'dlr') {
+    dlrClamp();
+    l = { name: 'Diagonal Larder', code: dlrCode(), w: DLR.rh, h: DLR.h, d: DLR.d, v: DLR.v, opt: 'Right hand width ' + DLR.rh + ' mm, left hand width ' + DLR.lh + ' mm, diagonal ' + Math.round(dlrDiag()) + ' mm, diagonal top and base, ' + DLR_SHELVES + ' x diagonal shelves, ' + DLR.hand + ' hinge, door ' + dlrDoor().h + ' x ' + dlrDoor().w + ' mm, ' + dlrHinges() + ' x 155 degree hinges, 5 x legs' };
   } else if (key === 'lc') {
     l = { name: 'Corner Larder', code: lcCode(), w: LC.w, h: LC.h, d: LC.d, v: LC.v, opt: (LC.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + lcBlankTxt() + ', door ' + lcDoor() + ' x ' + (LC.h - 5) + ' mm, 5 x shelves, ' + lcHinges() + ' x blank corner hinges' + (LC.gola !== 'none' ? ', ' + lgText(LC) : '') };
   } else if (key === 'ohl') {
@@ -11265,7 +11394,7 @@ A.bkAdd = t => {
     const id = key.slice(3), tp = dpType(id), s = DPK[id]; if (!tp) return;
     l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers' + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
-  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
+  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
   Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? webGroup(col.group) : '', edging: ocEdgeText() });
@@ -11578,6 +11707,14 @@ function poUnit(u) {
       extra: chest ? [{ name: 'Chest filler', l: z, w: 32, q: 2, ef: z, er: 0 }] : [] }), s);
     r.f.hinges = s.doors === 'full' ? 8 : 12;                                                       // no centre post; split doors: 4 on each top door, 2 on each bottom door
     if (chest) r.f.runners[s.sys || 'Antaro'] = 3; return r;
+  }
+  if (k === 'dlr') {                                                                                    // diagonal larder: 2 gables, diagonal top, base and 5 diagonal shelves, one door on the diagonal
+    const RH = s.rh || w, LH = s.lh || w, dg = Math.hypot(RH - d, LH - d), door = dlrDoorOf(RH, LH, d, H).w, Dp = d - v - T - fe, ds = Math.round(dg * 10) / 10;
+    const r = C({ top: 'none', bottom: false, back: false, legs: true, legCount: 5, clipCount: clipQty(dg), approx: true, note: 'Diagonal larder parts are an estimate (diagonal panels are listed by their bounding size)',
+      extra: [{ name: 'Base panel (diagonal)', l: RH - T, w: LH - T, ef: ds, er: RH + LH - 2 * T }, { name: 'Top panel (diagonal)', l: RH - T, w: LH - T, ef: ds, er: RH + LH - 2 * T },
+        { name: 'Back (wall A)', l: H, w: RH - T }, { name: 'Back (wall B)', l: H, w: LH - T },
+        { name: 'Shelf (diagonal)', l: RH - 2 * T - 1, w: LH - 2 * T - 1, q: 5, ef: ds, er: 0 }], doors: [[door, H - 4]], hingesPerDoor: 5 });
+    r.f.mp += 16; r.f.wd += 16; r.f.pegs += 20; return r;
   }
   if (k === 'lc') {                                                                                     // corner larder: one door, a blank panel carrying its hinges, 5 shelves, full top and back
     const door = Math.min(Math.max(Math.round(s.door || 500), 300), Math.floor(w - 18.2 - 50)), bl = Math.round((w - door - 18.2) * 10) / 10;
@@ -11964,6 +12101,7 @@ function cOrders() {
   if (UI.orderCat === 'ohldetails') return ohlDetails();
   if (UI.orderCat === 'lcdetails') return lcDetails();
   if (UI.orderCat === 'pandetails') return panDetails();
+  if (UI.orderCat === 'dlrdetails') return dlrDetails();
   if (UI.orderCat === 'lshdetails') return lshDetails();
   if (UI.orderCat === 'walldetails') return wallDetails();
   if (UI.orderCat === 'cwalldetails') return cwDetails();
@@ -11992,7 +12130,7 @@ function cOrders() {
   if (UI.orderCat === 'larders') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Larders</h1><p>Choose a width, then the height and door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${ffCard()}${ohlCard()}${lcCard()}${panCard()}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${ffCard()}${ohlCard()}${lcCard()}${panCard()}${dlrCard()}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -12009,7 +12147,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
@@ -12072,7 +12210,7 @@ SUB.pw = f => { const d = Object.fromEntries(new FormData(f)); const c = me(); i
    ========================================================= */
 const STEPS = ['Build Quote', 'Review Quote', 'Submit'];
 const isLShape = it => !!it && (/^BLC/i.test(it.code || '') || /l.?shape/i.test(it.name || ''));
-const isDiagonal = it => !!it && (/^BDC/i.test(it.code || '') || /^[ST]DW/i.test(it.code || '') || /^DR\d*X/i.test(it.code || '') || /diagonal/i.test(it.name || ''));
+const isDiagonal = it => !!it && (/^BDC/i.test(it.code || '') || /^L[MT]D\d/i.test(it.code || '') || /^[ST]DW/i.test(it.code || '') || /^DR\d*X/i.test(it.code || '') || /diagonal/i.test(it.name || ''));
 const needsBlank = it => !!it && !isLShape(it) && !isDiagonal(it) && (it.blank === true || (it.blank === undefined && /corner/i.test(it.name || '')));
 const blankTxt = (l, it) => needsBlank(it) ? (l.blank == null || l.blank === '' ? 'Blank size needed' : 'Blank ' + l.blank + ' mm') : '';
 /* Tall appliance housings (oven at eye level) are split in two: a door above the appliance and a door or a drawer below it.
@@ -13595,6 +13733,7 @@ function newOrderInventory() {
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => [['A', 'Antaro'], ['L', 'Legrabox'], ['M', 'Merivo']].forEach(([c, sys]) => add('Pantry Larder 1000 ' + h + ' ' + sys, p + c + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 2 shelves and 3 ' + sys + ' internal scalloped fronts, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570)));
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => add('Pantry Larder 1000 ' + h + ' without internal chest', p + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 5 equal adjustable shelves, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570));
   [[1970, 'LMC'], [2150, 'LTC']].forEach(([h, p]) => LC_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Larder ' + w + ' ' + h + ' ' + s + ' hand blank', p + w + (s === 'right' ? 'RB' : 'LB'), 'cat-tall', 'Larders', 'Corner larder, one door and a blank; the customer sets the door size. MTM option.', h, w, 570, { blank: true }))));
+  [[1970, 'LMD'], [2150, 'LTD']].forEach(([h, p]) => [DLR_START].forEach(rw => [DLR_START].forEach(lw => add('Diagonal Larder ' + rw + ' x ' + lw + ' ' + h, p + rw + 'X' + lw, 'cat-tall', 'Larders', 'Diagonal larder, right hand width ' + rw + ' and left hand width ' + lw + ', ' + h + ' High 570 Deep, diagonal top, base and 5 diagonal shelves, one door on the diagonal.', h, rw, 570))));
   const rooms = DB.rooms.filter(r => ['Kitchen', 'Bedroom'].includes(r.name));
   const usedCats = new Set(rows.map(r => r.cat)), cats = DB.categories.filter(c => usedCats.has(c.id));
   return { rooms, categories: cats, items: rows };
