@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -8314,6 +8314,36 @@ function topUpCatalogue() {
   if (added || fixed) save();
 }
 
+/* The board sheet (the user's list): every colour New Orders offers, in the sheet's order, as [code, name, sheet group].
+   Sheet Groups 1 and 2 are charged at the Group 1 price, Sheet Group 3 at the Group 2 price (board and edging). */
+const BOARD_SHEET = [
+  ['U100 ST9', 'Mussel', 1], ['U104 ST9', 'Alabaster White', 1], ['U156 ST9', 'Sand Beige', 1], ['U201 ST9', 'Pebble Grey', 1], ['U222 ST9', 'Crema Beige', 1], ['U507 ST9', 'Smoke Blue', 1], ['U540 ST9', 'Denim Blue', 1], ['U599 ST9', 'Indigo Blue', 1], ['U604 ST9', 'Reed Green', 1], ['U636 ST9', 'Fjord Green', 1], ['U638 ST9', 'Sage Green', 1], ['U699 ST9', 'Fir Green', 1], ['U702 ST9', 'Cashmere', 1], ['U708 ST9', 'Light Grey', 1], ['U717 ST9', 'Dakar', 1], ['U727 ST9', 'Stone Grey', 1], ['U732 ST9', 'Dust Grey', 1], ['U750 ST9', 'Taupe Grey', 1], ['U763 ST9', 'Pearl Grey', 1], ['U765 ST9', 'Silver Grey', 1], ['U775 ST9', 'White Grey', 1], ['U899 ST9', 'Soft Black', 1], ['U960 ST9', 'Onyx Grey', 1], ['U961 ST2', 'Graphite Grey', 1], ['U963 ST9', 'Diamond Grey', 1], ['U999 ST2', 'Black', 1], ['W1000 ST9', 'Premium White', 1], ['W1100 ST9', 'Alpine White', 1], ['W1200 ST9', 'Porcelain White', 1], ['W980 ST2', 'Platinum White', 1], ['W980 SM', 'Smooth White', 1],
+  ['U100 ST12', 'Mussel Woodgrain', 1], ['U104 ST12', 'Alabaster Woodgrain', 1], ['U201 ST12', 'Pebble Grey Woodgrain', 1], ['U599 ST12', 'Indigo Blue Woodgrain', 1], ['U604 ST12', 'Reed Green Woodgrain', 1], ['U699 ST12', 'Fir Green Woodgrain', 1], ['U702 ST12', 'Cashmere Woodgrain', 1], ['U708 ST12', 'Light Grey Woodgrain', 1], ['U717 ST12', 'Dakar Grey Woodgrain', 1], ['U727 ST12', 'Stone Grey Woodgrain', 1], ['U750 ST12', 'Taupe Grey Woodgrain', 1], ['U775 ST12', 'White Grey Woodgrain', 1], ['U961 ST12', 'Graphite Woodgrain', 1],
+  ['U999 ST12', 'Black Woodgrain', 1], ['W1000 ST12', 'Premium White Woodgrain', 1], ['W1200 ST12', 'Porcelain White Woodgrain', 1], ['U502 ST9', 'Misty Blue', 1], ['U732 ST12', 'Dust Grey', 1], ['U504 ST9', 'Tyrolean Blue', 1], ['U705 ST9', 'Angora Grey', 1], ['U115 ST9', 'Carat Beige', 1], ['H1154 ST15', 'Lissa Oak', 1], ['U608 ST9', 'Pistachio Green', 1], ['U741 ST9', 'Lava Grey', 1],
+  ['U325 ST9', 'Antique Rose', 2], ['F509 ST2', 'Aluminium', 2], ['H1137 ST12', 'Black Brown Sorano Oak', 2], ['H1145 ST10', 'Natural Bardolino', 2], ['H1146 ST10', 'Grey Bardolino', 2], ['H1334 ST9', 'Light Sorano Oak', 2], ['H1582 ST15', 'Ellmau Beech', 2], ['H3090 ST22', 'Shorewood', 2], ['H3131 ST12', 'Natural Davos Oak', 2], ['H3133 ST12', 'Truffle Brown Davos Oak', 2], ['H3170 ST12', 'Natural Kendal Oak', 2], ['H3171 ST12', 'Oiled Kendal Oak', 2], ['H3303 ST10', 'Natural Hamilton Oak', 2], ['H3332 ST10', 'Grey Nebraska Oak', 2], ['H3368 ST9', 'Natural Lancaster Oak', 2], ['H3382 ST9', 'Light Winchester Oak', 2], ['H3700 ST10', 'Natural Pacific Walnut', 2], ['H3702 ST10', 'Tobacco Pacific Walnut', 2], ['H3704 ST15', 'Tobacco Aida Walnut', 2], ['H3710 ST12', 'Natural Carini Walnut', 2], ['H3730 ST10', 'Natural Hickory', 2], ['H3734 ST9', 'Natural Dijon Walnut', 2], ['H3840 ST9', 'Natural Mandie Maple', 2], ['H3157 ST12', 'Vicenza Oak', 2], ['H1714 ST19', 'Lincoln Walnut', 2], ['H3195 ST19', 'White Fineline', 2], ['U999 ST20', 'Black', 2], ['H1199 ST11', 'Black Brown Thermo Oak', 2],
+  ['F121 ST87', 'Anthracite Metal Rock', 3], ['F186 ST9', 'Light Grey Chicago Concrete', 3], ['F416 ST10', 'Beige Textile', 3], ['F417 ST10', 'Grey Textile', 3], ['F433 ST10', 'Anthracite Linen', 3], ['F461 ST10', 'Anthracite Metal Fabric', 3], ['F500 ST20', 'Metal Inox', 3], ['F628 ST16', 'Silver Grey Metal Slate', 3], ['F629 ST16', 'Black Gold Metal Slate', 3], ['F637 ST16', 'White Chromix', 3], ['F812 ST9', 'White Levanto Marble', 3], ['H1122 ST22', 'Whitewood', 3], ['H1123 ST22', 'Graphitewood', 3], ['H1176 ST37', 'White Halifax Oak', 3], ['H1180 ST37', 'Natural Halifax Oak', 3], ['H1181 ST37', 'Tobacco Halifax Oak', 3], ['H1250 ST36', 'Navarra Ash', 3], ['H1330 ST10', 'Vintage Santa Fe', 3], ['H1331 ST10', 'Grey Santa Fe', 3], ['H1336 ST37', 'Sand Grey Glazed Halifax Oak', 3], ['H1377 ST36', 'Sand Orleans', 3], ['H1387 ST10', 'Graphite Denver Oak', 3],
+  ['H1401 ST22', 'Cascina Pine', 3], ['H1486 ST36', 'Pasadena Pine', 3], ['H3176 ST37', 'Pewter Halifax Oak', 3], ['H3178 ST37', 'Black Glazed Halifax Oak', 3], ['H3190 ST19', 'Anthracite Fineline Metallic', 3], ['H3309 ST28', 'Sand Gladstone Oak', 3], ['H3325 ST28', 'Tobacco Gladstone Oak', 3], ['H3326 ST28', 'Grey Beige Gladstone Oak', 3], ['H3335 ST28', 'White Gladstone Oak', 3], ['H3403 ST38', 'White Mountain Larch', 3], ['H3406 ST38', 'Anthracite Mountain Larch', 3], ['U998 ST38', 'Shadow Black', 3], ['H3602 ST10', 'Tobacco Pacific', 3], ['H1142 ST36', 'Brown Sacramento Oak', 3], ['H3331 ST10', 'Natural Nebraska Oak', 3], ['H3342 ST28', 'Sepia Gladstone Oak', 3], ['ASH VENEER', 'Ash Veneer', 3], ['OAK VENEER', 'Oak Veneer', 3], ['W1000 ST38', 'Premium White', 3], ['H3317 ST28', 'Brown Cuneo Oak', 3], ['F422 ST10', 'White Linen', 3], ['H1369 ST40', 'Marone Casella Oak', 3]
+];
+const BOARD_NEW_HEX = { 'W1200 ST12': '#F1EFE8', 'U502 ST9': '#A9B7C3', 'U504 ST9': '#3F5A72', 'U705 ST9': '#B8B2A8', 'U115 ST9': '#D3C6AE', 'H1154 ST15': '#C8A27A', 'U608 ST9': '#B9C49E', 'U741 ST9': '#5A5955' };
+/* Match each sheet colour to the saved colour list (by code, read past the scan errors such as l for 1 and O for 0), correct its name, code and
+   group, and add any that are missing. Only colours on the sheet are offered on New Orders; the others stay for the quote builder. */
+function syncBoardSheet() { try { syncBoardSheet0(); } catch (e) { console.error('Board sheet sync failed', e); } }      // never let this stop the saved data loading
+function syncBoardSheet0() {
+  if (!DB.cabColours) return;
+  const nz = s => String(s || '').toUpperCase().replace(/\s+/g, '').replace(/O/g, '0').replace(/[LI]/g, '1');
+  const claimed = new Set(), was = new Map(DB.cabColours.filter(c => c.sheet).map(c => [c, c.sheetOrder])); let changed = false;
+  DB.cabColours.forEach(c => { if (c.sheet) { delete c.sheet; delete c.sheetOrder; } });
+  const fit = (c, code, name, g, i) => { if (c.code !== code || c.name !== name || c.group !== g || was.get(c) !== i) changed = true; Object.assign(c, { code, name, group: g, sheet: true, sheetOrder: i }); claimed.add(c); };
+  const left = [];
+  BOARD_SHEET.forEach(([code, name, g], i) => { const c = DB.cabColours.find(x => !claimed.has(x) && nz(x.code) === nz(code)); if (c) fit(c, code, name, g, i); else left.push([code, name, g, i]); });
+  left.forEach(([code, name, g, i]) => {
+    let c = DB.cabColours.find(x => !claimed.has(x) && nz(x.name) === nz(name) && !BOARD_SHEET.some(b => nz(b[0]) === nz(x.code)));
+    if (!c) { const twin = DB.cabColours.find(x => nz(x.name) === nz(name)); c = { id: 'cc-b-' + nz(code), name, code, group: g, hex: BOARD_NEW_HEX[code] || (twin && twin.hex) || '#BDB6AA', finish: /oak|walnut|wood|pine|ash|hickory|maple|beech|larch|santa fe|bardolino/i.test(name) ? 'wood' : /marble|concrete|metal|textile|linen|slate|chromix|inox|rock/i.test(name) ? 'stone' : 'solid', featured: false, adj: 0, active: true, image: null }; DB.cabColours.push(c); changed = true; }
+    fit(c, code, name, g, i);
+  });
+  if ([...was.keys()].some(c => !claimed.has(c))) changed = true;
+  if (changed) save();
+}
 function topUpFinishes() {
   let ch = false;
   if (!Array.isArray(DB.edgingColours)) { DB.edgingColours = seedEdgings(); ch = true; }
@@ -8330,10 +8360,11 @@ function topUpFinishes() {
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) { const s = JSON.parse(raw); if (s && s.DB && s.DB.v === 3) { DB = s.DB; Object.assign(UI, s.UI || {}); if (DB.settings.company === 'Easy Cab Builder Ltd') Object.assign(DB.settings, { company: 'Its All In The Image Limited', phone: '0161 223 7159', address: 'Unit 7 A, B and C, Trans Pennine Trading Estate, Gorrells Way', city: 'Rochdale, Lancashire', postcode: 'OL11 2PX' }); topUpCatalogue(); topUpFinishes(); ensureDefaultAdmin(); DB.orders = DB.orders || []; DB.settings.orderPrefix = DB.settings.orderPrefix || 'OR-2026-'; DB.settings.nextOrderNo = DB.settings.nextOrderNo || 1; return; } }
+    if (raw) { const s = JSON.parse(raw); if (s && s.DB && s.DB.v === 3) { DB = s.DB; Object.assign(UI, s.UI || {}); if (DB.settings.company === 'Easy Cab Builder Ltd') Object.assign(DB.settings, { company: 'Its All In The Image Limited', phone: '0161 223 7159', address: 'Unit 7 A, B and C, Trans Pennine Trading Estate, Gorrells Way', city: 'Rochdale, Lancashire', postcode: 'OL11 2PX' }); topUpCatalogue(); topUpFinishes(); syncBoardSheet(); ensureDefaultAdmin(); DB.orders = DB.orders || []; DB.settings.orderPrefix = DB.settings.orderPrefix || 'OR-2026-'; DB.settings.nextOrderNo = DB.settings.nextOrderNo || 1; return; } }
   } catch (e) { }
   DB = seed();
   ensureDefaultAdmin();
+  syncBoardSheet();
 }
 /* Default Super Admin, so staff can always get in, including on data saved before this existed. */
 const DEFAULT_ADMIN = { email: 'admin@easycabbuilder.co.uk', password: 'Admin@1234' };
@@ -9434,6 +9465,8 @@ function baseArt(w, d, h, hinge, vd, opts) {
     dim(P(0, y1, 0), P(w, y1, 0), 0, -off, w + 'mm');
     dim(P(0, y0, d), P(0, y1, d), -off, 0, h + 'mm');
     dim(P(w, y1, d), P(w, y1, 0), off, 0, d + 'mm');         // depth runs along the top edge of the side panel, clear of the legs
+    (o.vdims || []).forEach(([ya, yb, lab]) => dim(P(w, ya, d), P(w, yb, d), off * 2.8, 0, lab));      // the sizes of the openings and sections, up the right hand side
+    (o.hdims || []).forEach(([yh, lab]) => dim(P(T, yh, d), P(w - T, yh, d), 0, 0, lab));              // the width of an opening
   }
   const xs = pts.map(p => p.x), ys = pts.map(p => p.y), x0 = Math.min(...xs), x1 = Math.max(...xs), yy0 = Math.min(...ys), yy1 = Math.max(...ys), pad = Math.max(x1 - x0, yy1 - yy0) * 0.06;
   return `<svg viewBox="${(x0 - pad).toFixed(0)} ${(yy0 - pad).toFixed(0)} ${(x1 - x0 + 2 * pad).toFixed(0)} ${(yy1 - yy0 + 2 * pad).toFixed(0)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${o.robe ? 'Hanging robe' : 'Base unit'} ${w} by ${d} by ${h} millimetres" style="width:100%;height:100%">${out.join('')}</svg>`;
@@ -9874,7 +9907,7 @@ const OVEN_DRAWER_H = 115;                                         // the shelf 
 const ovenCode = () => !OVEN.drawer ? '600_BUOH' : '600_BUOH' + ({ Antaro: 'A', Legrabox: 'L', Merivo: 'M' })[OVEN.sys];
 const ovenArt = (extra, bare) => baseArt(OVEN.w, OVEN.d, BASE_H, 'left', OVEN.v, Object.assign(OVEN.drawer
   ? { doors: false, noBack: true, shelfAt: 150 + 4 + OVEN_DRAWER_H + 14, drawers: { fronts: [1], open: [bare ? 0 : 170], h: OVEN_DRAWER_H, bottom: true }, noFronts: !!bare }
-  : { doors: false, noBack: true, shelfN: 0 }, extra));      // an oven housing has no back; with a drawer, a fixed shelf sits on top of it for the oven to stand on
+  : { doors: false, noBack: true, shelfN: 0, fixedShelfAt: 150 + 4 + OVEN_DRAWER_H + 14 }, extra));      // an oven housing has no back; the fixed shelf the oven stands on is always supplied, at the same height with or without the drawer
 function ovenPick(sel) {
   const opt = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
   return `<div class="muted">Drawer type:</div><div class="row" style="gap:6px;flex-wrap:wrap">${[['none', 'No drawer', !OVEN.drawer]].concat(DP_SYSTEMS.map(x => [x, x + ' drawer', OVEN.drawer && OVEN.sys === x])).map(([v, t, on]) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 auto;min-width:max-content;padding:0 10px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="ovenType" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${t}</button>`).join('')}</div>`;
@@ -9908,7 +9941,7 @@ function ovenDetails() {
       <span class="mono">${ovenCode()}</span>
       <p class="muted" style="margin:0">${w}mm wide oven housing, ${OVEN.drawer ? 'with a ' + OVEN.sys + ' drawer underneath' : 'without a drawer'}.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + ovenCode())}${row('DRAWER', OVEN.drawer ? OVEN.sys + ' drawer' : 'None')}${OVEN.drawer ? row('SHELF', 'Quantity: 1 x fixed shelf, on top of the drawer') : ''}${row('BACK', 'No back')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + ovenCode())}${row('DRAWER', OVEN.drawer ? OVEN.sys + ' drawer' : 'None')}${row('SHELF', 'Quantity: 1 x fixed shelf' + (OVEN.drawer ? ', on top of the drawer' : ', for the oven to stand on'))}${row('BACK', 'No back')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${ovenPick(sel)}
       ${ocDetail(null)}
       ${bkRow('oven')}
@@ -10016,9 +10049,20 @@ const ohlArt = (extra, bare) => {
   const p = ohlP(), H = p.h, n = p.dr ? p.dr.length : 0, T = 18, y0 = 150;
   const zone = ohlZone(p), s1 = y0 + zone + 5 + T, s2 = y0 + H - p.top - 5;
   const panels = [[H - 2.5 - p.top, H - 2.5, 't']].concat(p.dr ? [] : [[2.5, 2.5 + p.bot, 'b']]);
+  const r1 = x => String(Math.round(x * 10) / 10);
+  let vd = null, hd = null;
+  if (extra && extra.dims) {                                   // the technical drawing: every section and opening, measured up the right hand side
+    const gl = y0 + zone, gu = y0 + H - p.top, gap = gu - gl, v = [], ST = 600;                 // the open gap between the bottom section and the top door, where the oven sits
+    if (p.dr) { let yt = y0 + zone - (p.fil ? p.fil + 5 : 0); if (p.fil) v.push([yt, y0 + zone, 'Filler ' + p.fil]); p.dr.forEach((f, i) => { v.push([yt - f, yt, 'Drawer ' + f]); yt -= f + 3; }); }
+    else v.push([y0, gl, 'Bottom door ' + p.bot]);
+    if (p.mw) { v.push([gl, gl + ST, 'Oven opening ' + ST], [gl + ST, gu, 'Microwave opening ' + r1(gap - ST)]); }
+    else v.push([gl, gu, 'Oven opening ' + r1(gap)]);
+    v.push([gu, y0 + H, 'Top door ' + p.top]);
+    vd = v; hd = [[gl + (p.mw ? ST : gap) / 2, 'Opening width 563.6']];
+  }
   return baseArt(600, OHL.d, H, hArt(OHL.hinge), OHL.v, Object.assign({ golaSet: lgSet(OHL), doors: false, noBack: true, noShelf: !p.mw, shelfAt: s1 + 600 + T, fullTop: true, noRail: true,
     fixedShelves: [s1, s2], backParts: [[y0 + T, s1 - T], [s2, y0 + H - T]] }, p.dr ? { drawers: { fronts: p.dr.slice(), open: p.dr.map((x, i) => bare ? 0 : i === 0 ? 170 : 0), h: zone - (p.fil ? p.fil + 5 : 0) - 4 + 0, bottom: true }, noFronts: !!bare } : {},
-    bare ? {} : { ffOpen: { panels } }, extra));
+    bare ? {} : { ffOpen: { panels } }, vd ? { vdims: vd, hdims: hd } : {}, extra));
 };
 function ohlMtmBlock() {
   const b = ohlBase(), p = ohlP();
@@ -10095,7 +10139,10 @@ const lcBlank = () => Math.round((LC.w - lcDoor() - 18.2) * 10) / 10;    // blan
 const lcBlankH = () => Math.round((LC.h - 36.4) * 10) / 10;               // the blank runs between the base and the top: cabinet height - 36.4
 const lcBlankTxt = () => lcBlank() + ' x ' + lcBlankH() + ' mm';
 const lcCode = () => (LC.h === 2150 ? 'LTC' : 'LMC') + LC.w + (LC.side === 'right' ? 'RB' : 'LB') + mtmTag('lc');
-const lcHinges = () => 4;                                                // a full height door: 4 blank corner hinges
+const lcHinges = () => 5;                                                // a full height door: 5 blank corner hinges
+const LC_LEGS = 6;                                                       // the corner larder stands on 6 legs
+/* Larders over 700 wide: 6 legs and 3 plinth clips. Hinges: 5 on a door that hangs on a blank, 10 for a larder without a blank (a pair of tall doors). */
+const tallLegs = w => w > 700 ? 6 : legQty(w), tallClips = w => w > 700 ? 3 : clipQty(w);
 const lcArt = extra => baseArt(LC.w, LC.d, LC.h, 'left', LC.v, Object.assign({ golaSet: lgSet(LC), blank: { side: LC.side, w: lcBlank(), inside: true, door: lcDoor() }, shelfN: 5, fullTop: true, noRail: true }, extra));
 function lcPick(sel) {
   return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(h => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(LC.h === h)}" data-act="lcH" data-v="${h}">${LC.h === h ? '&#9745;' : '&#9744;'} ${h} high</button>`).join('')}</div>
@@ -10140,7 +10187,7 @@ function lcDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">${LC_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="padding:0 2px;${sel(x === w)}" data-act="lcW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + lcCode())}${row('BLANK', (LC.side === 'right' ? 'Right' : 'Left') + ' hand, ' + lcBlankTxt() + ' (width ' + w + ' - ' + lcDoor() + ' - 18.2, height ' + LC.h + ' - 36.4)')}${row('DOOR SIZE', lcDoor() + ' mm')}${row('SHELVES', 'Quantity: 5 x shelves')}${row('HINGES', 'Quantity: ' + lcHinges() + ' x blank corner hinges')}${LC.gola !== 'none' ? row('GOLA', lgText(LC)) : ''}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'Quantity: 1 x blank panel, ' + lcBlankTxt() + ', carries the door hinges')}</div>
+      <div>${row('CABINET', 'Code: ' + lcCode())}${row('BLANK', (LC.side === 'right' ? 'Right' : 'Left') + ' hand, ' + lcBlankTxt() + ' (width ' + w + ' - ' + lcDoor() + ' - 18.2, height ' + LC.h + ' - 36.4)')}${row('DOOR SIZE', lcDoor() + ' mm')}${row('SHELVES', 'Quantity: 5 x shelves')}${row('HINGES', 'Quantity: ' + lcHinges() + ' x blank corner hinges')}${LC.gola !== 'none' ? row('GOLA', lgText(LC)) : ''}${row('LEGS', 'Quantity: ' + tallLegs(LC.w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'Quantity: 1 x blank panel, ' + lcBlankTxt() + ', carries the door hinges')}</div>
       ${lcPick(sel)}
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', LC.d)}${num('v', 'Void (mm)', LC.v)}</div>
@@ -10167,7 +10214,7 @@ const panDoorSizes = () => panSplit() ? { w: 496.5, top: 1245, bot: PAN.h - 10 -
 const panDoorTxt = () => panSplit() ? 'Split doors, 4 doors: top 1245 and bottom ' + panDoorSizes().bot + ' on each side' : 'Pair of full height doors';
 const PAN_W = 1000, PAN_DR = 160, PAN_ZONE = 3 * 160 + 2 * 3 + 4, PAN_FILL = 32;   // three internal drawers of 160 (a guess), with their gaps; a 32 filler each side of the chest
 const panCode = () => (PAN.h === 2150 ? 'LTP' : 'LMP') + (PAN.chest ? ({ Antaro: 'A', Legrabox: 'L', Merivo: 'M' })[PAN.sys] : '') + PAN_W;
-const panHinges = () => panSplit() ? 12 : 8;                                 // full height: 4 each; split: 4 on each top door and 2 on each bottom door
+const panHinges = () => 10;                                                   // no blank: 10 hinges, full height or split doors
 const panArt = (extra, bare) => baseArt(PAN_W, PAN.d, PAN.h, 'left', PAN.v, Object.assign({ doors: !bare, noPost: true, fullTop: true, noRail: true, splitDoors: panSplit() ? { bot: panDoorSizes().bot } : null },
   PAN.chest ? { shelfN: 3, shelfFrom: 150 + PAN_ZONE + 18, fixedShelfAt: 150 + PAN_ZONE + 18, fillers: { w: PAN_FILL, h: PAN_ZONE },
     drawers: { fronts: [1, 1, 1], open: [170, 0, 0], h: PAN_ZONE - 4, bottom: true, inset: PAN_FILL, scallop: true } } : { shelfN: 5 }, extra));      // with the chest: a fixed shelf on top of the drawers and 2 shelves above; without: 5 equal adjustable shelves
@@ -10209,7 +10256,7 @@ function panDetails() {
       <span class="mono">${panCode()}</span>
       <p class="muted" style="margin:0">${PAN_W} Pantry Larder ${PAN.chest ? 'with 2 shelves and 3 ' + PAN.sys + ' internal scalloped fronts' : 'without an internal chest, with 5 equal adjustable shelves'}, ${PAN.h} High ${PAN.d} Deep.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + panCode())}${row('DOORS', panSplit() ? 'Split doors, a top and a bottom door on each side' : 'Pair of full height doors')}${PAN.chest ? row('INTERNAL CHEST', 'Quantity: 3 x ' + PAN.sys + ' internal drawers, scalloped fronts') + row('FILLERS', 'Quantity: 2 x ' + PAN_FILL + ' mm fillers, one on each side of the chest') + row('FIXED TOP FOR CHEST', 'Quantity: 1 x fixed internal top, on top of the internal drawers') + row('SHELVES', 'Quantity: 3 x equal adjustable shelves above the chest') : row('SHELVES', 'Quantity: 5 x equal adjustable shelves')}${row('HINGES', 'Quantity: ' + panHinges() + ' x hinges')}${row('LEGS', 'Quantity: ' + legQty(PAN_W) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(PAN_W) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + panCode())}${row('DOORS', panSplit() ? 'Split doors, a top and a bottom door on each side' : 'Pair of full height doors')}${PAN.chest ? row('INTERNAL CHEST', 'Quantity: 3 x ' + PAN.sys + ' internal drawers, scalloped fronts') + row('FILLERS', 'Quantity: 2 x ' + PAN_FILL + ' mm fillers, one on each side of the chest') + row('FIXED TOP FOR CHEST', 'Quantity: 1 x fixed internal top, on top of the internal drawers') + row('SHELVES', 'Quantity: 3 x equal adjustable shelves above the chest') : row('SHELVES', 'Quantity: 5 x equal adjustable shelves')}${row('HINGES', 'Quantity: ' + panHinges() + ' x hinges')}${row('LEGS', 'Quantity: ' + tallLegs(PAN_W) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(PAN_W) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${panPick(sel)}
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', PAN.d)}${num('v', 'Void (mm)', PAN.v)}</div>
@@ -10254,8 +10301,8 @@ function dlrArt(o) {
   const dg = dlrDiag(), u = [(D - RH) / dg, (LH - D) / dg], nn = [(LH - D) / dg, (RH - D) / dg];   // along the diagonal, and out of it
   const at = (s, y, o22) => P(RH + u[0] * s + nn[0] * o22, y, D + u[1] * s + nn[1] * o22);
   out.push(`<polygon points="${[[-30, -20], [RH + 30, -20], [RH + 30, D], [D, LH + 40], [-30, LH + 40]].map(([x, z]) => { const p = P(x, 0, z); return f1(p.x) + ',' + f1(p.y); }).join(' ')}" fill="#000" opacity="0.08"/>`);   // floor shadow
-  [[60, 60], [RH - 60, 60], [60, LH - 60], [RH + u[0] * dg * 0.1 - nn[0] * 70, D + u[1] * dg * 0.1 - nn[1] * 70], [RH + u[0] * dg * 0.9 - nn[0] * 70, D + u[1] * dg * 0.9 - nn[1] * 70]]
-    .forEach(([x, z]) => { const f = P(x, 12, z);                                      // the 5 legs, drawn like the other larders: a black stem on a wide round foot
+  [[60, 60], [RH / 2, 60], [RH - 60, 60], [60, LH - 60], [RH + u[0] * dg * 0.1 - nn[0] * 70, D + u[1] * dg * 0.1 - nn[1] * 70], [RH + u[0] * dg * 0.9 - nn[0] * 70, D + u[1] * dg * 0.9 - nn[1] * 70]]
+    .forEach(([x, z]) => { const f = P(x, 12, z);                                      // the 6 legs, drawn like the other larders: a black stem on a wide round foot
       ln(P(x, y0, z), P(x, 14, z), '#1d1d1d', 20);
       out.push(`<ellipse cx="${f1(f.x)}" cy="${f1(f.y)}" rx="30" ry="15" fill="#0e0e0e"/><ellipse cx="${f1(f.x)}" cy="${f1(f.y - 9)}" rx="24" ry="10" fill="#2a2a2a"/>`); });
   q(plan.map(([x, z]) => P(x, y0 + T, z)), baseShade(col, 0.04));                     // base panel, diagonal at the front
@@ -10334,7 +10381,7 @@ function dlrDetails() {
       <span class="mono">${dlrCode()}</span>
       <p class="muted" style="margin:0">Diagonal larder, ${DLR.rh} right hand width and ${DLR.lh} left hand width, ${DLR.h}mm high and ${DLR.d}mm deep, with a diagonal top, base and ${DLR_SHELVES} diagonal shelves.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + dlrCode())}${row('DOOR SIZE', dd.h + ' x ' + dd.w + ' mm, ' + DLR.hand + ' hinge ((wall width - 18.2 - depth) x 1.4142 - 4 wide, height - 4)')}${row('DIAGONAL TOP AND BASE', 'Quantity: 1 x diagonal top, 1 x diagonal base')}${row('SHELVES', 'Quantity: ' + DLR_SHELVES + ' x diagonal shelves')}${row('HINGES', 'Quantity: ' + dlrHinges() + ' x 155 degree hinges')}${row('LEGS', 'Quantity: 5 x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(dlrDiag()) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + dlrCode())}${row('DOOR SIZE', dd.h + ' x ' + dd.w + ' mm, ' + DLR.hand + ' hinge ((wall width - 18.2 - depth) x 1.4142 - 4 wide, height - 4)')}${row('DIAGONAL TOP AND BASE', 'Quantity: 1 x diagonal top, 1 x diagonal base')}${row('SHELVES', 'Quantity: ' + DLR_SHELVES + ' x diagonal shelves')}${row('HINGES', 'Quantity: ' + dlrHinges() + ' x 155 degree hinges')}${row('LEGS', 'Quantity: ' + tallLegs(Math.max(DLR.rh, DLR.lh)) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(Math.max(DLR.rh, DLR.lh)) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${dlrPick(sel)}
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', DLR.d)}${num('v', 'Void (mm)', DLR.v)}</div>
@@ -11293,7 +11340,7 @@ A.mtmBack = t => { MTM.back = t.dataset.v; mtmRefresh(); };CH.mtmDim = t => { co
 /* Cabinet colour for New Orders. Only price Group 1 (cheaper) and Group 2 (dearer)
    are offered. The choice drives the picture and the price shown, and follows the
    customer from the room pages into More Details, where it can be changed. */
-const ocList = () => DB.cabColours.filter(c => c.active !== false && (c.group === 1 || c.group === 3));
+const ocList = () => DB.cabColours.filter(c => c.sheet && c.active !== false).sort((a, b) => a.sheetOrder - b.sheetOrder);      // only the colours on the board sheet, in its order
 const ocGroup = c => c.group === 3 ? 2 : 1;           // the website's Group 2 is the board chart's Group 3
 const orderColour = () => { const l = ocList(); return l.find(c => c.id === UI.orderColour) || l[0] || null; };
 const ocHex = () => { const c = orderColour(); return c ? c.hex : '#cdbfae'; };
@@ -11302,12 +11349,13 @@ const ocPrice = it => { const c = orderColour(); return it ? (it[GROUP_KEY[c ? c
    or matching the cabinet colour. */
 const ocEdgeType = () => UI.orderEdgeType === '0.8mm' ? '0.8mm' : '2mm';
 const ocEdge = () => { const e = UI.orderEdge; return !e || e === 'match' ? null : ocList().find(c => c.id === e) || null; };
-const ocEdgeText = () => { const e = ocEdge(); return ocEdgeType() + ' edging, ' + (e ? e.name + ' · ' + e.code + ' (' + webGroup(e.group) + ')' : 'matches the cabinet colour'); };
+const ocEdgeText = () => { const e = ocEdge(); return ocEdgeType() + ' edging, ' + (e ? e.name + ' · ' + e.code + ' (Group ' + ocGroup(e) + ')' : 'matches the cabinet colour'); };
 function ocSelect() {
   const cur = orderColour(), l = ocList(), ed = ocEdge(), et = ocEdgeType();
   const opt = (c, sel) => `<option value="${c.id}" ${sel && c.id === sel.id ? 'selected' : ''}>${esc(c.name)} · ${esc(c.code)}</option>`;
-  const groups = sel => `<optgroup label="Group 1 · lower price">${l.filter(c => c.group === 1).map(c => opt(c, sel)).join('')}</optgroup>
-    <optgroup label="Group 2 · higher price">${l.filter(c => c.group === 3).map(c => opt(c, sel)).join('')}</optgroup>`;
+  const groups = sel => `<optgroup label="Group 1 price · Board Group 1">${l.filter(c => c.group === 1).map(c => opt(c, sel)).join('')}</optgroup>
+    <optgroup label="Group 1 price · Board Group 2">${l.filter(c => c.group === 2).map(c => opt(c, sel)).join('')}</optgroup>
+    <optgroup label="Group 2 price · Board Group 3">${l.filter(c => c.group === 3).map(c => opt(c, sel)).join('')}</optgroup>`;
   const tick = t => `<button type="button" class="btn btn-secondary btn-sm" style="flex:none;white-space:nowrap;${et === t ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="orderEdgeType" data-v="${t}">${et === t ? '&#9745;' : '&#9744;'} ${t}</button>`;
   return `<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end">
     <label class="field" style="flex:1 1 260px;max-width:420px"><span class="lbl">Cabinet colour</span><select class="select" data-chg="orderColour" aria-label="Cabinet colour">${groups(cur)}</select></label>
@@ -11336,7 +11384,7 @@ A.bkAdd = t => {
     lshClamp();
     l = { name: 'L Shape Corner Base Unit', code: lshCode(), w: LSH.rh, d: LSH.d, v: LSH.v, opt: 'Right hand ' + LSH.rh + ' mm, left hand ' + LSH.lh + ' mm, full top, void ' + LSH.v + ' mm, doors ' + lshDoors().rh + ' and ' + lshDoors().lh + ' x ' + lshDoors().h + ' mm, ' + lshHingeText() + ', 8 legs' + (LSH.gola ? ', Gola ' + lshGolaText() : '') };
   } else if (key === 'oven') {
-    l = { name: 'Built Under Oven Housing', code: ovenCode(), w: OVEN.w, d: OVEN.d, v: OVEN.v, opt: OVEN.drawer ? 'With ' + OVEN.sys + ' drawer' : 'Without drawer' };
+    l = { name: 'Built Under Oven Housing', code: ovenCode(), w: OVEN.w, d: OVEN.d, v: OVEN.v, opt: (OVEN.drawer ? 'With ' + OVEN.sys + ' drawer' : 'Without drawer') + ', 1 x fixed shelf' };
   } else if (key === 'ff') {
     const fd = ffDoors();
     l = { name: 'Fridge Freezer Larder', code: ffCode(), w: FF.w, h: FF.h, d: FF.d, v: FF.v, opt: FF.split + ' split, ' + FF.hinge + ' door hinge, doors ' + fd.w + ' x ' + fd.b + ' and ' + fd.w + ' x ' + fd.t + ' mm, ' + FF_AP + ' mm appliance opening with 1 x fixed shelf above, full top, fixed back on the top section, removable back ' + FF_RB + ' mm high in the middle of the opening, 5 x appliance hinges' + (FF.gola !== 'none' ? ', ' + lgText(FF) : '') };
@@ -11344,9 +11392,9 @@ A.bkAdd = t => {
     l = { name: 'Pantry Larder', code: panCode(), w: PAN_W, h: PAN.h, d: PAN.d, v: PAN.v, opt: panDoorTxt() + ', no centre post, ' + (PAN.chest ? 'internal chest of 3 x ' + PAN.sys + ' drawers with scalloped fronts and a ' + PAN_FILL + ' mm filler each side, 1 x fixed internal top on top of the drawers, 3 x equal adjustable shelves above' : 'no internal chest, 5 x equal adjustable shelves') + ', ' + panHinges() + ' x hinges' };
   } else if (key === 'dlr') {
     dlrClamp();
-    l = { name: 'Diagonal Larder', code: dlrCode(), w: DLR.rh, h: DLR.h, d: DLR.d, v: DLR.v, opt: 'Right hand width ' + DLR.rh + ' mm, left hand width ' + DLR.lh + ' mm, diagonal ' + Math.round(dlrDiag()) + ' mm, diagonal top and base, ' + DLR_SHELVES + ' x diagonal shelves, ' + DLR.hand + ' hinge, door ' + dlrDoor().h + ' x ' + dlrDoor().w + ' mm, ' + dlrHinges() + ' x 155 degree hinges, 5 x legs' };
+    l = { name: 'Diagonal Larder', code: dlrCode(), w: DLR.rh, h: DLR.h, d: DLR.d, v: DLR.v, opt: 'Right hand width ' + DLR.rh + ' mm, left hand width ' + DLR.lh + ' mm, diagonal ' + Math.round(dlrDiag()) + ' mm, diagonal top and base, ' + DLR_SHELVES + ' x diagonal shelves, ' + DLR.hand + ' hinge, door ' + dlrDoor().h + ' x ' + dlrDoor().w + ' mm, ' + dlrHinges() + ' x 155 degree hinges, ' + tallLegs(Math.max(DLR.rh, DLR.lh)) + ' x legs' };
   } else if (key === 'lc') {
-    l = { name: 'Corner Larder', code: lcCode(), w: LC.w, h: LC.h, d: LC.d, v: LC.v, opt: (LC.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + lcBlankTxt() + ', door ' + lcDoor() + ' x ' + (LC.h - 5) + ' mm, 5 x shelves, ' + lcHinges() + ' x blank corner hinges' + (LC.gola !== 'none' ? ', ' + lgText(LC) : '') };
+    l = { name: 'Corner Larder', code: lcCode(), w: LC.w, h: LC.h, d: LC.d, v: LC.v, opt: (LC.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + lcBlankTxt() + ', door ' + lcDoor() + ' x ' + (LC.h - 5) + ' mm, 5 x shelves, ' + lcHinges() + ' x blank corner hinges, ' + tallLegs(LC.w) + ' x legs' + (LC.gola !== 'none' ? ', ' + lgText(LC) : '') };
   } else if (key === 'ohl') {
     const p = ohlP(), n = p.dr ? p.dr.length : 0;
     l = { name: 'Oven Housing Larder', code: ohlCode(), w: 600, h: p.h, d: OHL.d, v: OHL.v, opt: ohlOvenTxt(p) + ', top door ' + p.top + ' mm, ' + (p.dr ? n + ' x ' + OHL.sys + ' drawer' + (n > 1 ? 's' : '') + ' (' + p.dr.join(' + ') + ' mm)' + (p.fil ? ', ' + p.fil + ' mm filler' : '') : 'bottom door ' + p.bot + ' mm') + ', ' + OHL.hinge + ' door hinge, 2 x fixed shelf, ' + (p.mw ? '1 x loose shelf between the oven and the microwave, ' : '') + 'back on the top and bottom sections only, ' + ohlHinges() + ' x hinges' + (OHL.gola !== 'none' ? ', ' + lgText(OHL) : '') };
@@ -11397,7 +11445,7 @@ A.bkAdd = t => {
   { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
-  Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? webGroup(col.group) : '', edging: ocEdgeText() });
+  Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? 'Group ' + ocGroup(col) : '', pgrp: col ? ocGroup(col) : 1, edging: ocEdgeText() });
   const sig = x => [x.code, x.w, x.d, x.v, x.opt, x.colourId].join('|');
   UI.basket = UI.basket || [];
   const same = UI.basket.find(x => sig(x) === sig(l));
@@ -11412,7 +11460,7 @@ A.bkClear = () => confirmBox('Empty the basket?', 'Every item will be removed fr
 /* A basket line with a quantity of 5 becomes 5 separate units, numbered through the whole order. */
 function ordUnits(lines) {
   const out = []; let n = 0;
-  (lines || []).forEach(l => { for (let i = 0; i < (+l.qty || 1); i++) { n++; out.push({ n, name: l.name, code: l.code, w: l.w, h: l.h || null, d: l.d, v: l.v, opt: l.opt, colour: l.colour, group: l.group, edging: l.edging, edgeType: l.edgeType, edgeColour: l.edgeColour, spec: l.spec }); } });
+  (lines || []).forEach(l => { let cu = null; try { cu = costUnit(l); } catch (e) { console.error(e); } for (let i = 0; i < (+l.qty || 1); i++) { n++; out.push({ n, name: l.name, code: l.code, w: l.w, h: l.h || null, d: l.d, v: l.v, opt: l.opt, colour: l.colour, group: l.group, pgrp: l.pgrp, edging: l.edging, edgeType: l.edgeType, edgeColour: l.edgeColour, spec: l.spec, price: cu ? cu.price : null, unpriced: cu ? cu.miss.length : 0 }); } });
   return out;
 }
 function ordSummary(units) {
@@ -11423,30 +11471,41 @@ function ordSummary(units) {
     const cl = (u.colour || 'No colour') + (u.group ? ' (' + u.group + ')' : ''); colours[cl] = (colours[cl] || 0) + 1;
     if (u.edging) edgings[u.edging] = (edgings[u.edging] || 0) + 1;
   });
-  return { total: units.length, types: Object.values(types), mtm: units.filter(u => /-MTM$/.test(u.code || '')).length, colours: Object.entries(colours), edgings: Object.entries(edgings) };
+  return { total: units.length, sum: units.reduce((a, u) => a + (+u.price || 0), 0), unpriced: units.filter(u => u.price == null || u.unpriced).length, types: Object.values(types), mtm: units.filter(u => /-MTM$/.test(u.code || '')).length, colours: Object.entries(colours), edgings: Object.entries(edgings) };
+}
+/* Delivery charges (Admin sets them on an order) and the order discount. The discount comes off the cabinets first, the delivery charge is added,
+   then VAT is charged on the result. */
+const DEL_DEFAULT = [{ code: 'COLLECTION', name: 'Collection', price: 0 }, { code: 'DELIVERYA', name: 'Delivery Charge A', price: 100 }, { code: 'DELIVERYB', name: 'Delivery Charge B', price: 150 }, { code: 'DELIVERYC', name: 'Delivery Charge C', price: 200 }, { code: 'DELIVERYD', name: 'Delivery Charge D', price: 300 }, { code: 'DELIVERYE', name: 'Delivery Charge E', price: 400 }];
+const delList = () => DB.settings.deliveryList && DB.settings.deliveryList.length ? DB.settings.deliveryList : DEL_DEFAULT;
+const ordSetDelivery = (o, code) => { const d = delList().find(x => x.code === code); o.deliveryCode = d ? d.code : ''; o.deliveryName = d ? d.name : ''; o.deliveryPrice = d ? +d.price || 0 : 0; };
+const r2 = n => Math.round((+n || 0) * 100) / 100;
+function ordTotals(o, units) {
+  const sub = r2((units || []).reduce((a, u) => a + (+u.price || 0), 0)), pct = Math.min(100, Math.max(0, +o.discountPct || 0)), disc = r2(sub * pct / 100), del = r2(o.deliveryPrice), net = r2(sub - disc + del), vr = DB.settings.vat || 0, vat = r2(net * vr / 100);
+  return { sub, pct, disc, del, delName: o.deliveryName || '', net, vr, vat, total: r2(net + vat) };
 }
 const ordCustomer = o => cust(o.customerId) || { company: 'Internal order', contact: o.placedByName || 'Staff', email: '', phone: '' };
 const ordSizeText = u => u.w + ' wide' + (u.h ? ' x ' + u.h + ' high' : '') + ' x ' + u.d + ' deep' + (u.v != null ? ', void ' + u.v : '');
 /* one row per unit */
 function ordUnitsTable(units) {
-  return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th style="width:56px">No.</th><th>Cabinet</th><th>Code</th><th>Size (mm)</th><th>Details</th></tr></thead><tbody>${units.map(u => `<tr>
+  return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th style="width:56px">No.</th><th>Cabinet</th><th>Code</th><th>Size (mm)</th><th>Details</th><th class="num">Price</th></tr></thead><tbody>${units.map(u => `<tr>
     <td class="mono strong">${u.n}</td>
     <td><div class="strong">${esc(u.name)}</div><div class="muted" style="font-size:12.5px">${esc(u.colour || 'No colour')}${u.group ? ' (' + esc(u.group) + ')' : ''}${u.edging ? ' · ' + esc(u.edging) : ''}</div></td>
     <td class="mono">${esc(u.code)}</td>
     <td class="tnum">${esc(ordSizeText(u))}</td>
-    <td class="muted" style="font-size:12.5px;line-height:1.5;min-width:220px">${esc(u.opt || '')}</td></tr>`).join('')}</tbody></table></div>`;
+    <td class="muted" style="font-size:12.5px;line-height:1.5;min-width:220px">${esc(u.opt || '')}</td>
+    <td class="num tnum strong">${u.price != null ? GBP(u.price) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
 }
 /* the order summary: who, what and how many. Used on the review page, the confirmation and the Admin order page. */
 function ordSummaryCard(o, units, opts) {
   opts = opts || {};
-  const s = ordSummary(units), c = ordCustomer(o);
+  const s = ordSummary(units), c = ordCustomer(o), tt = ordTotals(o, units);
   const stat = (k, v) => `<div style="flex:1;min-width:130px;padding:14px 16px;border-radius:12px;background:var(--surface-2,#2a2f2d)"><div class="muted" style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">${k}</div><div style="font-size:26px;font-weight:800;letter-spacing:-.03em;margin-top:2px">${v}</div></div>`;
   return `<section class="card card-pad stack" style="gap:18px">
     <div class="row" style="gap:10px;flex-wrap:wrap"><h3 style="margin:0;font-size:20px">Order summary</h3>${o.number ? `<span class="mono strong">${esc(o.number)}</span>` : ''}<span class="spacer"></span>${o.status ? pill(o.status) : ''}</div>
     <div class="row" style="gap:12px;flex-wrap:wrap">${stat('Cabinets', s.total)}${stat('Different types', s.types.length)}${stat('Made to measure', s.mtm)}</div>
     <div class="grid2">
       <div><h4 style="margin:0 0 8px">Order for</h4><dl class="kv"><dt>Customer</dt><dd>${esc(c.company)}</dd><dt>Contact</dt><dd>${esc(c.contact || '')}</dd>${c.email ? `<dt>Email</dt><dd>${esc(c.email)}</dd>` : ''}${c.phone ? `<dt>Phone</dt><dd>${esc(c.phone)}</dd>` : ''}${o.reference ? `<dt>Reference</dt><dd>${esc(o.reference)}</dd>` : ''}${o.submitted ? `<dt>Submitted</dt><dd>${esc(fmtDT(o.submitted))}</dd>` : ''}${o.placedByName ? `<dt>Placed by</dt><dd>${esc(o.placedByName)}</dd>` : ''}</dl></div>
-      <div><h4 style="margin:0 0 8px">Finish</h4><dl class="kv"><dt>Cabinet colour</dt><dd>${s.colours.map(([k, n]) => esc(k) + (s.colours.length > 1 ? ' x ' + n : '')).join('<br>') || '—'}</dd><dt>Edging</dt><dd>${s.edgings.map(([k, n]) => esc(k) + (s.edgings.length > 1 ? ' x ' + n : '')).join('<br>') || '—'}</dd><dt>Prices</dt><dd>To be added</dd></dl></div>
+      <div><h4 style="margin:0 0 8px">Finish</h4><dl class="kv"><dt>Cabinet colour</dt><dd>${s.colours.map(([k, n]) => esc(k) + (s.colours.length > 1 ? ' x ' + n : '')).join('<br>') || '—'}</dd><dt>Edging</dt><dd>${s.edgings.map(([k, n]) => esc(k) + (s.edgings.length > 1 ? ' x ' + n : '')).join('<br>') || '—'}</dd><dt>Cabinets</dt><dd>${s.sum ? GBP(tt.sub) : 'To be added'}</dd>${tt.pct ? `<dt>Discount ${tt.pct}%</dt><dd>-${GBP(tt.disc)}</dd>` : ''}${o.deliveryName ? `<dt>${esc(o.deliveryName)}</dt><dd>${GBP(tt.del)}</dd>` : ''}<dt>Total ex VAT</dt><dd><b>${s.sum ? GBP(tt.net) : '-'}</b></dd><dt>VAT ${tt.vr}%</dt><dd>${GBP(tt.vat)}</dd><dt>Total inc VAT</dt><dd><b>${s.sum ? GBP(tt.total) : '-'}</b>${s.unpriced ? ` <div class="muted" style="font-size:12.5px">${s.unpriced} cabinet${s.unpriced === 1 ? '' : 's'} include items that are not priced yet.</div>` : ''}</dd></dl></div>
     </div>
     <div><h4 style="margin:0 0 8px">What is in this order</h4><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Cabinet</th><th>Code</th><th>Size (mm)</th><th class="num">Qty</th></tr></thead><tbody>${s.types.map(t => `<tr><td><div class="strong">${esc(t.name)}</div><div class="muted" style="font-size:12.5px">${esc(t.opt || '')}</div></td><td class="mono">${esc(t.code)}</td><td class="tnum">${esc(ordSizeText(t))}</td><td class="num strong">${t.count}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="3" class="strong">Total cabinets</td><td class="num strong">${s.total}</td></tr></tfoot></table></div></div>
     ${o.notes ? `<div><h4 style="margin:0 0 6px">Notes</h4><p class="muted" style="margin:0;white-space:pre-wrap">${esc(o.notes)}</p></div>` : ''}
@@ -11454,16 +11513,24 @@ function ordSummaryCard(o, units, opts) {
   </section>`;
 }
 UI.orderDraft = UI.orderDraft || { reference: '', notes: '', customerId: '' };
+/* Admin only: the discount (%) and the delivery charge, on the review page and on a submitted order */
+const ordAdminFields = (o, id) => `<div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end"><label class="field" style="flex:1;min-width:140px"><span class="lbl">Discount (%) before VAT</span><input class="input" type="number" min="0" max="100" step="0.5" value="${+o.discountPct || 0}" data-chg="ordDisc" data-id="${id}"></label>
+  <label class="field" style="flex:2;min-width:220px"><span class="lbl">Delivery charge</span><select class="input" data-chg="ordDel" data-id="${id}"><option value="">None</option>${delList().map(x => `<option value="${esc(x.code)}" ${o.deliveryCode === x.code ? 'selected' : ''}>${esc(x.name)} (${GBP(x.price)})</option>`).join('')}</select></label></div>`;
+const ordFindEdit = id => id === 'draft' ? null : (DB.orders || []).find(x => x.id === id);
+CH.ordDisc = t => { const v = Math.min(100, Math.max(0, +t.value || 0)), o = ordFindEdit(t.dataset.id); if (o) { o.discountPct = v; o.timeline.push({ at: now(), text: 'Discount set to ' + v + '%', by: (admin() || {}).name }); save(); } else UI.orderDraft.discount = v; const y = window.scrollY; render(); window.scrollTo(0, y); };
+CH.ordDel = t => { const o = ordFindEdit(t.dataset.id); if (o) { ordSetDelivery(o, t.value); o.timeline.push({ at: now(), text: 'Delivery set to ' + (o.deliveryName || 'none'), by: (admin() || {}).name }); save(); } else UI.orderDraft.delivery = t.value; const y = window.scrollY; render(); window.scrollTo(0, y); };
 function orderReview() {
   const units = ordUnits(UI.basket), adm = UI.route.startsWith('a-'), d = UI.orderDraft;
   const u = adm ? admin() : null, cu = adm ? cust(d.customerId) : me();
-  const o = { customerId: adm ? d.customerId : (cu && cu.id), reference: d.reference, notes: d.notes, placedByName: adm ? (u && u.name) : (cu && cu.contact) };
+  const o = { customerId: adm ? d.customerId : (cu && cu.id), reference: d.reference, notes: d.notes, placedByName: adm ? (u && u.name) : (cu && cu.contact), discountPct: adm ? (+d.discount || 0) : 0 };
+  if (adm) ordSetDelivery(o, d.delivery || '');
   const form = `<div class="stack" style="gap:12px">
+    ${adm ? ordAdminFields(o, 'draft') : ''}
     ${adm ? `<label class="field"><span class="lbl">Order for customer</span><select class="input" data-chg="ordCust"><option value="">Internal order (no customer)</option>${DB.customers.map(c => `<option value="${c.id}" ${d.customerId === c.id ? 'selected' : ''}>${esc(c.company)}</option>`).join('')}</select></label>` : ''}
     <label class="field"><span class="lbl">Your reference (optional)</span><input class="input" data-chg="ordRef" value="${esc(d.reference)}" placeholder="Job name or customer reference"></label>
     <label class="field"><span class="lbl">Notes for the factory (optional)</span><textarea class="input" rows="3" data-chg="ordNotes" placeholder="Anything we should know">${esc(d.notes)}</textarea></label>
     <div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn btn-secondary" data-act="orderBackToBasket">${ic('arrowL', 16)} Back to basket</button><button class="btn btn-secondary" data-act="orderPdf" data-id="draft">${ic('download', 15)} PDF</button><span class="spacer"></span><button class="btn btn-primary" data-act="orderSubmit" style="min-width:200px">${ic('check', 16)} Submit order</button></div>
-    <p class="muted" style="margin:0;font-size:13px">Submitting sends this order to the factory. Prices will be added later.</p>
+    <p class="muted" style="margin:0;font-size:13px">Submitting sends this order to the factory.</p>
   </div>`;
   return `<div class="page-head"><div><h1>Review your order</h1><p>${units.length} cabinet${units.length === 1 ? '' : 's'}, each on its own row. Check everything, then submit.</p></div></div>
   <div class="stack" style="gap:20px">
@@ -11487,7 +11554,8 @@ A.orderSubmit = () => {
   const number = s.orderPrefix + pad5(s.nextOrderNo++);
   const who = adm ? (u ? u.name : 'Staff') : (cu ? cu.contact : 'Customer');
   const units = ordUnits(lines);
-  const order = { id: uid('ord'), number, customerId: cu ? cu.id : null, placedBy: adm ? 'admin' : 'customer', placedByName: who, status: 'Submitted', submitted: now(), updated: now(), reference: d.reference || '', notes: d.notes || '', units, timeline: [{ at: now(), text: 'Order submitted', by: who }] };
+  const order = { id: uid('ord'), number, customerId: cu ? cu.id : null, placedBy: adm ? 'admin' : 'customer', placedByName: who, status: 'Submitted', submitted: now(), updated: now(), reference: d.reference || '', notes: d.notes || '', discountPct: adm ? (+d.discount || 0) : 0, units, timeline: [{ at: now(), text: 'Order submitted', by: who }] };
+  if (adm) ordSetDelivery(order, d.delivery || '');
   DB.orders.unshift(order);
   notify('admin', 'New order ' + number + ' from ' + (cu ? cu.company : 'Internal') + ': ' + units.length + ' cabinet' + (units.length === 1 ? '' : 's'), null);
   DB.notifications[0].orderId = order.id;
@@ -11515,7 +11583,7 @@ function aOrder(id) {
   const o = (DB.orders || []).find(x => x.id === id);
   if (!o) return `<div class="empty"><h4>Order not found</h4><button class="btn btn-secondary btn-sm" data-act="go" data-to="a-orderlist">Back to orders</button></div>`;
   const steps = ORD_FLOW.map(s => `<button class="btn ${o.status === s ? 'btn-primary' : 'btn-secondary'} btn-sm" data-act="ordStatus" data-id="${o.id}" data-s="${s}">${s}</button>`).join('') + `<button class="btn ${o.status === 'Rejected' ? 'btn-danger' : 'btn-secondary'} btn-sm" data-act="ordStatus" data-id="${o.id}" data-s="Rejected">Rejected</button>`;
-  const actions = `<div class="stack" style="gap:10px"><h4 style="margin:0">Status</h4><div class="row" style="gap:6px;flex-wrap:wrap">${steps}</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-act="orderPdf" data-id="${o.id}">${ic('download', 15)} Download PDF</button><button class="btn btn-secondary btn-sm" data-act="orderPo" data-id="${o.id}">${ic('download', 15)} Purchase Order (PDF)</button><button class="btn btn-secondary btn-sm" data-act="ordCsv" data-id="${o.id}">${ic('download', 15)} Download cabinets (CSV)</button></div></div>
+  const actions = `<div class="stack" style="gap:10px"><h4 style="margin:0">Discount and delivery</h4>${ordAdminFields(o, o.id)}<h4 style="margin:6px 0 0">Status</h4><div class="row" style="gap:6px;flex-wrap:wrap">${steps}</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-act="orderPdf" data-id="${o.id}">${ic('download', 15)} Download PDF</button><button class="btn btn-secondary btn-sm" data-act="orderPo" data-id="${o.id}">${ic('download', 15)} Purchase Order (PDF)</button><button class="btn btn-secondary btn-sm" data-act="ordCsv" data-id="${o.id}">${ic('download', 15)} Download cabinets (CSV)</button></div></div>
     <div><h4 style="margin:0 0 6px">Timeline</h4>${o.timeline.slice().reverse().map(t => `<div class="muted" style="font-size:13px">${esc(fmtDT(t.at))} · ${esc(t.text)}${t.by ? ' · ' + esc(t.by) : ''}</div>`).join('')}</div>`;
   return `<button class="btn btn-ghost btn-sm" data-act="go" data-to="a-orderlist" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Orders</button>
   <div class="page-head"><div><h1>Order ${esc(o.number)}</h1><p>${esc(ordCustomer(o).company)} · ${o.units.length} cabinet${o.units.length === 1 ? '' : 's'}</p></div></div>
@@ -11580,7 +11648,8 @@ function pdfLogo(doc, cx, y) {
   spec('Cabinets', s.total + ' cabinet' + (s.total === 1 ? '' : 's') + ', ' + s.types.length + ' different type' + (s.types.length === 1 ? '' : 's') + (s.mtm ? ', ' + s.mtm + ' made to measure' : ''));
   spec('Carcase Colour', s.colours.map(([k, n]) => k + (s.colours.length > 1 ? ' (x' + n + ')' : '')).join('\n'));
   spec('Edging Colour', s.edgings.map(([k, n]) => k + (s.edgings.length > 1 ? ' (x' + n + ')' : '')).join('\n'));
-  spec('Prices', 'To be confirmed');
+  const tt = ordTotals(o, units);
+  spec('Prices', s.sum ? GBP(tt.total) + ' inc VAT (' + GBP(tt.net) + ' ex VAT)' + (s.unpriced ? ', ' + s.unpriced + ' cabinet' + (s.unpriced === 1 ? '' : 's') + ' not fully priced' : '') : 'To be confirmed');
   if (o.notes) spec('Other', o.notes);
   y += 3;
   // every cabinet on its own row
@@ -11591,13 +11660,20 @@ function pdfLogo(doc, cx, y) {
   doc.autoTable({
     startY: y, margin: { left: M, right: M, bottom: 22 }, theme: 'plain',
     head: [['Pos', 'Qty', 'Code', 'L/R', 'Description', 'W', 'H', 'D', 'Notes', 'Price']],
-    body: units.map(u => [String(u.n), '1', u.code, lr(u), desc(u), String(u.w), u.h ? String(u.h) : '', String(u.d), (/^(left|right)\b/i.test(u.opt || '') || /drawers/i.test(u.opt || '')) && lr(u) ? '' : (u.opt || ''), 'TBC'].map(pdfTxt)),
+    body: units.map(u => [String(u.n), '1', u.code, lr(u), desc(u), String(u.w), u.h ? String(u.h) : '', String(u.d), (/^(left|right)\b/i.test(u.opt || '') || /drawers/i.test(u.opt || '')) && lr(u) ? '' : (u.opt || ''), u.price != null ? GBP(u.price) : 'TBC'].map(pdfTxt)),
     styles: { font: 'helvetica', fontSize: 8.4, cellPadding: { top: 1.8, bottom: 1.8, left: 1, right: 1 }, textColor: [0, 0, 0], lineColor: [120, 120, 120], lineWidth: 0, valign: 'top', overflow: 'linebreak' },
     headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8.6, lineWidth: { bottom: .35 } },
     bodyStyles: { lineWidth: { bottom: .2 } },
-    columnStyles: { 0: { cellWidth: 9 }, 1: { cellWidth: 9 }, 2: { cellWidth: 22 }, 3: { cellWidth: 12 }, 4: { cellWidth: 46 }, 5: { cellWidth: 10 }, 6: { cellWidth: 9 }, 7: { cellWidth: 9 }, 8: { cellWidth: 'auto' }, 9: { halign: 'right', cellWidth: 12 } },
+    columnStyles: { 0: { cellWidth: 9 }, 1: { cellWidth: 9 }, 2: { cellWidth: 22 }, 3: { cellWidth: 12 }, 4: { cellWidth: 46 }, 5: { cellWidth: 10 }, 6: { cellWidth: 9 }, 7: { cellWidth: 9 }, 8: { cellWidth: 'auto' }, 9: { halign: 'right', cellWidth: 19 } },
     didParseCell: d => { if (d.column.index === 9 && d.section === 'head') d.cell.styles.halign = 'right'; }
-  });  y = doc.lastAutoTable.finalY + 9;
+  });  y = doc.lastAutoTable.finalY + 6;
+  if (s.sum) {                                                                                              // the order total under the price column
+    const rows = [['Cabinets', GBP(tt.sub)]]; if (tt.pct) rows.push(['Discount ' + tt.pct + '%', '-' + GBP(tt.disc)]); if (o.deliveryName) rows.push([o.deliveryName, GBP(tt.del)]);
+    rows.push(['Total ex VAT', GBP(tt.net)], ['VAT at ' + tt.vr + '%', GBP(tt.vat)]); if (y + rows.length * 5 + 10 > 275) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...ink);
+    rows.forEach(([k, v], i) => { doc.text(pdfTxt(k), W - M - 28, y + i * 5, { align: 'right' }); doc.text(pdfTxt(v), W - M, y + i * 5, { align: 'right' }); });
+    const yb = y + rows.length * 5 + 1; doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.text('Total inc VAT', W - M - 28, yb, { align: 'right' }); doc.text(pdfTxt(GBP(tt.total)), W - M, yb, { align: 'right' }); y = yb + 7;
+  } else y += 3;
   // order summary
   if (y + 60 > 275) { doc.addPage(); y = 20; }
   doc.setFillColor(...soft); doc.roundedRect(M, y, CW, 20, 2, 2, 'F');
@@ -11664,12 +11740,15 @@ function poCarcase(o) {
     else { add('Shelf', inner - 1, sd, o.shelves, inner - 1, inner - 1); f.pegs += 4 * o.shelves; }
   }
   if (o.posts) { add('Centre post', o.postLen, 70, o.posts, 0, 0); f.mp += 2 * o.posts; f.wd += 2 * o.posts; }
-  (o.extra || []).forEach(p => { if (!/door|front/i.test(p.name)) add(p.name, p.l, p.w, p.q || 1, p.ef, p.er); });             // cabinets only: doors and drawer fronts are ordered separately (Doors), so they are not in the board, edging or cutting list
+  const faces = [];                                                                                                                      // doors and fronts: not in the cutting list, but the price calculator needs them
+  (o.doors || []).forEach(dd => faces.push({ l: dd[1], w: dd[0], q: 1 }));
+  (o.fronts || []).forEach(dd => faces.push({ l: dd[1], w: dd[0], q: 1 }));
+  (o.extra || []).forEach(p => { if (!/door|front/i.test(p.name)) add(p.name, p.l, p.w, p.q || 1, p.ef, p.er); else faces.push({ l: p.l, w: p.w, q: p.q || 1 }); });             // cabinets only: doors and drawer fronts are ordered separately (Doors), so they are not in the board, edging or cutting list
   (o.doors || []).forEach(dd => { f.hinges += o.hingesPerDoor == null ? 2 : o.hingesPerDoor; });                                      // the hinges still come with the cabinet
   (o.glassDoors || []).forEach(dd => { f.hinges += 2; });
   if (o.legs) { f.legs = o.legCount || legQty(o.w); f.clips = o.clipCount != null ? o.clipCount : clipQty(o.w); }
   if (o.hang) { f.hangers = 2; f.plates = 2; f.caps = 2; }
-  return { parts, f, glass, approx: !!o.approx, note: o.note || '' };
+  return { parts, f, glass, faces, approx: !!o.approx, note: o.note || '' };
 }
 function poWith(obj, snap, fn) { return fn(); }                                   // (the snapshot is read directly; no global state is touched)
 function poUnit(u) {
@@ -11698,19 +11777,19 @@ function poUnit(u) {
   if (k === 'bel') { const pair = w > 600 || s.doors === 'double'; return C({ top: 'full', back: true, shelves: 1, doors: doorSet(w, H, pair), posts: pair ? 2 : 0, postLen: H - 2 * T, legs: true }); }
   if (k === 'wine') return C({ top: 'rail', back: true, shelves: 2, legs: true, approx: true, note: 'Wine rack parts are an estimate (2 shelves)' });
   if (k === 'oven') {
-    const r = C({ top: 'none', back: false, shelves: 0, fixed: s.drawer ? 1 : 0, fronts: s.drawer ? [[w - 4, 115]] : [], legs: true });
+    const r = C({ top: 'none', back: false, shelves: 0, fixed: 1, fronts: s.drawer ? [[w - 4, 115]] : [], legs: true });      // the fixed shelf comes with or without the drawer
     if (s.drawer) r.f.runners[s.sys || 'Antaro'] = 1; return r;
   }
   if (k === 'pan') {                                                                                    // pair of full height doors, 2 shelves, 3 internal drawers, centre posts, full top and back
     const chest = s.chest !== false, z = 3 * 160 + 2 * 3 + 4;
     const r = lgPo(C({ top: 'full', back: true, shelves: chest ? 3 : 5, fixed: chest ? 1 : 0, doors: s.doors === 'full' ? doorSet(w, H, true) : [[496.5, 1245], [496.5, 1245], [496.5, H - 10 - 1245], [496.5, H - 10 - 1245]], hingesPerDoor: 4, legs: true,
       extra: chest ? [{ name: 'Chest filler', l: z, w: 32, q: 2, ef: z, er: 0 }] : [] }), s);
-    r.f.hinges = s.doors === 'full' ? 8 : 12;                                                       // no centre post; split doors: 4 on each top door, 2 on each bottom door
+    r.f.hinges = 10; r.f.legs = tallLegs(w); r.f.clips = tallClips(w);                                                       // no centre post; split doors: 4 on each top door, 2 on each bottom door
     if (chest) r.f.runners[s.sys || 'Antaro'] = 3; return r;
   }
   if (k === 'dlr') {                                                                                    // diagonal larder: 2 gables, diagonal top, base and 5 diagonal shelves, one door on the diagonal
     const RH = s.rh || w, LH = s.lh || w, dg = Math.hypot(RH - d, LH - d), door = dlrDoorOf(RH, LH, d, H).w, Dp = d - v - T - fe, ds = Math.round(dg * 10) / 10;
-    const r = C({ top: 'none', bottom: false, back: false, legs: true, legCount: 5, clipCount: clipQty(dg), approx: true, note: 'Diagonal larder parts are an estimate (diagonal panels are listed by their bounding size)',
+    const r = C({ top: 'none', bottom: false, back: false, legs: true, legCount: tallLegs(Math.max(RH, LH)), clipCount: tallClips(Math.max(RH, LH)), approx: true, note: 'Diagonal larder parts are an estimate (diagonal panels are listed by their bounding size)',
       extra: [{ name: 'Base panel (diagonal)', l: RH - T, w: LH - T, ef: ds, er: RH + LH - 2 * T }, { name: 'Top panel (diagonal)', l: RH - T, w: LH - T, ef: ds, er: RH + LH - 2 * T },
         { name: 'Back (wall A)', l: H, w: RH - T }, { name: 'Back (wall B)', l: H, w: LH - T },
         { name: 'Shelf (diagonal)', l: RH - 2 * T - 1, w: LH - 2 * T - 1, q: 5, ef: ds, er: 0 }], doors: [[door, H - 4]], hingesPerDoor: 5 });
@@ -11718,7 +11797,7 @@ function poUnit(u) {
   }
   if (k === 'lc') {                                                                                     // corner larder: one door, a blank panel carrying its hinges, 5 shelves, full top and back
     const door = Math.min(Math.max(Math.round(s.door || 500), 300), Math.floor(w - 18.2 - 50)), bl = Math.round((w - door - 18.2) * 10) / 10;
-    return lgPo(C({ top: 'full', back: true, shelves: 5, doors: [[door - 4, H - 5]], hingesPerDoor: 4, legs: true, extra: [{ name: 'Blank panel', l: H - 2 * T, w: bl, q: 1, ef: H - 2 * T, er: 0 }] }), s);
+    return lgPo(C({ top: 'full', back: true, shelves: 5, doors: [[door - 4, H - 5]], hingesPerDoor: 5, legs: true, legCount: tallLegs(w), clipCount: tallClips(w), extra: [{ name: 'Blank panel', l: H - 2 * T, w: bl, q: 1, ef: H - 2 * T, er: 0 }] }), s);
   }
   if (k === 'ohl') {                                                                                    // top door, oven opening between two fixed shelves, then a bottom door or drawers; no back
     const p0 = (window.OHL_P || []).find(x => x.id === s.cfg) || OHL_P[0], p = s.mtm ? Object.assign({}, p0, { top: Math.round(s.top || p0.top), h: H }) : p0, dd = p.dr ? [[w - 4, p.top]] : [[w - 4, p.top], [w - 4, p.bot]];
@@ -11833,6 +11912,54 @@ function poBuild(order) {
   Object.values(R.boards).forEach(b => { b.sheets = poNest(b.pieces); b.util = b.sheets ? b.area / (b.sheets * PO.L * PO.W) : 0; });
   return R;
 }
+/* ---------- Price calculator (New Orders) ----------
+   The price of a cabinet is worked out from its parts (the same parts the purchase order uses):
+   board (by area, with waste) + edging (by metre) + hardware + labour, then overhead, then markup, then the MTM surcharge on made to measure.
+   Doors and fronts are counted as board and edging too. Prices are typed in under Admin > Pricing and saved in the settings. */
+const COST_META = [
+  ['General', [['labourRate', 'Labour rate (£ per hour)', 12.71], ['labourHours', 'Labour hours per cabinet', 2], ['overhead', 'Overhead (% on materials and labour)', 5], ['markup', 'Markup (% on the cost)', 54], ['mtmSur', 'MTM surcharge (% on the price, 0 = none)', 0], ['waste', 'Board and edging waste (%)', 10], ['sheetL', 'Board sheet length (mm)', 2800], ['sheetW', 'Board sheet width (mm)', 2070], ['doorsOn', 'Include doors and fronts in the price (1 = yes, 0 = cabinets only)', 0]]],
+  ['Board and edging', [['board1', '18.2mm MFC sheet 2800 x 2070, Group 1 (£)', 48.10], ['board2', '18.2mm MFC sheet 2800 x 2070, Group 2 (£)', 64.00], ['edge1', '2mm edging per metre, Group 1 (£)', 0.31], ['edge2', '2mm edging per metre, Group 2 (£)', 0.40], ['edge08_1', '0.8mm edging per metre, Group 1 (£)', 0.31], ['edge08_2', '0.8mm edging per metre, Group 2 (£)', 0.40]]],
+  ['Hardware', [['legTop', 'Leg top section 637.81.302 (each)', 0.20], ['legFoot', 'Leg 150mm foot shaft 637.81.375 (each)', 0.38], ['clip', 'Plinth clip 637.81.340 (each)', 0.02], ['peg', 'Shelf support 2-pin F0022546 (each)', 0.05], ['dowel100', 'Wooden dowel 8 x 35mm J66-417 (per box of 100)', 0.72], ['cam', '18mm cam J601-509 (each)', 0.03], ['mpin', '34mm metal pin J601-517 (each)', 0.04], ['hanger', 'Traser cabinet hanger I41-0400 (per pair)', 1.72], ['plate', 'Wall plate I40-184 (each)', 0.08], ['hinge', '107 degree hinge 75BB1550 (each)', 1.63], ['hingePlate', 'Hinge mounting plate 174H7100E (each)', 0.57], ['blindHinge', '9 x 9 blind corner hinge SYH060 (each)', 0.81]]],
+  ['Still to be priced (blank = not priced)', [['hinge155', '155 degree hinge (each)', 0], ['hingeAppl', 'Appliance hinge (each)', 0], ['cap', 'Cover cap (each)', 0], ['gas', 'Gas stay (each)', 0], ['hk', 'HK Top lift-up fitting (each)', 0], ['runAntaro', 'Antaro runners and sides, per drawer', 0], ['runLegrabox', 'Legrabox runners and sides, per drawer', 0], ['runMerivo', 'Merivo runners and sides, per drawer', 0]]]
+];
+const costCfg = () => { const c = {}, s = DB.settings.cost || {}; COST_META.forEach(([, l]) => l.forEach(([k, , d]) => { c[k] = s[k] != null && s[k] !== '' && isFinite(+s[k]) ? +s[k] : d; })); return c; };
+const COST_BLIND = ['lc', 'corner', 'cwall'];
+function costUnit(l) {
+  const r = l && l.spec ? poUnit(l) : null; if (!r) return null;
+  const c = costCfg(), g = l.pgrp === 2 ? 2 : 1, wf = 1 + c.waste / 100, k = l.spec.k, miss = [], lines = [];
+  let area = 0, e2 = 0, e08 = 0;                                                                                       // the front edges take the chosen edging (2mm or 0.8mm); every other edge is 0.8mm
+  r.parts.forEach(p => { area += p.l * p.w * p.q; e2 += (p.ef || 0) * p.q; e08 += (p.er || 0) * p.q; });
+  if (c.doorsOn) (r.faces || []).forEach(p => { area += p.l * p.w * p.q; e2 += 2 * (p.l + p.w) * p.q; });             // doors and fronts are off by default: cabinets only
+  const frontType = l.edgeType === '0.8mm' ? '0.8mm' : '2mm', pf = frontType === '0.8mm' ? c['edge08_' + g] : c['edge' + g], p08 = c['edge08_' + g];
+  const sheet = c.sheetL * c.sheetW, board = area / sheet * c['board' + g] * wf, edge = (e2 / 1000 * pf + e08 / 1000 * p08) * wf;
+  lines.push(['Board', (area / 1e6).toFixed(2) + ' m² (sheet ' + GBP(c['board' + g]) + ', +' + c.waste + '% waste)', board], ['Edging', (e2 / 1000).toFixed(1) + ' m at ' + frontType + ' (' + GBP(pf) + ' per m) + ' + (e08 / 1000).toFixed(1) + ' m at 0.8mm (' + GBP(p08) + ' per m), +' + c.waste + '% waste', edge]);
+  const f = r.f, hw = [];
+  const hu = (price, name) => { if (price > 0) return price; miss.push(name + ' priced as a 107° hinge'); return c.hinge; };
+  const hingeEach = (COST_BLIND.includes(k) ? c.blindHinge : k === 'dlr' ? hu(c.hinge155, '155° hinge') : k === 'ff' ? hu(c.hingeAppl, 'Appliance hinge') : c.hinge) + c.hingePlate;
+  const add = (name, qty, each) => { if (qty > 0) hw.push([name, qty, qty * each]); };
+  add('Hinges with plates', f.hinges, hingeEach);
+  add('Metal pins with cams', f.mp, c.mpin + c.cam);
+  add('Wooden dowels', f.wd, c.dowel100 / 100);
+  add('Shelf supports', f.pegs, c.peg);
+  add('Legs', f.legs, c.legTop + c.legFoot);
+  add('Plinth clips', f.clips, c.clip);
+  add('Wall hangers', f.hangers, c.hanger / 2);
+  add('Wall plates', f.plates, c.plate);
+  [['caps', 'Cover caps', c.cap], ['gas', 'Gas stays', c.gas], ['hk', 'HK lift-up fittings', c.hk]].forEach(([x, nm, p]) => { if (f[x] > 0) { add(nm, f[x], p); if (!p) miss.push(nm + ' not priced'); } });
+  Object.entries(f.runners || {}).forEach(([sys, n]) => { const p = c['run' + sys] || 0; add(sys + ' drawers (runners and sides)', n, p); if (!p) miss.push(sys + ' runners and sides not priced'); });
+  Object.keys(f.other || {}).forEach(x => miss.push(x + ' not priced'));
+  if ((r.glass || []).length || f.glassPegs) miss.push('Glass shelves not priced');
+  const hwTotal = hw.reduce((a, x) => a + x[2], 0);
+  hw.forEach(x => lines.push([x[0], 'x ' + x[1], x[2]]));
+  const labour = c.labourRate * c.labourHours; lines.push(['Labour', c.labourHours + ' h at ' + GBP(c.labourRate), labour]);
+  const sub = board + edge + hwTotal + labour, overhead = sub * c.overhead / 100, cost = sub + overhead;
+  lines.push(['Overhead', c.overhead + '%', overhead]);
+  const markup = cost * c.markup / 100; lines.push(['Markup', c.markup + '%', markup]);
+  let price = cost + markup;
+  const mtm = /^MTM cabinet/.test(l.opt || '') || /-MTM$/.test(l.code || '') || k === 'mtm';        // the MTM Base itself is made to measure too
+  if (mtm && c.mtmSur > 0) { const m = price * c.mtmSur / 100; lines.push(['MTM surcharge', c.mtmSur + '%', m]); price += m; }
+  return { price: Math.round(price * 100) / 100, cost, lines, miss: Array.from(new Set(miss)), mtm, approx: r.approx };
+}
 function buildPoPdf(o) {
   const { jsPDF } = window.jspdf, doc = new jsPDF({ unit: 'mm', format: 'a4' }), W = 210, M = 16, CW = W - 2 * M, S = DB.settings, c = ordCustomer(o), R = poBuild(o);
   const ink = [29, 32, 28], muted = [105, 108, 100], oak = [168, 118, 74], line = [214, 218, 212], soft = [241, 245, 243], dark = [36, 52, 50];
@@ -11899,13 +12026,17 @@ function aOrdersCard() {
 }
 function cBasket() {
   if (UI.orderStep === 'review' && (UI.basket || []).length) return orderReview();
-  const list = UI.basket || [];
+  const list = UI.basket || [], adm = UI.route.startsWith('a-'); let sum = 0, unpr = 0;
+  const costs = list.map(l => { let cu = null; try { cu = costUnit(l); } catch (e) { console.error(e); } if (cu) { sum += cu.price * (+l.qty || 1); if (cu.miss.length) unpr++; } return cu; });
   const body = !list.length ? `<div class="empty">${ic('basket', 22)}<p>Your basket is empty. Add cabinets from New Orders.</p><button class="btn btn-primary" data-act="orders">Go to New Orders</button></div>` :
-    `<div class="stack">${list.map(l => `<article class="card card-pad"><div class="row" style="gap:12px;flex-wrap:wrap"><div style="min-width:0;flex:1"><b style="font-size:16px">${esc(l.name)}</b> <span class="mono">${esc(l.code)}</span>
-      <div class="muted">${l.w}mm wide${l.h ? ' · ' + l.h + 'mm high' : ''} · ${l.d}mm deep · void ${l.v}mm · ${esc(l.opt)}</div><div class="muted">Colour: ${esc(l.colour)}${l.group ? ' (' + l.group + ')' : ''}</div>${l.edging ? `<div class="muted">Edging: ${esc(l.edging)}</div>` : ''}</div>
+    `<div class="stack">${list.map((l, ix) => { const cu = costs[ix]; return `<article class="card card-pad"><div class="row" style="gap:12px;flex-wrap:wrap"><div style="min-width:0;flex:1"><b style="font-size:16px">${esc(l.name)}</b> <span class="mono">${esc(l.code)}</span>
+      <div class="muted">${l.w}mm wide${l.h ? ' · ' + l.h + 'mm high' : ''} · ${l.d}mm deep · void ${l.v}mm · ${esc(l.opt)}</div><div class="muted">Colour: ${esc(l.colour)}${l.group ? ' (' + l.group + ')' : ''}</div>${l.edging ? `<div class="muted">Edging: ${esc(l.edging)}</div>` : ''}
+      ${cu ? `<div style="margin-top:6px"><b class="tnum" style="font-size:17px">${GBP(cu.price)}</b> <span class="muted">each${l.qty > 1 ? ' · ' + GBP(cu.price * l.qty) + ' for ' + l.qty : ''}${cu.mtm ? ' · includes the MTM surcharge' : ''}</span></div>` : ''}
+      ${cu && cu.miss.length ? `<div class="muted" style="font-size:12.5px">Not fully priced: ${esc(cu.miss.join('; '))}</div>` : ''}
+      ${cu && adm ? `<details style="margin-top:6px"><summary class="muted" style="cursor:pointer;font-size:12.5px">Cost breakdown${cu.approx ? ' (part sizes are an estimate)' : ''}</summary><table class="tbl" style="margin-top:6px"><tbody>${cu.lines.map(x => `<tr><td>${esc(x[0])}</td><td class="muted">${esc(x[1])}</td><td class="num tnum">${GBP(x[2])}</td></tr>`).join('')}<tr><td class="strong">Price</td><td></td><td class="num tnum strong">${GBP(cu.price)}</td></tr></tbody></table></details>` : ''}</div>
       <div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="-1" aria-label="Fewer">−</button><b style="min-width:28px;text-align:center">${l.qty}</b><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="1" aria-label="More">+</button>
-      <button class="btn btn-ghost btn-sm" data-act="bkDel" data-id="${l.id}" aria-label="Remove">${ic('trash', 16)}</button></div></div></article>`).join('')}
-    <div class="row"><span class="muted">${basketCount()} unit${basketCount() === 1 ? '' : 's'} in the basket. Prices will be added later.</span><span class="spacer"></span><button class="btn btn-ghost" data-act="bkClear">Empty basket</button><button class="btn btn-primary" data-act="orderFinalise">${ic('check', 16)} Finalise order</button></div></div>`;
+      <button class="btn btn-ghost btn-sm" data-act="bkDel" data-id="${l.id}" aria-label="Remove">${ic('trash', 16)}</button></div></div></article>`; }).join('')}
+    <div class="row"><span class="muted">${basketCount()} unit${basketCount() === 1 ? '' : 's'} in the basket · <b class="tnum">${GBP(sum)}</b> ex VAT${unpr ? ' (' + unpr + ' line' + (unpr === 1 ? '' : 's') + ' not fully priced)' : ''}.</span><span class="spacer"></span><button class="btn btn-ghost" data-act="bkClear">Empty basket</button><button class="btn btn-primary" data-act="orderFinalise">${ic('check', 16)} Finalise order</button></div></div>`;
   return `<div class="page-head"><div><h1>Basket</h1><p>The cabinets you have added from New Orders.</p></div></div>${body}`;
 }
 CH.orderColour = t => { UI.orderColour = t.value; save(); const y = window.scrollY; render(); window.scrollTo(0, y); };
@@ -13287,12 +13418,23 @@ A.entDel = t => {
 };
 
 /* ---------- pricing ---------- */
+function costCard() {
+  const c = costCfg();
+  return `<section class="card"><div class="card-head"><h3>Cabinet cost calculator (New Orders)</h3><span class="hint">Price = (board + edging + hardware + labour) + overhead, then markup, then the MTM surcharge</span></div><div class="card-body stack">${COST_META.map(([title, rows]) => `<div><h4 style="margin:0 0 8px">${esc(title)}</h4><div class="tbl-wrap"><table class="tbl"><tbody>${rows.map(([k, label]) => `<tr><td>${esc(label)}</td><td class="num"><input class="cell-in" type="number" step="0.01" min="0" value="${c[k]}" data-chg="costSet" data-k="${k}" aria-label="${esc(label)}"></td></tr>`).join('')}</tbody></table></div></div>`).join('')}
+    <p class="hint">A blank or zero price in the last group means "not priced yet": the basket says so, and it prices the missing hinges as a 107° hinge. Changes apply to the basket straight away. Submitted orders keep the price they were saved with.</p></div></section>`;
+}
+function delCard() {
+  return `<section class="card"><div class="card-head"><h3>Delivery charges (New Orders)</h3><span class="hint">Admin picks one on an order. VAT is charged on the cabinets less any discount, plus delivery.</span></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th><th>Description</th><th class="num">Price (£)</th></tr></thead><tbody>${delList().map(x => `<tr><td class="mono">${esc(x.code)}</td><td>${esc(x.name)}</td><td class="num"><input class="cell-in" type="number" step="1" min="0" value="${+x.price || 0}" data-chg="delPrice" data-code="${esc(x.code)}" aria-label="${esc(x.name)} price"></td></tr>`).join('')}</tbody></table></div></section>`;
+}
+CH.delPrice = t => { const l = DB.settings.deliveryList = (DB.settings.deliveryList && DB.settings.deliveryList.length ? DB.settings.deliveryList : JSON.parse(JSON.stringify(DEL_DEFAULT))), x = l.find(r => r.code === t.dataset.code); if (x) x.price = Math.max(0, +t.value || 0); save(); const y = window.scrollY; refreshMain(); window.scrollTo(0, y); toast('Delivery price saved'); };
+CH.costSet = t => { const s = DB.settings.cost = DB.settings.cost || {}; s[t.dataset.k] = t.value === '' ? '' : Math.max(0, +t.value || 0); save(); const y = window.scrollY; refreshMain(); window.scrollTo(0, y); toast('Price saved'); };
 function aPricing() {
   const s = DB.settings, hl = DB.items.find(i => i.code === 'HL600') || DB.items[0];
   const exQ = { status: 'Draft', customerId: 'c-smith', cabColour: (DB.cabColours.find(c => c.name === 'Sage Green') || DB.cabColours[0]).id, doorStyle: 'ds-shaker', doorColour: 'match', lines: [{ id: 'x', itemId: hl.id, qty: 1, h: hl.h, w: hl.w, d: hl.d }] };
   const ex = totals(exQ), c0 = ex.calcs[0], sm = cust('c-smith') || { discount: 12 };
   return `<div class="page-head"><div><h1>Pricing</h1><p>How every quote is calculated. Changes apply to drafts and new quotes straight away.</p></div></div>
   <div class="two-col"><div class="stack">
+    ${costCard()}${delCard()}
     <section class="card"><div class="card-head"><h3>Price groups</h3></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Group</th><th>Price column</th><th class="num">Cabinet colours</th><th class="num">Door colours</th><th class="num">Base 600 price</th><th class="num">Door uplift</th></tr></thead><tbody>${[1, 2, 3].map(g => `<tr><td class="strong">${g} · ${GROUPS[g]}</td><td class="mono">${GROUP_KEY[g]}</td><td class="num">${DB.cabColours.filter(c => c.group === g && c.active).length}</td><td class="num">${DB.doorColours.filter(c => c.group === g && c.active).length}</td><td class="num">${GBP(hl[GROUP_KEY[g]])}</td><td class="num">${{ 1: '—', 2: '+3%', 3: '+6%' }[g]}</td></tr>`).join('')}</tbody></table></div></section>
     <section class="card"><div class="card-head"><h3>Door style rates</h3><span class="hint">Door = base + rate × area (m²)</span></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Style</th><th class="num">Base (£)</th><th class="num">Rate / m² (£)</th><th class="num">715 × 596</th><th class="num">1970 × 596</th></tr></thead><tbody>${DB.doorStyles.filter(d => !d.none).map(d => `<tr><td class="strong">${esc(d.name)}</td><td class="num"><input class="cell-in" type="number" step="0.5" value="${d.base}" data-chg="dsRate" data-id="${d.id}" data-k="base" aria-label="${esc(d.name)} base"></td><td class="num"><input class="cell-in" type="number" step="0.5" value="${d.rate}" data-chg="dsRate" data-id="${d.id}" data-k="rate" aria-label="${esc(d.name)} rate"></td><td class="num">${GBP(doorPrice(d, null, 715, 596))}</td><td class="num">${GBP(doorPrice(d, null, 1970, 596))}</td></tr>`).join('')}</tbody></table></div></section>
     <section class="card"><div class="card-head"><h3>How a quote is priced</h3></div><div class="card-body"><ol class="steps-list" style="margin:0;padding:0">
