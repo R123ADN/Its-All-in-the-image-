@@ -7606,6 +7606,8 @@ OHL_P.forEach(p => (p.dr ? ['Antaro', 'Legrabox', 'Merivo'] : [null]).forEach(s 
   const sl = PRICELIST.find(r => r[0] === pr + 1000) || [], nm = 'Diagonal Larder ' + rw + ' x ' + lw + ' ' + hh + ' High 570 Deep';
   PRICELIST.push([cp + rw + 'X' + lw, nm, 'cat-tall', 'Kitchen', hh, rw, 570, sl[7] || 0, sl[8] || 0, sl[9] || 0, 1, 'Larders', '', 'Diagonal larder with a diagonal top, base and 5 diagonal shelves, one door on the diagonal.']);
 })));
+/* Wall wine racks, 300 deep: wall prefix + WR + width (bottle slots) or WRX + width (X rack). Priced like the wall unit of the same width. */
+[[575, 'WS', 'Wall575H'], [720, 'WM', 'Wall720H'], [900, 'WT', 'Wall900H']].forEach(([hh, pf, grp]) => [['WR', 300, 'Wall Wine Rack'], ['WRX', 600, 'Wall X Wine Rack']].forEach(([t, w, nm]) => { const sl = PRICELIST.find(r => r[0] === pf + w) || []; PRICELIST.push([pf + t + w, w + ' ' + nm + ' ' + hh + ' High 300 Deep', 'cat-wall', 'Kitchen', hh, w, 300, sl[7] || 0, sl[8] || 0, sl[9] || 0, 0, grp, '', w + ' ' + nm + ' ' + hh + ' High 300 Deep, any width.']); }));
 window.PL_GROUPS = [["Base", "Base Units"], ["CornerBase", "Corner Bases"], ["BaseDline", "Drawline Bases"], ["DrawPack", "Drawer Packs"], ["Larders", "Larders & Appliance Housings"], ["Wall575H", "Wall 575 High"], ["Wall720H", "Wall 720 High"], ["Wall900H", "Wall 900 High"], ["TopBox", "Top Boxes"], ["Dresser", "Dressers"], ["Panels", "Panels & Plinths"], ["DOORS", "Doors"], ["ROBES", "Robes"], ["Accessories", "Accessories"], ["Services", "Delivery & Services"]];
 
 </script>
@@ -9275,20 +9277,23 @@ function baseArt(w, d, h, hinge, vd, opts) {
     });
   }
   if (o.wine) {                   // wine rack: a grid of bottle slots (rows x cols), or two cells each crossed by an X
-    const W = o.wine, xl = T, xr = w - T, yb = y0 + T, yt = y1 - T, rows = W.x ? 2 : 5, rh = (yt - yb) / rows, ycol = baseShade(col, 0.1);
+    const W = o.wine, xl = T, xr = w - T, yb = y0 + T, yt = y1 - T, rows = W.rows || (W.x ? 2 : 5), rh = (yt - yb) / rows, ycol = baseShade(col, 0.1), cw = (xr - xl) / (W.cols || 1);
     const pts2 = a => a.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
     const SW = 46;                                                                                                       // front width of an X arm
     const diag = (xa, ya, xb, yb2) => {                                                                                // one diagonal panel: a faint full-depth shadow behind a bold front strip
       out.push(`<polygon points="${pts2([P(xa, ya + SW, vd), P(xb, yb2 + SW, vd), P(xb, yb2 + SW, d), P(xa, ya + SW, d)])}" fill="${baseShade(col, -0.1)}" opacity="0.28"/>`);
       q([P(xa, ya, d), P(xb, yb2, d), P(xb, yb2 + SW, d), P(xa, ya + SW, d)], baseShade(col, 0.2), 1.3);
     };
+    for (let j = 1; j < (W.cols || 1); j++) { const xv = xl + j * cw - T / 2;                                          // the divider's side face, full height and full depth to the back, drawn before the shelves (like the inside of the gable)
+      q([P(xv + T, yb, vd), P(xv + T, yb, d), P(xv + T, yt, d), P(xv + T, yt, vd)], baseShade(col, -0.1)); }
     for (let i = 1; i < rows; i++) { const ys = yb + i * rh;                                                           // shelves, full depth
       q([P(xl, ys, vd), P(xr, ys, vd), P(xr, ys, d), P(xl, ys, d)], baseShade(col, 0.14));
       q([P(xl, ys - T, d), P(xr, ys - T, d), P(xr, ys, d), P(xl, ys, d)], ycol); }
     if (W.x) for (let i = 0; i < rows; i++) { const ya = yb + i * rh + (i ? T : 0), yz = yb + (i + 1) * rh - (i < rows - 1 ? T : 0) - SW;
-      diag(xl, ya, xr, yz); diag(xl, yz, xr, ya); }                                                                      // the two arms of the X, crossing in the middle of each cell
-    if (!W.x) for (let j = 1; j < W.cols; j++) { const xv = xl + j * (xr - xl) / W.cols - T / 2;                      // upright divider(s), drawn last so they show in every row
-      for (let i = 0; i < rows; i++) { const ys = yb + i * rh;                                                         // the divider's seam running back along each shelf, so both columns stay visible
+      for (let j = 0; j < (W.cols || 1); j++) { const xa = xl + j * cw + (j ? T / 2 : 0), xb = xl + (j + 1) * cw - (j < (W.cols || 1) - 1 ? T / 2 : 0);
+        diag(xa, ya, xb, yz); diag(xa, yz, xb, ya); } }                                                                  // the two arms of the X, crossing in the middle of each cell
+    for (let j = 1; j < (W.cols || 1); j++) { const xv = xl + j * (xr - xl) / W.cols - T / 2;                      // upright divider(s), drawn last so they show in every row
+      for (let i = 0; i < rows; i++) { const ys = yb + i * rh;                                                         // the divider's seam running back along each shelf
         q([P(xv, ys, vd), P(xv + T, ys, vd), P(xv + T, ys, d), P(xv, ys, d)], baseShade(col, 0.24), 1); }
       q([P(xv, yb, d), P(xv + T, yb, d), P(xv + T, yt, d), P(xv, yt, d)], baseShade(col, 0.16)); }          // front edge of the divider, full height
   }
@@ -9721,10 +9726,11 @@ function binDetails() {
   <div style="max-width:620px">${panel(binArt({ doors: false, dims: true }), 380)}</div>`;
 }
 /* Slim pull-out unit: 150 or 300 wide, code BHL + width + SPO. */
-const SPO = { w: 300, d: 570, v: 50 };
+const SPO = { w: 300, d: 570, v: 50, pull: true };                  // pull: false = without the pull-out, a plain door cabinet priced as the cabinet
 const SPO_WIDTHS = [150, 300];
 const spoCode = w => 'BHL' + w + 'SPO';
-const spoArt = extra => baseArt(SPO.w, SPO.d, BASE_H, 'left', SPO.v, Object.assign({ trays: true }, extra));
+const spoArt = extra => baseArt(SPO.w, SPO.d, BASE_H, 'left', SPO.v, Object.assign({ trays: SPO.pull !== false, noShelf: SPO.pull === false }, extra));
+const spoPullPick = sel => `<div class="muted">Pull-out:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[[true, 'With pull-out'], [false, 'Without pull-out']].map(([v, t]) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;font-size:12px;white-space:nowrap;${sel((SPO.pull !== false) === v)}" data-act="spoPull" data-v="${v ? 'yes' : 'no'}">${(SPO.pull !== false) === v ? '&#9745;' : '&#9744;'} ${t}</button>`).join('')}</div>`;
 function spoCard() {
   const w = SPO.w;
   const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
@@ -9736,6 +9742,7 @@ function spoCard() {
     <div class="row"><div><h3 style="margin:0">Highline Slim Pull-out Unit</h3><span class="mono">${spoCode(w)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="spoMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${SPO_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="spoW" data-w="${x}">${x}</button>`).join('')}</div>
+    ${spoPullPick(sel)}
     ${bkRow('spo')}
   </article>`;
 }
@@ -9757,8 +9764,9 @@ function spoDetails() {
       <span class="mono">${spoCode(w)}</span>
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${SPO_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="spoW" data-w="${x}">${x}</button>`).join('')}</div>
+      ${spoPullPick(sel)}
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + spoCode(w))}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + spoCode(w))}${row('PULL-OUT', SPO.pull !== false ? 'Slim pull-out with 3 trays' : 'None, a plain door cabinet')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${ocDetail(null)}
       ${bkRow('spo')}
     </div>
@@ -9769,6 +9777,7 @@ function spoDetails() {
 const spoRefresh = () => { if (UI.orderCat === 'spodetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#sp'); if (el) el.outerHTML = spoCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 A.spoMore = () => { UI.orderCat = 'spodetails'; render(); window.scrollTo(0, 0); };
 A.spoW = t => { SPO.w = +t.dataset.w; spoRefresh(); };
+A.spoPull = t => { SPO.pull = t.dataset.v === 'yes'; spoRefresh(); };
 CH.spoDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = SPO[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), SPO.d - 200); SPO[k] = v; spoRefresh(); };
 const binRefresh = () => { if (UI.orderCat === 'bindetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#bn'); if (el) el.outerHTML = binCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 A.binMore = () => { UI.orderCat = 'bindetails'; render(); window.scrollTo(0, 0); };
@@ -10910,6 +10919,70 @@ A.dwH = t => { DW.h = +t.dataset.v; dwRefresh(); };
 A.dwD = t => { DW.d = +t.dataset.v; dwRefresh(); };
 A.dwHand = t => { DW.hand = t.dataset.v; dwRefresh(); };
 CH.dwVoid = t => { let val = Math.round(+t.value); if (!isFinite(val)) val = DW.v; DW.v = val; dwClamp(); dwRefresh(); };
+/* Kitchen > All Wall Units: Wall Wine Rack, the same two types as the base one: rows of bottle slots, or X racks. 300 deep, void 20,
+   575 / 720 / 900 high, any width. Slots: a column for about every 150 of width; X racks: a column for about every 500.
+   Codes (a guess): the wall prefix + WR + width for the slot rack (WMWR300), WRX + width for the X rack (WMWRX600). */
+const WWINE = { type: 'slot', w: 300, h: 720, d: 300, v: 20 };
+const WWINE_LIM = { w: [150, 1200], v: [0, 100] };
+const wwClamp = () => { WWINE.w = Math.min(WWINE_LIM.w[1], Math.max(WWINE_LIM.w[0], Math.round(WWINE.w))); WWINE.v = Math.min(100, Math.max(0, WWINE.v)); };
+const wwX = () => WWINE.type === 'x';
+const wwCols = () => wwX() ? Math.max(1, Math.round(WWINE.w / 500)) : Math.max(1, Math.round(WWINE.w / 150));
+const wwRows = () => wwX() ? Math.max(1, Math.round((WWINE.h - 36) / 342)) : Math.max(2, Math.round((WWINE.h - 36) / 137));
+const wwCode = () => WALL_PREFIX[WWINE.h] + (wwX() ? 'WRX' : 'WR') + WWINE.w;
+const wwHangers = () => WWINE.v >= 20;
+const wwRackTxt = () => wwX() ? wwRows() * wwCols() + ' X cell' + (wwRows() * wwCols() > 1 ? 's' : '') + ' (' + wwRows() + ' high x ' + wwCols() + ' across)' : wwRows() + ' rows x ' + wwCols() + ' column' + (wwCols() > 1 ? 's' : '') + ' of bottle slots';
+const wwArt = extra => { wwClamp(); return baseArt(WWINE.w, WWINE.d, WWINE.h, 'left', WWINE.v, Object.assign({ noLegs: true, doors: false, fullTop: true, wine: { cols: wwCols(), x: wwX(), rows: wwRows() } }, extra)); };
+function wwPick(sel) {
+  const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  return `<div class="muted">Type:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('wwType', 'slot', 'Bottle slots', !wwX())}${btn('wwType', 'x', 'X wine rack', wwX())}</div>
+    <div class="muted">Height:</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${WALL_HEIGHTS.map(h => btn('wwH', h, h + ' high', WWINE.h === h)).join('')}</div>
+    <div class="row" style="gap:10px"><label class="field" style="flex:1"><span class="lbl">Width (mm)</span><input class="input" type="number" min="${WWINE_LIM.w[0]}" max="${WWINE_LIM.w[1]}" step="1" value="${WWINE.w}" data-chg="wwDim" data-k="w"></label><label class="field" style="flex:1"><span class="lbl">Void (mm)</span><input class="input" type="number" min="0" max="100" step="1" value="${WWINE.v}" data-chg="wwDim" data-k="v"></label></div>
+    <div class="muted" style="font-size:13px;line-height:1.5">Rack: <b>${wwRackTxt()}</b>. Depth ${WWINE.d}.</div>
+    ${!wwHangers() ? `<div style="font-size:13px;line-height:1.5;font-weight:700">Void is under 20: this cabinet will have no wall hangers.</div>` : ''}`;
+}
+function wwCard() {
+  wwClamp();
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="ww" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', WWINE.h)}${chip('W', WWINE.w)}${chip('D', WWINE.d)}${chip('Void', WWINE.v)}</div>
+    <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${wwArt()}</div>
+    <div class="row"><div><h3 style="margin:0">Wall Wine Rack</h3><span class="mono">${wwCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="wwMore">More Details ${ic('chevR', 14)}</button></div>
+    ${wwPick(sel)}
+    ${bkRow('wwine')}
+  </article>`;
+}
+function wwDetails() {
+  wwClamp();
+  const row = (k, val) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${val}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Wall Units</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(wwArt(), 340)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', wwCode())}${row('Width', WWINE.w + ' mm')}${row('Height', WWINE.h + ' mm')}${row('Depth', WWINE.d + ' mm')}${row('Void', WWINE.v + ' mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${WWINE.w}MM WALL ${wwX() ? 'X ' : ''}WINE RACK, ${WWINE.h} HIGH</h1>
+      <span class="mono">${wwCode()}</span>
+      <p class="muted" style="margin:0">${WWINE.w} Wall ${wwX() ? 'X ' : ''}Wine Rack ${WWINE.h} High ${WWINE.d} Deep.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + wwCode())}${row('RACK', wwRackTxt())}${row('TOP AND BOTTOM', 'Full top and bottom')}${row('WALL HANGERS', wwHangers() ? 'Quantity: 2 x hangers, 2 x wall plates, 2 x cover caps' : 'None, the void is under 20')}${row('CABINET COMPONENT', 'None')}</div>
+      ${wwPick(sel)}
+      ${ocDetail(null)}
+      ${bkRow('wwine')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(wwArt({ dims: true }), 400)}</div>`;
+}
+const wwRefresh = () => { if (UI.orderCat === 'wwinedetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#ww'); if (el) el.outerHTML = wwCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.wwMore = () => { UI.orderCat = 'wwinedetails'; render(); window.scrollTo(0, 0); };
+A.wwType = t => { WWINE.type = t.dataset.v; if (WWINE.type === 'x' && WWINE.w < 400) WWINE.w = 600; wwRefresh(); };
+A.wwH = t => { WWINE.h = +t.dataset.v; wwRefresh(); };
+CH.wwDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = WWINE[k]; WWINE[k] = v; wwClamp(); wwRefresh(); };
 /* Kitchen > All Wall Units: Microwave Wall Unit. 600 wide, 720 or 900 high, 300 or 330 deep, one fixed shelf above the microwave,
    no back behind the microwave, and a filler (575), a top hung door (720) or a door (900) above it. Codes: WM600MICRO / WT600MICRO, and WM600MICRO33 / WT600MICRO33 for the 330 deep. Void 20. The clear opening for
    the microwave (the floor to the underside of the shelf) can be changed. */
@@ -11196,7 +11269,7 @@ A.brgMore = () => { UI.orderCat = 'brgdetails'; render(); window.scrollTo(0, 0);
 A.brgW = t => { BRG.w = +t.dataset.w; brgRefresh(); };
 A.brgType = t => { BRG.d = +t.dataset.v; brgRefresh(); };
 CH.brgVoid = t => { let v = Math.round(+t.value); if (!isFinite(v)) v = BRG.v; BRG.v = v; brgClamp(); brgRefresh(); };
-const wallCards = () => wallCard(false) + wallCard(true) + cwCard() + lwCard() + dwCard() + mwCard() + blCard() + drsCard() + brgCard();
+const wallCards = () => wallCard(false) + wallCard(true) + cwCard() + lwCard() + dwCard() + wwCard() + mwCard() + blCard() + drsCard() + brgCard();
 /* Kitchen > All Bases: Corner Base Unit, 800 to 1500 wide. One door, plus a fixed blank panel
    on the right or the left whose width the customer can change. Code is BCHL + width + RB or LB. */
 const CORNER = { w: 1000, side: 'right', door: 500, d: 570, v: 50, carousel: false, mtm: false };
@@ -11368,9 +11441,11 @@ function ocDetail(it) {
 }
 /* Basket for New Orders. No prices yet: it records what was picked, in which colour. */
 const basketCount = () => (UI.basket || []).reduce((n, l) => n + l.qty, 0);
-const bkRow = key => `<div class="row" style="gap:8px;margin-top:4px"><input class="input" id="bk-qty-${key.replace(':', '-')}" type="number" min="1" step="1" value="1" style="width:76px;flex:none" aria-label="Quantity"><button class="btn btn-primary" style="flex:1" data-act="bkAdd" data-k="${key}">${ic('basket', 16)} Add to basket</button></div>`;
-A.bkAdd = t => {
-  const key = t.dataset.k, qi = $('#bk-qty-' + key.replace(':', '-')), qty = Math.max(1, Math.round(+(qi && qi.value)) || 1), col = orderColour();
+const bkPrice = key => { try { const l = bkLine(key), cu = l && costUnit(l); return cu ? `<div class="row" style="gap:8px;align-items:baseline;margin-top:6px"><span class="muted" style="font-size:13px">Price</span><b class="tnum" style="font-size:22px;letter-spacing:-.02em">${GBP(cu.price)}</b><span class="muted" style="font-size:13px">each, ex VAT</span></div>` : `<div class="row" style="gap:8px;align-items:baseline;margin-top:6px"><span class="muted" style="font-size:13px">Price</span><b style="font-size:15px">To be confirmed</b></div>`; } catch (e) { return ''; } };
+const bkRow = key => `${bkPrice(key)}<div class="row" style="gap:8px;margin-top:4px"><input class="input" id="bk-qty-${key.replace(':', '-')}" type="number" min="1" step="1" value="1" style="width:76px;flex:none" aria-label="Quantity"><button class="btn btn-primary" style="flex:1" data-act="bkAdd" data-k="${key}">${ic('basket', 16)} Add to basket</button></div>`;
+/* The basket line for a card, built from the options picked now. Used by Add to basket and by the live price on every card. */
+function bkLine(key) {
+  const col = orderColour();
   let l;
   if (key === 'base') {
     const it = baseWidths().find(i => i.w === BASE.w) || baseWidths()[0]; if (!it) return;
@@ -11409,6 +11484,9 @@ A.bkAdd = t => {
   } else if (key === 'mwall') {
     mwClamp();
     l = { name: 'Microwave Wall Unit', code: mwCode(), w: 600, h: MW.h, d: MW.d, v: MW.v, opt: 'Microwave opening ' + MW.open + ' mm high with no back behind it, 1 x fixed shelf, ' + mwFrontText().toLowerCase() + ' ' + mwFrontSize() + (mwKind() === 'tophung' ? ', 2 x hinges, 2 x gas stays' : mwKind() === 'door' ? ', ' + MW.hand + ' hinge, 2 x hinges' : '') + (mwHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
+  } else if (key === 'wwine') {
+    wwClamp();
+    l = { name: 'Wall ' + (wwX() ? 'X ' : '') + 'Wine Rack', code: wwCode(), w: WWINE.w, h: WWINE.h, d: WWINE.d, v: WWINE.v, opt: wwRackTxt() + ', full top and bottom' + (wwHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
   } else if (key === 'dwall') {
     dwClamp();
     l = { name: 'Diagonal Wall Unit', code: dwCode(), w: 600, h: DW.h, d: DW.d, v: DW.v, opt: 'Right hand width 600 mm, left hand width 600 mm, diagonal front, ' + DW.hand + ' hinge, door ' + dwDoor().h + ' x ' + dwDoor().w + ' mm, ' + WALL_SHELVES[DW.h] + ' x shelves, 2 x hinges' + (dwHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
@@ -11428,7 +11506,7 @@ A.bkAdd = t => {
   } else if (key === 'bel') {
     l = { name: 'Belfast Sink Base Unit', code: belCode(BEL.w, BEL.h), w: BEL.w, d: BEL.d, v: BEL.v, opt: (belPair() ? 'Double doors' : BEL.hinge.toUpperCase() + ' door hinge') + ', full top, 1 shelf' };
   } else if (key === 'spo') {
-    l = { name: 'Highline Slim Pull-out Unit', code: spoCode(SPO.w), w: SPO.w, d: SPO.d, v: SPO.v, opt: 'Slim pull-out' };
+    l = { name: 'Highline Slim Pull-out Unit', code: spoCode(SPO.w), w: SPO.w, d: SPO.d, v: SPO.v, opt: SPO.pull !== false ? 'Slim pull-out' : 'Without pull-out, plain door cabinet' };
   } else if (key === 'bin') {
     l = { name: 'Highline Bin Unit', code: binCode(BIN.w), w: BIN.w, d: BIN.d, v: BIN.v, opt: binOpt().cols ? 'Pull-out bins, ' + binOpt().label : 'No bin' };
   } else if (key === 'dl') {
@@ -11442,10 +11520,15 @@ A.bkAdd = t => {
     const id = key.slice(3), tp = dpType(id), s = DPK[id]; if (!tp) return;
     l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers' + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
-  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
+  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
   Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? 'Group ' + ocGroup(col) : '', pgrp: col ? ocGroup(col) : 1, edging: ocEdgeText() });
+  return l;
+}
+A.bkAdd = t => {
+  const key = t.dataset.k, qi = $('#bk-qty-' + key.replace(':', '-')), qty = Math.max(1, Math.round(+(qi && qi.value)) || 1);
+  const l = bkLine(key); if (!l) return;
   const sig = x => [x.code, x.w, x.d, x.v, x.opt, x.colourId].join('|');
   UI.basket = UI.basket || [];
   const same = UI.basket.find(x => sig(x) === sig(l));
@@ -11772,8 +11855,10 @@ function poUnit(u) {
     const r = C({ top: 'rail', back: true, shelves: 1, fronts: fr, doors: doorSet(w, H - 204, pairBase), posts: dbl ? 2 : 0, postLen: H - T - 230, legs: true, extra: dbl ? [{ name: 'Drawer divider', l: 230, w: d - v - T - fe, q: 1, ef: 230, er: 230 }] : [] });
     r.f.runners[s.sys || 'Antaro'] = fr.length; return r;
   }
-  if (k === 'bin') return sup(C({ top: 'rail', back: true, shelves: 0, doors: [[w - 6, H - 6]], legs: true }), 'bin', 'Bin pull-out set (' + (u.opt || 'bins') + ')');
-  if (k === 'spo') return sup(C({ top: 'rail', back: true, shelves: 0, doors: [[w - 6, H - 6]], legs: true }), 'spo', 'Slim pull-out set');
+  if (k === 'bin' && u.opt === 'No bin') return C({ top: 'rail', back: true, shelves: 0, doors: [[w - 4, H - 5]], legs: true });      // no bin: a plain door cabinet, priced as the cabinet
+  if (k === 'bin') return sup(C({ top: 'rail', back: true, shelves: 0, doors: [[w - 6, H - 6]], hingesPerDoor: 0, legs: true }), 'bin', 'Bin pull-out set (' + (u.opt || 'bins') + ')');
+  if (k === 'spo' && s.pull === false) return C({ top: 'rail', back: true, shelves: 0, doors: [[w - 4, H - 5]], legs: true });      // without the pull-out: a plain door cabinet, priced as the cabinet
+  if (k === 'spo') return sup(C({ top: 'rail', back: true, shelves: 0, doors: [[w - 6, H - 6]], hingesPerDoor: 0, legs: true }), 'spo', 'Slim pull-out set');
   if (k === 'bel') { const pair = w > 600 || s.doors === 'double'; return C({ top: 'full', back: true, shelves: 1, doors: doorSet(w, H, pair), posts: pair ? 2 : 0, postLen: H - 2 * T, legs: true }); }
   if (k === 'wine') return C({ top: 'rail', back: true, shelves: 2, legs: true, approx: true, note: 'Wine rack parts are an estimate (2 shelves)' });
   if (k === 'oven') {
@@ -11846,6 +11931,12 @@ function poUnit(u) {
       extra: [{ name: 'Base panel (wing 1)', l: rh - T, w: Dp, ef: rh - T, er: rh - T }, { name: 'Base panel (wing 2)', l: lh - d, w: Dp, ef: lh - d, er: lh - d }, { name: 'Top panel (wing 1)', l: rh - T, w: Dp, ef: rh - T, er: rh - T }, { name: 'Top panel (wing 2)', l: lh - d, w: Dp, ef: lh - d, er: lh - d },
         { name: 'Back (wing 1)', l: H, w: rh - T }, { name: 'Back (wing 2)', l: H, w: lh - d }, { name: 'Shelf (wing 1)', l: rh - T - 1, w: Dp - 20, ef: rh - T, er: rh - T }, { name: 'Shelf (wing 2)', l: lh - d - 1, w: Dp - 20, ef: lh - d, er: lh - d }], doors: [[di, H - 5], [dl, H - 5]], hingesPerDoor: 2 });
     r.f.mp += 16; r.f.wd += 16; r.f.pegs += 8; return r;
+  }
+  if (k === 'wwine') {                                                                                 // wall wine rack: full top and bottom, back, shelves between the rows, uprights between the columns, X panels on the X type
+    const x = s.type === 'x', cols = x ? Math.max(1, Math.round(w / 500)) : Math.max(1, Math.round(w / 150)), rows = x ? Math.max(1, Math.round((H - 36) / 342)) : Math.max(2, Math.round((H - 36) / 137));
+    const Dp = d - v - T - fe, cellW = (w - 2 * T - (cols - 1) * T) / cols, cellH = (H - 2 * T - (rows - 1) * T) / rows, xLen = Math.round(Math.hypot(cellW, cellH));
+    const extra = [{ name: 'Wine shelf', l: w - 2 * T - 1, w: Dp, q: rows - 1, ef: w - 2 * T, er: 0 }].concat(cols > 1 ? [{ name: 'Wine upright', l: H - 2 * T, w: Dp, q: cols - 1, ef: H - 2 * T, er: 0 }] : []).concat(x ? [{ name: 'X panel', l: xLen, w: Dp, q: 2 * rows * cols, ef: xLen, er: 0 }] : []);
+    const r = wallBase({ shelves: 0, extra, approx: true, note: 'Wine rack parts are an estimate' }); r.f.mp += 4 * (rows - 1) + 4 * (cols - 1); r.f.wd += 4 * (rows - 1) + 4 * (cols - 1); return r;
   }
   if (k === 'dwall') {
     const D = d, diag = (600 - D) * Math.SQRT2, door = Math.round(diag - 28.28), tri = (600 - D) * (600 - D) / 2, Dp = D - fe;
@@ -11926,6 +12017,7 @@ const costCfg = () => { const c = {}, s = DB.settings.cost || {}; COST_META.forE
 const COST_BLIND = ['lc', 'corner', 'cwall'];
 function costUnit(l) {
   const r = l && l.spec ? poUnit(l) : null; if (!r) return null;
+  if (Object.keys(r.f.runners || {}).length || Object.keys(r.f.other || {}).length || (r.glass || []).length || r.f.glassPegs) return null;      // glass shelves are not priced yet either      // drawers, bin sets, pull-out sets and other bought-in fittings are not priced yet: "To be confirmed"                                       // for now only cabinets without drawers are priced; a cabinet with drawers shows "Price to be confirmed"
   const c = costCfg(), g = l.pgrp === 2 ? 2 : 1, wf = 1 + c.waste / 100, k = l.spec.k, miss = [], lines = [];
   let area = 0, e2 = 0, e08 = 0;                                                                                       // the front edges take the chosen edging (2mm or 0.8mm); every other edge is 0.8mm
   r.parts.forEach(p => { area += p.l * p.w * p.q; e2 += (p.ef || 0) * p.q; e08 += (p.er || 0) * p.q; });
@@ -12027,16 +12119,16 @@ function aOrdersCard() {
 function cBasket() {
   if (UI.orderStep === 'review' && (UI.basket || []).length) return orderReview();
   const list = UI.basket || [], adm = UI.route.startsWith('a-'); let sum = 0, unpr = 0;
-  const costs = list.map(l => { let cu = null; try { cu = costUnit(l); } catch (e) { console.error(e); } if (cu) { sum += cu.price * (+l.qty || 1); if (cu.miss.length) unpr++; } return cu; });
+  const costs = list.map(l => { let cu = null; try { cu = costUnit(l); } catch (e) { console.error(e); } if (cu) { sum += cu.price * (+l.qty || 1); if (cu.miss.length) unpr++; } else unpr++; return cu; });
   const body = !list.length ? `<div class="empty">${ic('basket', 22)}<p>Your basket is empty. Add cabinets from New Orders.</p><button class="btn btn-primary" data-act="orders">Go to New Orders</button></div>` :
     `<div class="stack">${list.map((l, ix) => { const cu = costs[ix]; return `<article class="card card-pad"><div class="row" style="gap:12px;flex-wrap:wrap"><div style="min-width:0;flex:1"><b style="font-size:16px">${esc(l.name)}</b> <span class="mono">${esc(l.code)}</span>
       <div class="muted">${l.w}mm wide${l.h ? ' · ' + l.h + 'mm high' : ''} · ${l.d}mm deep · void ${l.v}mm · ${esc(l.opt)}</div><div class="muted">Colour: ${esc(l.colour)}${l.group ? ' (' + l.group + ')' : ''}</div>${l.edging ? `<div class="muted">Edging: ${esc(l.edging)}</div>` : ''}
-      ${cu ? `<div style="margin-top:6px"><b class="tnum" style="font-size:17px">${GBP(cu.price)}</b> <span class="muted">each${l.qty > 1 ? ' · ' + GBP(cu.price * l.qty) + ' for ' + l.qty : ''}${cu.mtm ? ' · includes the MTM surcharge' : ''}</span></div>` : ''}
+      ${cu ? `<div style="margin-top:6px"><b class="tnum" style="font-size:17px">${GBP(cu.price)}</b> <span class="muted">each${l.qty > 1 ? ' · ' + GBP(cu.price * l.qty) + ' for ' + l.qty : ''}${cu.mtm ? ' · includes the MTM surcharge' : ''}</span></div>` : `<div style="margin-top:6px"><b>Price to be confirmed</b> <span class="muted">(cabinets with drawers are not priced yet)</span></div>`}
       ${cu && cu.miss.length ? `<div class="muted" style="font-size:12.5px">Not fully priced: ${esc(cu.miss.join('; '))}</div>` : ''}
       ${cu && adm ? `<details style="margin-top:6px"><summary class="muted" style="cursor:pointer;font-size:12.5px">Cost breakdown${cu.approx ? ' (part sizes are an estimate)' : ''}</summary><table class="tbl" style="margin-top:6px"><tbody>${cu.lines.map(x => `<tr><td>${esc(x[0])}</td><td class="muted">${esc(x[1])}</td><td class="num tnum">${GBP(x[2])}</td></tr>`).join('')}<tr><td class="strong">Price</td><td></td><td class="num tnum strong">${GBP(cu.price)}</td></tr></tbody></table></details>` : ''}</div>
       <div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="-1" aria-label="Fewer">−</button><b style="min-width:28px;text-align:center">${l.qty}</b><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="1" aria-label="More">+</button>
       <button class="btn btn-ghost btn-sm" data-act="bkDel" data-id="${l.id}" aria-label="Remove">${ic('trash', 16)}</button></div></div></article>`; }).join('')}
-    <div class="row"><span class="muted">${basketCount()} unit${basketCount() === 1 ? '' : 's'} in the basket · <b class="tnum">${GBP(sum)}</b> ex VAT${unpr ? ' (' + unpr + ' line' + (unpr === 1 ? '' : 's') + ' not fully priced)' : ''}.</span><span class="spacer"></span><button class="btn btn-ghost" data-act="bkClear">Empty basket</button><button class="btn btn-primary" data-act="orderFinalise">${ic('check', 16)} Finalise order</button></div></div>`;
+    <div class="row"><span class="muted">${basketCount()} unit${basketCount() === 1 ? '' : 's'} in the basket · <b class="tnum">${GBP(sum)}</b> ex VAT${unpr ? ' (' + unpr + ' line' + (unpr === 1 ? '' : 's') + ' not priced yet or not fully priced)' : ''}.</span><span class="spacer"></span><button class="btn btn-ghost" data-act="bkClear">Empty basket</button><button class="btn btn-primary" data-act="orderFinalise">${ic('check', 16)} Finalise order</button></div></div>`;
   return `<div class="page-head"><div><h1>Basket</h1><p>The cabinets you have added from New Orders.</p></div></div>${body}`;
 }
 CH.orderColour = t => { UI.orderColour = t.value; save(); const y = window.scrollY; render(); window.scrollTo(0, y); };
@@ -12238,6 +12330,7 @@ function cOrders() {
   if (UI.orderCat === 'cwalldetails') return cwDetails();
   if (UI.orderCat === 'lwalldetails') return lwDetails();
   if (UI.orderCat === 'dwalldetails') return dwDetails();
+  if (UI.orderCat === 'wwinedetails') return wwDetails();
   if (UI.orderCat === 'mwalldetails') return mwDetails();
   if (UI.orderCat === 'blwalldetails') return blDetails();
   if (UI.orderCat === 'brgdetails') return brgDetails();
@@ -12278,7 +12371,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', wwinedetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
@@ -13875,6 +13968,7 @@ function newOrderInventory() {
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => [['A', 'Antaro'], ['L', 'Legrabox'], ['M', 'Merivo']].forEach(([c, sys]) => add('Pantry Larder 1000 ' + h + ' ' + sys, p + c + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 2 shelves and 3 ' + sys + ' internal scalloped fronts, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570)));
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => add('Pantry Larder 1000 ' + h + ' without internal chest', p + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 5 equal adjustable shelves, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570));
   [[1970, 'LMC'], [2150, 'LTC']].forEach(([h, p]) => LC_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Larder ' + w + ' ' + h + ' ' + s + ' hand blank', p + w + (s === 'right' ? 'RB' : 'LB'), 'cat-tall', 'Larders', 'Corner larder, one door and a blank; the customer sets the door size. MTM option.', h, w, 570, { blank: true }))));
+  WALL_HEIGHTS.forEach(h => [['WR', 300, 'Wall Wine Rack'], ['WRX', 600, 'Wall X Wine Rack']].forEach(([t, w, nm]) => add(nm + ' ' + w + ' ' + h, WALL_PREFIX[h] + t + w, 'cat-wall', 'Wall' + h + 'H', nm + ', ' + h + ' High 300 Deep. Any width.', h, w, 300, { doors: false })));
   [[1970, 'LMD'], [2150, 'LTD']].forEach(([h, p]) => [DLR_START].forEach(rw => [DLR_START].forEach(lw => add('Diagonal Larder ' + rw + ' x ' + lw + ' ' + h, p + rw + 'X' + lw, 'cat-tall', 'Larders', 'Diagonal larder, right hand width ' + rw + ' and left hand width ' + lw + ', ' + h + ' High 570 Deep, diagonal top, base and 5 diagonal shelves, one door on the diagonal.', h, rw, 570))));
   const rooms = DB.rooms.filter(r => ['Kitchen', 'Bedroom'].includes(r.name));
   const usedCats = new Set(rows.map(r => r.cat)), cats = DB.categories.filter(c => usedCats.has(c.id));
