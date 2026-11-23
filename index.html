@@ -12193,7 +12193,7 @@ function poBuild(order) {
         const ck = DRW_BOARD + '|' + p.name + '|' + p.l + '|' + p.w; R.cut[ck] = R.cut[ck] || { board: DRW_BOARD, name: p.name, l: p.l, w: p.w, q: 0 }; R.cut[ck].q++; }); });
     R.euro = (R.euro || 0) + drwEuro(r, costCfg().euroPerRunner);
     if (r.binSet) { R.other2 = R.other2 || {}; R.other2[r.binSet.name] = (R.other2[r.binSet.name] || 0) + 1; }
-    if (r.ct) { const ck = 'Cutlery tray ' + r.ct.code + ' (422 x ' + r.ct.w + ' mm, charcoal)'; R.other2 = R.other2 || {}; R.other2[ck] = (R.other2[ck] || 0) + 1; }
+    if (r.ct) { const ck = 'Cutlery tray ' + r.ct.code + ' (' + r.ct.d + ' x ' + r.ct.w + ' mm, charcoal)'; R.other2 = R.other2 || {}; R.other2[ck] = (R.other2[ck] || 0) + 1; }
     Object.entries(r.f.other).forEach(([k, n]) => R.other[k] = (R.other[k] || 0) + n);
     r.glass.forEach(g => { const gk = g.what + ' ' + g.w + ' x ' + g.d + ' mm'; R.glass[gk] = (R.glass[gk] || 0) + 1; });
   });
@@ -12238,7 +12238,7 @@ function costUnit(l) {
   add('Wall plates', f.plates, c.plate);
   [['caps', 'Cover caps', c.cap], ['gas', 'Gas stays', c.gas], ['hk', 'HK lift-up fittings', c.hk]].forEach(([x, nm, p]) => { if (f[x] > 0) { add(nm, f[x], p); if (!p) miss.push(nm + ' not priced'); } });
   { const dp = [].concat(...(r.drw || []).map(drwPanels)); if (dp.length) { const a = dp.reduce((s2, p) => s2 + p.l * p.w, 0), cost = a / (c.dboardL * c.dboardW) * c.dboard * wf; hw.push(['Drawer bottoms and backs, 16mm pre-edged board (' + (a / 1e6).toFixed(3) + ' m² at ' + GBP(c.dboard) + ' a ' + c.dboardL + ' x ' + c.dboardW + ' sheet, +' + c.waste + '% waste)', dp.length, cost]); } }
-  if (r.ct) add('Cutlery tray ' + r.ct.code + ' (422 x ' + r.ct.w + ' mm)', 1, r.ct.p);
+  if (r.ct) add('Cutlery tray ' + r.ct.code + ' (' + r.ct.d + ' x ' + r.ct.w + ' mm)', 1, r.ct.p);
   if (r.binSet) add(r.binSet.name, 1, r.binSet.p);
   if (r.drw && r.drw.length) add('Euro screws for the runners', drwEuro(r, c.euroPerRunner), c.euroScrew);
   if (antOk) { const g = {}; r.drw.forEach(x => { const nm = dpDrawerName(x); g[nm] = g[nm] || { n: 0, each: antDrawerCost(x).total }; g[nm].n++; }); Object.entries(g).forEach(([nm, o]) => add(nm, o.n, o.each)); }
@@ -12509,10 +12509,12 @@ const DRW_PANEL = {
 };
 const DRW_BOARD = 'Drawer board 16mm pre-edged';
 /* Vogue 'Antaro' cutlery trays, 422 deep, charcoal (cost prices given 23 Nov 2026). The tray is the cabinet width less 86. Antaro drawers on 450 runners only. */
-const CUTLERY = [['CT1015', 214, 300, 3.07], ['CT1016', 314, 400, 4.09], ['CT1017', 364, 450, 4.09], ['CT1018', 414, 500, 4.28], ['CT1019', 514, 600, 5.07], ['CT1021', 714, 800, 8.10], ['CT1022', 814, 900, 8.98], ['CT1023', 914, 1000, 9.86]].map(([code, w, cab, p]) => ({ code, w, cab, p }));
-const ctFor = (cabW, sys, run) => sys === 'Antaro' && run === 450 ? CUTLERY.find(c => c.cab === cabW) || null : null;
-const ctText = c => 'Cutlery tray ' + c.code + ' (422 x ' + c.w + ' mm, charcoal) in the top drawer';
-const ctTick = (chg, extra, on, c) => c ? `<label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="${chg}" ${extra} ${on ? 'checked' : ''}><span><b>Cutlery tray</b> in the top drawer (${c.code}, 422 x ${c.w} mm, charcoal)</span></label>` : '';
+const CUTLERY = [['CT1015', 214, 300, 3.07], ['CT1016', 314, 400, 4.09], ['CT1017', 364, 450, 4.09], ['CT1018', 414, 500, 4.28], ['CT1019', 514, 600, 5.07], ['CT1021', 714, 800, 8.10], ['CT1022', 814, 900, 8.98], ['CT1023', 914, 1000, 9.86]].map(([code, w, cab, p]) => ({ code, w, cab, p, d: 422 }));
+/* Vogue 'Legna' cutlery trays for Legrabox, 423 deep, charcoal (cost prices given 23 Nov 2026): the cabinet width less 79. Legrabox on 450 runners. */
+const CUTLERY_LG = [['CT1001', 221, 300, 3.07], ['CT1002', 321, 400, 4.09], ['CT1003', 371, 450, 4.09], ['CT1004', 421, 500, 4.28], ['CT1005', 521, 600, 5.07], ['CT1007', 721, 800, 8.10], ['CT1008', 821, 900, 8.98], ['CT1009', 921, 1000, 9.86]].map(([code, w, cab, p]) => ({ code, w, cab, p, d: 423 }));
+const ctFor = (cabW, sys, run) => run !== 450 ? null : sys === 'Antaro' ? CUTLERY.find(c => c.cab === cabW) || null : sys === 'Legrabox' ? CUTLERY_LG.find(c => c.cab === cabW) || null : null;
+const ctText = c => 'Cutlery tray ' + c.code + ' (' + c.d + ' x ' + c.w + ' mm, charcoal) in the top drawer';
+const ctTick = (chg, extra, on, c) => c ? `<label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="${chg}" ${extra} ${on ? 'checked' : ''}><span><b>Cutlery tray</b> in the top drawer (${c.code}, ${c.d} x ${c.w} mm, charcoal)</span></label>` : '';
 const drwPanels = x => { const P = DRW_PANEL[x.sys]; if (x.fo || !P || !x.h || !x.L || !x.lw) return []; const kh = P.kh[x.h]; return [{ name: 'Drawer bottom', l: poR(x.lw - P.bw), w: poR(x.L - P.bd) }].concat(kh ? [{ name: 'Drawer back', l: poR(x.lw - P.kw), w: kh }] : []); };
 const drwEuro = (r, per) => (r.drw || []).filter(x => !x.fo).length * 2 * (per == null ? 4 : per);   // every drawer with runners: 2 runners (left and right), each fixed with euro screws
 const drwRun70 = x => { const S = drwS(x.sys), H = S && S.h[x.h]; return !!(H && H.r70 && S.run70 && S.run70[x.L] != null && (x.hd || S.run[x.L] == null)); };
@@ -12601,7 +12603,7 @@ function dpOpts(id) {
   const glass = !canGH ? '' : !drwGlassOk(s.sys, gH, s.run) ? `<div class="muted" style="font-size:13px">Glass sides (${gH} drawers only) come only with ${s.sys === 'Legrabox' ? '400 to 600' : '270 to 650'} mm runners.</div>`
     : `<label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="dpGlass" data-id="${id}" ${s.glass ? 'checked' : ''}><span><b>Glass sides</b>${s.sys === 'Antaro' ? ' on the D drawers (in place of the gallery rail)' : ' (made on C height, ' + S.h[gH].mm + ' mm: the deep drawers change to C)'}</span></label>`
       + (s.glass && s.sys === 'Legrabox' ? `<div class="row" style="gap:6px">${sel('dpGtype', '', [['clear', 'Clear glass'], ['smoke', 'Smoke glass']], s.gtype, 'Glass', 150)}</div>` : '');
-  const ct = ctTick('dpCt', 'data-id="' + id + '"', s.ct, ctFor(s.w, s.sys, s.run)) || (s.sys === 'Antaro' && CUTLERY.some(c => c.cab === s.w) ? '<div class="muted" style="font-size:13px">Cutlery tray: comes with 450 runners only.</div>' : '');
+  const ct = ctTick('dpCt', 'data-id="' + id + '"', s.ct, ctFor(s.w, s.sys, s.run)) || ((s.sys === 'Antaro' || s.sys === 'Legrabox') && CUTLERY.some(c => c.cab === s.w) ? '<div class="muted" style="font-size:13px">Cutlery tray: comes with 450 runners only.</div>' : '');
   return `${run}${hd}${heights}${inner}${glass}${ct}`;
 }
 function dpCard(id) {
