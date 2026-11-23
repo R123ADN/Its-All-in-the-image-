@@ -623,6 +623,11 @@ button.kpi:hover{border-color:var(--ink-2)}
 @media (max-width:900px){.grid6 .c2{grid-column:span 3}.grid6 .c2.cm{grid-column:1/-1}}
 @media (max-width:560px){.grid6>*{grid-column:1/-1!important}}
 .cbx{position:relative}
+.no-edit{position:fixed;inset:0;z-index:2147483000;background:rgba(20,24,22,.55);display:flex;align-items:flex-start;justify-content:center;padding:4vh 12px;overflow:auto}
+.no-edit-box{background:var(--bg,#f6f4ef);color:var(--ink);border-radius:16px;padding:16px;width:min(460px,100%);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.no-edit-card .card{max-width:none!important;margin:0}
+.no-edit [data-act="bkAdd"],.no-edit input[id^="bk-qty"],.no-edit [data-act$="More"]{display:none!important}
+.card:has(.cbx-panel){position:relative;z-index:40}          /* a card with an open dropdown sits above the cards after it, so the list is not hidden behind them */
 .cbx-btn{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:8px 14px 8px 8px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left;color:var(--ink);font:inherit;transition:border-color .15s,box-shadow .15s}
 .cbx-btn:hover{border-color:var(--ink-2)}
 .cbx-btn[aria-expanded="true"]{border-color:var(--olive);box-shadow:0 0 0 3px color-mix(in srgb,var(--olive) 22%,transparent)}
@@ -4075,13 +4080,18 @@ body.rp-open .demo-bar{display:none!important}
 
   /* ---- Catalogue from the live item database ---- */
   function theDB() { try { return (typeof DB !== 'undefined' && DB) ? DB : null; } catch (e) { return null; } }
+  /* the units on offer are the New Orders cabinets (with the appliances, hoods and sinks from the catalogue to plan around) */
+  function noList() { try { return typeof window.noItems === 'function' ? window.noItems() : []; } catch (e) { return []; } }
+  function allItems() { var db = theDB(); return noList().concat(db && db.items ? db.items : []); }
   function catalogue() {
-    var db = theDB();
-    return (db && db.items ? db.items : []).filter(function (i) {
+    var db = theDB(), keep = { 'cat-appliance': 1, 'cat-hood': 1, 'cat-sink': 1 };
+    return noList().filter(function (i) { return +i.w > 0 && +i.d > 0; }).concat((db && db.items ? db.items : []).filter(function (i) {
       var k = kindOf(i);
-      return i.active !== false && (+i.w > 0) && (+i.d > 0) && k !== 'panel' && k !== 'extra';
-    });
+      return keep[i.cat] && i.active !== false && (+i.w > 0) && (+i.d > 0) && k !== 'panel' && k !== 'extra';
+    }));
   }
+  function unitPrice(it, u) { if (it && it.no && typeof window.noPrice === 'function') { var p = window.noPrice(it, u); return p == null ? null : p; } return it ? itemPrice(it) : 0; }
+  function priceText(it, u) { var p = unitPrice(it, u); return p == null ? 'TBC' : money(p); }
   function extrasCatalogue() {
     var db = theDB();
     return (db && db.items ? db.items : []).filter(function (i) {
@@ -4115,7 +4125,7 @@ body.rp-open .demo-bar{display:none!important}
 
   /* ---- Units ---- */
   function itemOf(u) {
-    var db = theDB(), items = db && db.items;
+    var items = allItems();
     var it = items ? items.find(function (i) { return i.id === u.itemId; }) : null;
     if (it && +u.w !== +it.w && ['cat-base', 'cat-wall', 'cat-tall', 'cat-drawer', 'cat-appl', 'cat-robe'].indexOf(it.cat) >= 0) {
       var key = familyKey(it);
@@ -4194,7 +4204,7 @@ body.rp-open .demo-bar{display:none!important}
   /* ---- Totals (uses the app's own pricing) ---- */
   function totalsOf() {
     var net = 0;
-    S.units.forEach(function (u) { var it = itemOf(u); if (!it) return; var f = null; try { f = CabCost.priceFor(it, cabCol(UI.draft && UI.draft.cabColour), u.h, u.w, u.d, null); } catch (e) { } net += f != null ? f : itemPrice(it); });
+    S.units.forEach(function (u) { var it = itemOf(u); if (!it) return; var p = unitPrice(it, u); net += p || 0; });      // New Orders cabinets are priced by the cost calculator; a cabinet not priced yet adds nothing (shown as TBC)
     (S.extras || []).forEach(function (e) { var db = theDB(); var it = db && db.items.find(function (i) { return i.id === e.itemId; }); if (it) net += itemPrice(it) * e.qty; });
     return net;
   }
@@ -5740,7 +5750,7 @@ body.rp-open .demo-bar{display:none!important}
 
     sideEl.appendChild(H('div', 'rp-detail-head',
       '<b>' + esc(it.name) + '</b><small>' + esc(it.code) + '</small>' +
-      '<span class="pr">' + money(itemPrice(it)) + '</span>'));
+      '<span class="pr">' + priceText(it) + '</span>'));
     if (it.desc) sideEl.appendChild(H('div', 'rp-note', esc(it.desc)));
 
     sideEl.appendChild(H('div', 'rp-size-pair',
@@ -5958,7 +5968,7 @@ body.rp-open .demo-bar{display:none!important}
       var b = H('button', 'rp-u');
       b.appendChild(H('span', 'pv', unitPv(it, 'left')));
       b.appendChild(H('span', 'nm', '<b>' + esc(it.name) + '</b><small>' + esc(it.code) + ' · ' + it.w + '×' + it.d + '</small>'));
-      b.appendChild(H('span', 'pr', money(itemPrice(it))));
+      b.appendChild(H('span', 'pr', priceText(it)));
       b.addEventListener('click', function () { S.detail = { id: it.id, hinge: 'left' }; renderSide(); });
       ul.appendChild(b);
     });
@@ -6377,7 +6387,13 @@ body.rp-open .demo-bar{display:none!important}
       }
       var z = unitZ(item);
       inspEl.appendChild(H('div', 'rp-row', '<span>Sits at</span><span class="v">' + Math.round(z.z0) + '–' + Math.round(z.z1) + 'mm</span>'));
-      inspEl.appendChild(H('div', 'rp-row', '<span>Price</span><span class="v">' + money(itemPrice(it)) + '</span>'));
+      if (it.no && typeof window.noEditOpen === 'function') {                                              // the same choices as the New Orders card: drawer heights, runners, Gola, bins, internal front ...
+        var ob = H('button', 'btn btn-primary btn-sm', 'Cabinet options' + (item.no ? ' (set)' : ''));
+        ob.style.cssText = 'width:100%;margin:8px 0';
+        ob.addEventListener('click', function () { window.noEditOpen(it, item, function () { push(); draw(); flash('Cabinet options saved'); }); });
+        inspEl.appendChild(ob);
+      }
+      inspEl.appendChild(H('div', 'rp-row', '<span>Price</span><span class="v">' + priceText(it, item) + '</span>'));
       var dup = H('button', 'rp-row click', '<span>Duplicate unit</span><span class="v">+</span>');
       dup.style.width = '100%';
       dup.addEventListener('click', function () {
@@ -6688,7 +6704,7 @@ body.rp-open .demo-bar{display:none!important}
     });
   }
 
-  window.RoomPlanner = { open: open, close: close, preview: preview, state: function () { return S; } };
+  window.RoomPlanner = { open: open, close: close, preview: preview, state: function () { return S; }, units: function () { return catalogue(); }, priceText: function (it, u) { return priceText(it, u); } };
 })();
 
 </script>
@@ -8320,14 +8336,33 @@ function topUpCatalogue() {
 
 /* The board sheet (the user's list): every colour New Orders offers, in the sheet's order, as [code, name, sheet group].
    Sheet Groups 1 and 2 are charged at the Group 1 price, Sheet Group 3 at the Group 2 price (board and edging). */
+/* The board sheet: Lawcrisp (and Latham) MFC price list of 23 Nov 2026, 2800 x 2070. [code, name, cost per sheet]. Each colour is priced by its own sheet
+   price in the cost calculator; there are no board price groups any more. Sheets listed at 0.00 (no price yet) and the cut-and-edged PANELCO service are left out. */
 const BOARD_SHEET = [
-  ['U100 ST9', 'Mussel', 1], ['U104 ST9', 'Alabaster White', 1], ['U156 ST9', 'Sand Beige', 1], ['U201 ST9', 'Pebble Grey', 1], ['U222 ST9', 'Crema Beige', 1], ['U507 ST9', 'Smoke Blue', 1], ['U540 ST9', 'Denim Blue', 1], ['U599 ST9', 'Indigo Blue', 1], ['U604 ST9', 'Reed Green', 1], ['U636 ST9', 'Fjord Green', 1], ['U638 ST9', 'Sage Green', 1], ['U699 ST9', 'Fir Green', 1], ['U702 ST9', 'Cashmere', 1], ['U708 ST9', 'Light Grey', 1], ['U717 ST9', 'Dakar', 1], ['U727 ST9', 'Stone Grey', 1], ['U732 ST9', 'Dust Grey', 1], ['U750 ST9', 'Taupe Grey', 1], ['U763 ST9', 'Pearl Grey', 1], ['U765 ST9', 'Silver Grey', 1], ['U775 ST9', 'White Grey', 1], ['U899 ST9', 'Soft Black', 1], ['U960 ST9', 'Onyx Grey', 1], ['U961 ST2', 'Graphite Grey', 1], ['U963 ST9', 'Diamond Grey', 1], ['U999 ST2', 'Black', 1], ['W1000 ST9', 'Premium White', 1], ['W1100 ST9', 'Alpine White', 1], ['W1200 ST9', 'Porcelain White', 1], ['W980 ST2', 'Platinum White', 1], ['W980 SM', 'Smooth White', 1],
-  ['U100 ST12', 'Mussel Woodgrain', 1], ['U104 ST12', 'Alabaster Woodgrain', 1], ['U201 ST12', 'Pebble Grey Woodgrain', 1], ['U599 ST12', 'Indigo Blue Woodgrain', 1], ['U604 ST12', 'Reed Green Woodgrain', 1], ['U699 ST12', 'Fir Green Woodgrain', 1], ['U702 ST12', 'Cashmere Woodgrain', 1], ['U708 ST12', 'Light Grey Woodgrain', 1], ['U717 ST12', 'Dakar Grey Woodgrain', 1], ['U727 ST12', 'Stone Grey Woodgrain', 1], ['U750 ST12', 'Taupe Grey Woodgrain', 1], ['U775 ST12', 'White Grey Woodgrain', 1], ['U961 ST12', 'Graphite Woodgrain', 1],
-  ['U999 ST12', 'Black Woodgrain', 1], ['W1000 ST12', 'Premium White Woodgrain', 1], ['W1200 ST12', 'Porcelain White Woodgrain', 1], ['U502 ST9', 'Misty Blue', 1], ['U732 ST12', 'Dust Grey', 1], ['U504 ST9', 'Tyrolean Blue', 1], ['U705 ST9', 'Angora Grey', 1], ['U115 ST9', 'Carat Beige', 1], ['H1154 ST15', 'Lissa Oak', 1], ['U608 ST9', 'Pistachio Green', 1], ['U741 ST9', 'Lava Grey', 1],
-  ['U325 ST9', 'Antique Rose', 2], ['F509 ST2', 'Aluminium', 2], ['H1137 ST12', 'Black Brown Sorano Oak', 2], ['H1145 ST10', 'Natural Bardolino', 2], ['H1146 ST10', 'Grey Bardolino', 2], ['H1334 ST9', 'Light Sorano Oak', 2], ['H1582 ST15', 'Ellmau Beech', 2], ['H3090 ST22', 'Shorewood', 2], ['H3131 ST12', 'Natural Davos Oak', 2], ['H3133 ST12', 'Truffle Brown Davos Oak', 2], ['H3170 ST12', 'Natural Kendal Oak', 2], ['H3171 ST12', 'Oiled Kendal Oak', 2], ['H3303 ST10', 'Natural Hamilton Oak', 2], ['H3332 ST10', 'Grey Nebraska Oak', 2], ['H3368 ST9', 'Natural Lancaster Oak', 2], ['H3382 ST9', 'Light Winchester Oak', 2], ['H3700 ST10', 'Natural Pacific Walnut', 2], ['H3702 ST10', 'Tobacco Pacific Walnut', 2], ['H3704 ST15', 'Tobacco Aida Walnut', 2], ['H3710 ST12', 'Natural Carini Walnut', 2], ['H3730 ST10', 'Natural Hickory', 2], ['H3734 ST9', 'Natural Dijon Walnut', 2], ['H3840 ST9', 'Natural Mandie Maple', 2], ['H3157 ST12', 'Vicenza Oak', 2], ['H1714 ST19', 'Lincoln Walnut', 2], ['H3195 ST19', 'White Fineline', 2], ['U999 ST20', 'Black', 2], ['H1199 ST11', 'Black Brown Thermo Oak', 2],
-  ['F121 ST87', 'Anthracite Metal Rock', 3], ['F186 ST9', 'Light Grey Chicago Concrete', 3], ['F416 ST10', 'Beige Textile', 3], ['F417 ST10', 'Grey Textile', 3], ['F433 ST10', 'Anthracite Linen', 3], ['F461 ST10', 'Anthracite Metal Fabric', 3], ['F500 ST20', 'Metal Inox', 3], ['F628 ST16', 'Silver Grey Metal Slate', 3], ['F629 ST16', 'Black Gold Metal Slate', 3], ['F637 ST16', 'White Chromix', 3], ['F812 ST9', 'White Levanto Marble', 3], ['H1122 ST22', 'Whitewood', 3], ['H1123 ST22', 'Graphitewood', 3], ['H1176 ST37', 'White Halifax Oak', 3], ['H1180 ST37', 'Natural Halifax Oak', 3], ['H1181 ST37', 'Tobacco Halifax Oak', 3], ['H1250 ST36', 'Navarra Ash', 3], ['H1330 ST10', 'Vintage Santa Fe', 3], ['H1331 ST10', 'Grey Santa Fe', 3], ['H1336 ST37', 'Sand Grey Glazed Halifax Oak', 3], ['H1377 ST36', 'Sand Orleans', 3], ['H1387 ST10', 'Graphite Denver Oak', 3],
-  ['H1401 ST22', 'Cascina Pine', 3], ['H1486 ST36', 'Pasadena Pine', 3], ['H3176 ST37', 'Pewter Halifax Oak', 3], ['H3178 ST37', 'Black Glazed Halifax Oak', 3], ['H3190 ST19', 'Anthracite Fineline Metallic', 3], ['H3309 ST28', 'Sand Gladstone Oak', 3], ['H3325 ST28', 'Tobacco Gladstone Oak', 3], ['H3326 ST28', 'Grey Beige Gladstone Oak', 3], ['H3335 ST28', 'White Gladstone Oak', 3], ['H3403 ST38', 'White Mountain Larch', 3], ['H3406 ST38', 'Anthracite Mountain Larch', 3], ['U998 ST38', 'Shadow Black', 3], ['H3602 ST10', 'Tobacco Pacific', 3], ['H1142 ST36', 'Brown Sacramento Oak', 3], ['H3331 ST10', 'Natural Nebraska Oak', 3], ['H3342 ST28', 'Sepia Gladstone Oak', 3], ['ASH VENEER', 'Ash Veneer', 3], ['OAK VENEER', 'Oak Veneer', 3], ['W1000 ST38', 'Premium White', 3], ['H3317 ST28', 'Brown Cuneo Oak', 3], ['F422 ST10', 'White Linen', 3], ['H1369 ST40', 'Marone Casella Oak', 3]
+  ['U963 ST9', 'Diamond Grey', 49.50], ['FB47', 'Cleaf Ares FB47', 138.57], ['FB49', 'Cleaf Ares FB49 (18.9mm)', 138.57], ['0162', 'Graphite Grey (0162)', 40.35], ['5994', 'Alby Blue', 48.55], ['8984 BS', 'Navy Blue', 48.55],
+  ['F186 ST9', 'Light Grey Chicago Concrete', 61.70], ['F237 ST76', 'Cupria Slate', 63.40], ['F243 ST76', 'Light Grey Candela Marble', 63.40], ['F244 ST76', 'Anthracite Candela Marble', 63.40], ['F417 ST10', 'Grey Textile', 61.70], ['F422 ST10', 'White Linen', 61.70], ['F433 ST10', 'Anthracite Linen', 61.70],
+  ['F528 ST20', 'Bronze Brushed Metal', 63.40], ['F579 ST20', 'Champagne Crossed Metal', 63.40], ['F637 ST10', 'White Chromix', 61.70], ['F661 ST76', 'Sand Beige Calcit Stone', 63.40], ['F662 ST76', 'Pebble Grey Stone', 63.40],
+  ['H1145 ST10', 'Natural Bardolino Oak', 60.10], ['H1146 ST10', 'Grey Bardolino Oak', 60.10], ['H1154 ST15', 'Lissa Oak', 53.80], ['H1154 ST7', 'Lissa Oak (ST7)', 53.80], ['H1180 ST37', 'Natural Halifax Oak (18.6mm)', 76.90], ['H1181 ST37', 'Tobacco Halifax Oak (18.6mm)', 76.90],
+  ['H1225 ST12', 'Trondheim Ash', 60.10], ['H1242 ST10', 'Natural Sheffield Acacia', 55.65], ['H1277 ST9', 'Light Lakeland Acacia', 55.65], ['H1307 ST19', 'Brown Warmia Walnut', 61.70], ['H1313 ST10', 'Grey Brown White River', 60.10], ['H1316 ST17', 'Bookmatch Oak', 60.10],
+  ['H1318 ST10', 'Natural Wild Oak', 60.10], ['H1330 ST10', 'Vintage Santa Fe', 60.10], ['H1334 ST7', 'Light Sorano Oak', 53.80], ['H1357 ST10', 'Grey Beige Spree Oak', 60.10], ['H1362 ST12', 'Light Baronia Oak', 60.10], ['H1367 ST40', 'Light Natural Casella Oak (18.6mm)', 76.90],
+  ['H1369 ST40', 'Marone Casella Oak', 76.90], ['H1385 ST40', 'Natural Casella Oak', 76.90], ['H1732 ST9', 'Sand Birch', 55.65], ['H2033 ST10', 'Dark Hunton Oak', 60.10], ['H3043 ST12', 'Dark Brown Eucalyptus', 60.10], ['H3131 ST12', 'Natural Davos Oak', 60.10],
+  ['H3133 ST12', 'Truffle Brown Davos Oak', 60.10], ['H3146 ST19', 'Grey Beige Lorenzo Oak', 61.70], ['H3157 ST12', 'Vicenza Oak', 60.10], ['H3158 ST19', 'Grey Vicenza Oak', 61.70], ['H3170 ST12', 'Natural Kendal Oak', 60.10], ['H3176 ST37', 'Pewter Halifax Oak', 76.90],
+  ['H3198 ST19', 'Dark Grey Fineline', 61.70], ['H3303 ST10', 'Natural Hamilton Oak', 60.10], ['H3309 ST28', 'Sand Gladstone Oak (18.6mm)', 76.90], ['H3317 ST28', 'Brown Cuneo Oak (18.6mm)', 76.90], ['H3331 ST10', 'Natural Nebraska Oak', 60.10], ['H3332 ST10', 'Grey Nebraska Oak', 60.10],
+  ['H3368 ST9', 'Natural Lancaster Oak', 45.05], ['H3700 ST10', 'Natural Pacific Walnut', 60.10], ['H3702 ST10', 'Tobacco Pacific Walnut', 60.10], ['H3704 ST15', 'Tobacco Aida Walnut', 53.80], ['H3704 ST7', 'Tobacco Aida Walnut (ST7)', 53.80], ['H3710 ST12', 'Natural Carini Walnut', 60.10],
+  ['H3730 ST10', 'Natural Hickory', 60.10], ['H3734 ST9', 'Natural Dijon Walnut', 55.65], ['H3787 ST19', 'Brown Bolivar Wood', 61.70], ['K358 PW', 'Honey Castello', 52.25], ['K365 PW', 'Coast Evoke Oak', 28.90], ['K542', 'Mocha Tessea', 52.25],
+  ['U100 ST9', 'Mussel', 49.50], ['U104 ST9', 'Alabaster White', 45.75], ['U115 ST17', 'Carat Beige Woodgrain', 49.50], ['U115 ST9', 'Carat Beige', 49.50], ['U125 ST9', 'Sand Yellow', 55.65], ['U201 ST9', 'Pebble Grey', 49.50], ['U211 ST9', 'Almond Beige', 49.50],
+  ['U216 ST9', 'Camel Beige', 45.75], ['U220 ST9', 'Soft Beige', 49.50], ['U222 ST9', 'Crema Beige', 49.50], ['U325 ST9', 'Antique Rose', 55.65], ['U399 ST9', 'Garnet Red', 55.65], ['U502 ST9', 'Misty Blue', 49.50], ['U504 ST9', 'Tyrolean Blue', 55.65],
+  ['U540 ST9', 'Denim Blue', 49.50], ['U565 ST9', 'Ocean Blue', 55.65], ['U599 ST9', 'Indigo Blue', 49.50], ['U604 ST12', 'Reed Green Woodgrain', 49.50], ['U604 ST17', 'Reed Green Woodgrain (ST17)', 49.50], ['U604 ST9', 'Reed Green', 49.50], ['U608 ST9', 'Pistachio Green', 60.10],
+  ['U636 ST9', 'Fjord Green', 49.50], ['U638 ST9', 'Sage Green', 49.50], ['U665 ST9', 'Stone Green', 55.65], ['U669 ST9', 'Estate Green', 49.50], ['U699 ST9', 'Fir Green', 49.50], ['U702 ST40', 'Cashmere Grey Woodgrain (18.6mm)', 63.40], ['U702 ST9', 'Cashmere Grey', 36.41],
+  ['U705 ST9', 'Angora Grey', 49.50], ['U708 ST9', 'Light Grey', 36.40], ['U709 ST9', 'Light Grey (U709)', 45.75], ['U717 ST9', 'Dakar Grey', 49.50], ['U727 ST9', 'Stone Grey', 49.50], ['U732 ST9', 'Dust Grey', 38.50], ['U748 ST9', 'Truffle Brown', 49.50],
+  ['U750 ST12', 'Taupe Grey Woodgrain', 49.50], ['U750 ST17', 'Taupe Grey Woodgrain (ST17)', 49.50], ['U750 ST9', 'Taupe Grey', 43.70], ['U763 ST9', 'Pearl Grey', 49.50], ['U775 ST9', 'White Grey', 49.50], ['U899 ST9', 'Soft Black', 49.50],
+  ['U961 ST17', 'Graphite Grey Woodgrain', 49.50], ['U961 ST19', 'Graphite Grey Woodgrain (ST19)', 60.10], ['U961 ST40', 'Graphite Grey Woodgrain (18.6mm)', 63.40], ['U961 ST7', 'Graphite Grey', 43.70], ['U999 ST7', 'Black', 49.50],
+  ['W1000 ST30', 'Premium White Gloss', 63.40], ['W1000 ST9', 'Premium White', 38.50], ['W1100 ST9', 'Alpine White', 49.50], ['W1200 ST12', 'Porcelain White Woodgrain', 49.50], ['W1200 ST17', 'Porcelain White Woodgrain (ST17)', 49.50], ['W1200 ST9', 'Porcelain White', 49.50]
 ];
+/* edging tape keeps its two prices (user, 23 Nov 2026): the colours that were in the old board Group 3 take the dearer edging, the rest the standard edging */
+const EDGE_DEAR = ['F186 ST9', 'F417 ST10', 'F433 ST10', 'F422 ST10', 'F637 ST10', 'H1180 ST37', 'H1181 ST37', 'H1330 ST10', 'H3176 ST37', 'H3309 ST28', 'H3317 ST28', 'H3331 ST10', 'H1369 ST40'];
+/* a swatch colour for a new board, from its name, until a real swatch is set */
+const boardHexGuess = n => { n = String(n).toLowerCase(); return /white|alabaster|porcelain|alpine|chromix|linen/.test(n) && !/anthracite/.test(n) ? '#ECEAE4' : /black/.test(n) ? '#1E1E1E' : /graphite|anthracite/.test(n) ? '#46484A' : /tobacco|truffle|dark|brown|marone|mocha|eucalyptus/.test(n) ? '#6A4A33' : /oak|walnut|wood|ash|acacia|hickory|birch|castello|fineline|santa fe|river/.test(n) ? '#A8825A' : /navy|indigo|denim|tyrolean|ocean/.test(n) ? '#3F5670' : /blue/.test(n) ? '#A9B7C3' : /green|pistachio/.test(n) ? '#7D8B6E' : /red|garnet/.test(n) ? '#7A2E2E' : /rose/.test(n) ? '#C9A2A0' : /yellow/.test(n) ? '#D9C27A' : /beige|sand|crema|camel|almond|carat|cashmere/.test(n) ? '#CDBEA4' : /bronze|champagne|metal/.test(n) ? '#A08A66' : /grey|gray|slate|marble|stone|concrete|textile|pebble/.test(n) ? '#9C9A95' : '#BDB6AA'; };
 const BOARD_NEW_HEX = { 'W1200 ST12': '#F1EFE8', 'U502 ST9': '#A9B7C3', 'U504 ST9': '#3F5A72', 'U705 ST9': '#B8B2A8', 'U115 ST9': '#D3C6AE', 'H1154 ST15': '#C8A27A', 'U608 ST9': '#B9C49E', 'U741 ST9': '#5A5955' };
 /* Match each sheet colour to the saved colour list (by code, read past the scan errors such as l for 1 and O for 0), correct its name, code and
    group, and add any that are missing. Only colours on the sheet are offered on New Orders; the others stay for the quote builder. */
@@ -8337,12 +8372,12 @@ function syncBoardSheet0() {
   const nz = s => String(s || '').toUpperCase().replace(/\s+/g, '').replace(/O/g, '0').replace(/[LI]/g, '1');
   const claimed = new Set(), was = new Map(DB.cabColours.filter(c => c.sheet).map(c => [c, c.sheetOrder])); let changed = false;
   DB.cabColours.forEach(c => { if (c.sheet) { delete c.sheet; delete c.sheetOrder; } });
-  const fit = (c, code, name, g, i) => { if (c.code !== code || c.name !== name || c.group !== g || was.get(c) !== i) changed = true; Object.assign(c, { code, name, group: g, sheet: true, sheetOrder: i }); claimed.add(c); };
+  const fit = (c, code, name, price, i) => { const g = EDGE_DEAR.includes(code) ? 3 : 1; if (c.code !== code || c.name !== name || c.group !== g || c.sheetPrice !== price || was.get(c) !== i) changed = true; Object.assign(c, { code, name, group: g, sheetPrice: price, sheet: true, sheetOrder: i }); claimed.add(c); };
   const left = [];
   BOARD_SHEET.forEach(([code, name, g], i) => { const c = DB.cabColours.find(x => !claimed.has(x) && nz(x.code) === nz(code)); if (c) fit(c, code, name, g, i); else left.push([code, name, g, i]); });
   left.forEach(([code, name, g, i]) => {
     let c = DB.cabColours.find(x => !claimed.has(x) && nz(x.name) === nz(name) && !BOARD_SHEET.some(b => nz(b[0]) === nz(x.code)));
-    if (!c) { const twin = DB.cabColours.find(x => nz(x.name) === nz(name)); c = { id: 'cc-b-' + nz(code), name, code, group: g, hex: BOARD_NEW_HEX[code] || (twin && twin.hex) || '#BDB6AA', finish: /oak|walnut|wood|pine|ash|hickory|maple|beech|larch|santa fe|bardolino/i.test(name) ? 'wood' : /marble|concrete|metal|textile|linen|slate|chromix|inox|rock/i.test(name) ? 'stone' : 'solid', featured: false, adj: 0, active: true, image: null }; DB.cabColours.push(c); changed = true; }
+    if (!c) { const twin = DB.cabColours.find(x => nz(x.name) === nz(name)); c = { id: 'cc-b-' + nz(code), name, code, group: EDGE_DEAR.includes(code) ? 3 : 1, hex: BOARD_NEW_HEX[code] || (twin && twin.hex) || boardHexGuess(name), finish: /oak|walnut|wood|pine|ash|hickory|maple|beech|larch|santa fe|bardolino/i.test(name) ? 'wood' : /marble|concrete|metal|textile|linen|slate|chromix|inox|rock/i.test(name) ? 'stone' : 'solid', featured: false, adj: 0, active: true, image: null }; DB.cabColours.push(c); changed = true; }
     fit(c, code, name, g, i);
   });
   if ([...was.keys()].some(c => !claimed.has(c))) changed = true;
@@ -11401,6 +11436,9 @@ const wallCards = () => wallCard(false) + wallCard(true) + cwCard() + lwCard() +
    on the right or the left whose width the customer can change. Code is BCHL + width + RB or LB. */
 const CORNER = { w: 1000, side: 'right', door: 500, d: 570, v: 50, carousel: false, mtm: false };
 const CORNER_WIDTHS = [800, 900, 1000, 1100, 1200, 1300, 1400, 1500];
+/* corner pull-out: Proline Anthracite Swift 2.0 (cost prices given 23 Nov 2026), sized by the door; L or R by the blank side (right hand blank = R) */
+const SWIFT = [[400, 'I560-200', 241.82], [450, 'I560-225', 241.82], [500, 'I560-250', 246.25], [600, 'I560-300', 251.08]].map(([door, code, p]) => ({ door, code, p }));
+const swiftFor = (door, side) => { const s = SWIFT.find(x => x.door === Math.round(door)); return s ? Object.assign({}, s, { code: s.code + (side === 'left' ? 'L' : 'R'), name: 'Proline Anthracite Swift 2.0 ' + s.door + 'mm (' + s.code + (side === 'left' ? 'L' : 'R') + ')' }) : null; };
 const CORNER_T = 18.2;                                            // the internal blank panel
 const CORNER_MIN_DOOR = 300;                                      // the door can't be narrower than this
 const cornerDoorMax = () => Math.floor(CORNER.w - CORNER_T - 50);   // leaves at least a 50mm blank
@@ -11418,7 +11456,7 @@ function cornerPick(sel) {
   const num = `<label class="field"><span class="lbl">Door size (mm)</span><input class="input" type="number" min="${CORNER_MIN_DOOR}" max="${cornerDoorMax()}" step="1" value="${cornerDoor()}" data-chg="cornerDoor"></label>`;
   return `<div class="muted">Blank:</div><div class="row" style="gap:6px">${[['right', 'Right hand blank'], ['left', 'Left hand blank']].map(([k, t]) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;font-size:12px;white-space:nowrap;${sel(CORNER.side === k)}" data-act="cornerSide" data-v="${k}">${CORNER.side === k ? '&#9745;' : '&#9744;'} ${t}</button>`).join('')}</div>${num}
     <div class="muted">Blank size: <b>${cornerBlank()} mm</b> (${CORNER.w} - ${cornerDoor()} - 18.2)</div>
-    <div class="row"><button class="btn btn-secondary btn-sm" style="flex:1;font-size:12px;${sel(CORNER.carousel)}" data-act="cornerCar">${CORNER.carousel ? '&#9745;' : '&#9744;'} Signature Magic Corner Carousel</button></div>`;
+    ${(() => { const sw = swiftFor(cornerDoor(), CORNER.side); return `<div class="row"><button class="btn btn-secondary btn-sm" style="flex:1;font-size:12px;white-space:normal;${sel(CORNER.carousel)}" data-act="cornerCar">${CORNER.carousel ? '&#9745;' : '&#9744;'} Corner pull-out: ${sw ? sw.name : 'Proline Swift 2.0'}</button></div>` + (sw ? '' : `<div class="muted" style="font-size:13px">The Swift 2.0 comes for a 400, 450, 500 or 600 door. Set the door to one of those to price it.</div>`); })()}`;
 }
 function cornerCard() {
   const w = CORNER.w;
@@ -11457,7 +11495,7 @@ function cornerDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${CORNER_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="cornerW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + cornerCode())}${row('BLANK', (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand, ' + bl + ' mm (' + w + ' - ' + cornerDoor() + ' - 18.2)')}${row('DOOR SIZE', cornerDoor() + ' mm')}${row('HINGES', 'Quantity: 2 x blank corner hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${CORNER.carousel ? row('CAROUSEL', 'Signature Magic Corner Carousel, 2 trays, black') : row('SHELF', 'Quantity: 1 x shelf')}${row('CABINET COMPONENT', 'Quantity: 1 x blank panel, ' + bl + ' mm wide, between the base and the top rail, carries the door hinges')}</div>
+      <div>${row('CABINET', 'Code: ' + cornerCode())}${row('BLANK', (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand, ' + bl + ' mm (' + w + ' - ' + cornerDoor() + ' - 18.2)')}${row('DOOR SIZE', cornerDoor() + ' mm')}${row('HINGES', 'Quantity: 2 x blank corner hinges')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${CORNER.carousel ? row('CORNER PULL-OUT', (swiftFor(cornerDoor(), CORNER.side) || {}).name || 'Proline Swift 2.0: not made for a ' + cornerDoor() + ' door (400, 450, 500 or 600)') : row('SHELF', 'Quantity: 1 x shelf')}${row('CABINET COMPONENT', 'Quantity: 1 x blank panel, ' + bl + ' mm wide, between the base and the top rail, carries the door hinges')}</div>
       ${cornerPick(sel)}
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', CORNER.v)}</div>
@@ -11541,7 +11579,7 @@ A.mtmBack = t => { MTM.back = t.dataset.v; mtmRefresh(); };CH.mtmDim = t => { co
    are offered. The choice drives the picture and the price shown, and follows the
    customer from the room pages into More Details, where it can be changed. */
 const ocList = () => DB.cabColours.filter(c => c.sheet && c.active !== false).sort((a, b) => a.sheetOrder - b.sheetOrder);      // only the colours on the board sheet, in its order
-const ocGroup = c => c.group === 3 ? 2 : 1;           // the website's Group 2 is the board chart's Group 3
+const ocGroup = c => c.group === 3 ? 2 : 1;           // now only picks the edging price: the dearer edging for the colours in EDGE_DEAR (the board itself is priced per colour)
 const orderColour = () => { const l = ocList(); return l.find(c => c.id === UI.orderColour) || l[0] || null; };
 const ocHex = () => { const c = orderColour(); return c ? c.hex : '#cdbfae'; };
 const ocPrice = it => { const c = orderColour(); return it ? (it[GROUP_KEY[c ? c.group : 1]] || it.plain || 0) : 0; };
@@ -11549,13 +11587,11 @@ const ocPrice = it => { const c = orderColour(); return it ? (it[GROUP_KEY[c ? c
    or matching the cabinet colour. */
 const ocEdgeType = () => UI.orderEdgeType === '0.8mm' ? '0.8mm' : '2mm';
 const ocEdge = () => { const e = UI.orderEdge; return !e || e === 'match' ? null : ocList().find(c => c.id === e) || null; };
-const ocEdgeText = () => { const e = ocEdge(); return ocEdgeType() + ' edging, ' + (e ? e.name + ' · ' + e.code + ' (Group ' + ocGroup(e) + ')' : 'matches the cabinet colour'); };
+const ocEdgeText = () => { const e = ocEdge(); return ocEdgeType() + ' edging, ' + (e ? e.name + ' · ' + e.code : 'matches the cabinet colour'); };
 function ocSelect() {
   const cur = orderColour(), l = ocList(), ed = ocEdge(), et = ocEdgeType();
   const opt = (c, sel) => `<option value="${c.id}" ${sel && c.id === sel.id ? 'selected' : ''}>${esc(c.name)} · ${esc(c.code)}</option>`;
-  const groups = sel => `<optgroup label="Group 1 price · Board Group 1">${l.filter(c => c.group === 1).map(c => opt(c, sel)).join('')}</optgroup>
-    <optgroup label="Group 1 price · Board Group 2">${l.filter(c => c.group === 2).map(c => opt(c, sel)).join('')}</optgroup>
-    <optgroup label="Group 2 price · Board Group 3">${l.filter(c => c.group === 3).map(c => opt(c, sel)).join('')}</optgroup>`;
+  const groups = sel => l.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => opt(c, sel)).join('');      // one list, A to Z: every colour has its own board price
   const tick = t => `<button type="button" class="btn btn-secondary btn-sm" style="flex:none;white-space:nowrap;${et === t ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="orderEdgeType" data-v="${t}">${et === t ? '&#9745;' : '&#9744;'} ${t}</button>`;
   return `<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end">
     <label class="field" style="flex:1 1 260px;max-width:420px"><span class="lbl">Cabinet colour</span><select class="select" data-chg="orderColour" aria-label="Cabinet colour">${groups(cur)}</select></label>
@@ -11564,7 +11600,7 @@ function ocSelect() {
 function ocDetail(it) {
   const c = orderColour(); if (!c) return '';
   const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
-  return `${ocSelect()}<div>${row('CABINET COLOUR', `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${c.hex};border:1px solid #0003;vertical-align:-1px"></span> ${esc(c.name)} · ${esc(c.code)}`)}${row('PRICE GROUP', 'Group ' + ocGroup(c) + (c.group === 1 ? ' (lower price)' : ' (higher price)'))}${row('EDGING', esc(ocEdgeText()))}${it ? row('PRICE (EX VAT)', GBP(ocPrice(it))) : ''}</div>`;
+  return `${ocSelect()}<div>${row('CABINET COLOUR', `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${c.hex};border:1px solid #0003;vertical-align:-1px"></span> ${esc(c.name)} · ${esc(c.code)}`)}${row('EDGING', esc(ocEdgeText()))}${it ? row('PRICE (EX VAT)', GBP(ocPrice(it))) : ''}</div>`;
 }
 /* Basket for New Orders. No prices yet: it records what was picked, in which colour. */
 const basketCount = () => (UI.basket || []).reduce((n, l) => n + l.qty, 0);
@@ -11626,7 +11662,7 @@ function bkLine(key) {
     cwClamp();
     l = { name: 'Corner Wall Unit', code: cwCode(), w: CW.w, h: CW.h, d: CW.d, v: CW.v, opt: (CW.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + cwBlank() + ' x ' + cwBlankH() + ' mm, door ' + (cwDoor() - 4) + ' x ' + (CW.h - 5) + ' mm (' + cwDoor() + ' less 4 width, 5 height), 2 blank corner hinges' + (CW.v >= 20 ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
   } else if (key === 'corner') {
-    l = { name: 'Corner Base Unit', code: cornerCode(), w: CORNER.w, d: CORNER.d, v: CORNER.v, opt: (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + cornerBlank() + ' mm, door ' + cornerDoor() + ' mm, 2 blank corner hinges' + (CORNER.carousel ? ', Signature Magic Corner Carousel' : '') };
+    l = { name: 'Corner Base Unit', code: cornerCode(), w: CORNER.w, d: CORNER.d, v: CORNER.v, opt: (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + cornerBlank() + ' mm, door ' + cornerDoor() + ' mm, 2 blank corner hinges' + (CORNER.carousel ? ', corner pull-out ' + ((swiftFor(cornerDoor(), CORNER.side) || {}).name || 'Proline Swift 2.0 (door size not made)') : '') };
   } else if (key === 'mtm') {
     l = { name: 'Made to Measure Base Unit', code: MTM_CODE, w: MTM.w, h: MTM.h, d: MTM.d, v: MTM.back === 'fixed' ? 0 : MTM.v, opt: MTM.h + ' high, ' + MTM.shelves + ' shelf' + (MTM.shelves === 1 ? '' : 's') + ', ' + (MTM.top === 'full' ? 'full top' : 'top rail') + ', ' + mtmBackText().toLowerCase() };
   } else if (key === 'wine') {
@@ -11655,7 +11691,7 @@ function bkLine(key) {
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   if (DRW_UNITS[key]) { try { const r = poUnit(l); if (r && r.drw && r.drw.length) { const g = {}; r.drw.forEach(x => { const n = dpDrawerName(x); g[n] = (g[n] || 0) + 1; }); l.opt += ', ' + Object.entries(g).map(([n, c]) => c + ' x ' + n).join(', '); } if (r && r.ct) l.opt += ', ' + ctText(r.ct); } catch (e) { } }   // the drawer boxes the customer picked
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
-  Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? 'Group ' + ocGroup(col) : '', pgrp: col ? ocGroup(col) : 1, edging: ocEdgeText() });
+  Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: '', pgrp: col ? ocGroup(col) : 1, edging: ocEdgeText() });
   return l;
 }
 A.bkAdd = t => {
@@ -12052,7 +12088,7 @@ function poUnit(u) {
   if (k === 'corner') {
     const door = Math.min(Math.max(s.door || 500, 300), Math.floor(w - T - 50)), blank = poR(w - door - T);
     const r = C({ top: 'rail', back: true, shelves: s.carousel ? 0 : 1, doors: [[door - 4, H - 5]], legs: true, extra: [{ name: 'Blank panel', l: H - 2 * T, w: blank, q: 1, ef: H - 2 * T, er: 0 }] });
-    if (s.carousel) sup(r, 'car', 'Corner carousel (Signature Magic)'); return r;
+    if (s.carousel) { const sw = swiftFor(door, s.side); if (sw) r.binSet = { name: sw.name, p: sw.p }; else sup(r, 'car', 'Corner pull-out (Swift 2.0 for a ' + door + ' door is not made)'); } return r;
   }
   if (k === 'lsh') {
     const rh = s.rh, lh = s.lh, Dp = d - v - T - fe, di = rh - d - 26, dl = lh - d - 26;
@@ -12170,7 +12206,7 @@ function poBuild(order) {
    Doors and fronts are counted as board and edging too. Prices are typed in under Admin > Pricing and saved in the settings. */
 const COST_META = [
   ['General', [['labourRate', 'Labour rate (£ per hour)', 12.71], ['labourHours', 'Labour hours per cabinet', 2], ['overhead', 'Overhead (% on materials and labour)', 5], ['markup', 'Markup (% on the cost)', 54], ['mtmSur', 'MTM surcharge (% on the price, 0 = none)', 0], ['waste', 'Board and edging waste (%)', 10], ['sheetL', 'Board sheet length (mm)', 2800], ['sheetW', 'Board sheet width (mm)', 2070], ['doorsOn', 'Include doors and fronts in the price (1 = yes, 0 = cabinets only)', 0]]],
-  ['Board and edging', [['board1', '18.2mm MFC sheet 2800 x 2070, Group 1 (£)', 48.10], ['board2', '18.2mm MFC sheet 2800 x 2070, Group 2 (£)', 64.00], ['edge1', '2mm edging per metre, Group 1 (£)', 0.31], ['edge2', '2mm edging per metre, Group 2 (£)', 0.40], ['edge08_1', '0.8mm edging per metre, Group 1 (£)', 0.31], ['edge08_2', '0.8mm edging per metre, Group 2 (£)', 0.40], ['dboard', 'Drawer bottom and back board, 16mm pre-edged sheet (£)', 33.60], ['dboardL', 'Drawer board sheet length (mm)', 2650], ['dboardW', 'Drawer board sheet width (mm)', 650]]],
+  ['Board and edging', [['board1', 'MFC sheet price used only if a colour has no price on the board sheet (£)', 48.10], ['board2', 'Spare MFC sheet price (not used now, £)', 64.00], ['edge1', '2mm edging per metre, standard (£)', 0.31], ['edge2', '2mm edging per metre, dearer colours (£)', 0.40], ['edge08_1', '0.8mm edging per metre, standard (£)', 0.31], ['edge08_2', '0.8mm edging per metre, dearer colours (£)', 0.40], ['dboard', 'Drawer bottom and back board, 16mm pre-edged sheet (£)', 33.60], ['dboardL', 'Drawer board sheet length (mm)', 2650], ['dboardW', 'Drawer board sheet width (mm)', 650]]],
   ['Hardware', [['legTop', 'Leg top section 637.81.302 (each)', 0.20], ['legFoot', 'Leg 150mm foot shaft 637.81.375 (each)', 0.38], ['clip', 'Plinth clip 637.81.340 (each)', 0.02], ['peg', 'Shelf support 2-pin F0022546 (each)', 0.05], ['dowel100', 'Wooden dowel 8 x 35mm J66-417 (per box of 100)', 0.72], ['cam', '18mm cam J601-509 (each)', 0.03], ['mpin', '34mm metal pin J601-517 (each)', 0.04], ['hanger', 'Traser cabinet hanger I41-0400 (per pair)', 1.72], ['plate', 'Wall plate I40-184 (each)', 0.08], ['hinge', '107 degree hinge 75BB1550 (each)', 1.63], ['hingePlate', 'Hinge mounting plate 174H7100E (each)', 0.57], ['blindHinge', '9 x 9 blind corner hinge SYH060 (each)', 0.81], ['euroScrew', 'Euro screw for the runners (each)', 0.01], ['euroPerRunner', 'Euro screws per runner (a drawer has 2 runners)', 4], ['glassM2', 'Glass shelf (per square metre)', 100.50], ['glassPeg', 'Glass shelf peg (each, 0 = not priced yet)', 0]]],
   ['Still to be priced (blank = not priced)', [['hinge155', '155 degree hinge (each)', 0], ['hingeAppl', 'Appliance hinge (each)', 0], ['cap', 'Cover cap (each)', 0], ['gas', 'Gas stay (each)', 0], ['hk', 'HK Top lift-up fitting (each)', 0], ['runAntaro', 'Antaro runners and sides, per drawer', 0], ['runLegrabox', 'Legrabox runners and sides, per drawer', 0], ['runMerivo', 'Merivo runners and sides, per drawer', 0]]]
 ];
@@ -12185,8 +12221,9 @@ function costUnit(l) {
   r.parts.forEach(p => { area += p.l * p.w * p.q; e2 += (p.ef || 0) * p.q; e08 += (p.er || 0) * p.q; });
   if (c.doorsOn) (r.faces || []).forEach(p => { area += p.l * p.w * p.q; e2 += 2 * (p.l + p.w) * p.q; });             // doors and fronts are off by default: cabinets only
   const frontType = l.edgeType === '0.8mm' ? '0.8mm' : '2mm', pf = frontType === '0.8mm' ? c['edge08_' + g] : c['edge' + g], p08 = c['edge08_' + g];
-  const sheet = c.sheetL * c.sheetW, board = area / sheet * c['board' + g] * wf, edge = (e2 / 1000 * pf + e08 / 1000 * p08) * wf;
-  lines.push(['Board', (area / 1e6).toFixed(2) + ' m² (sheet ' + GBP(c['board' + g]) + ', +' + c.waste + '% waste)', board], ['Edging', (e2 / 1000).toFixed(1) + ' m at ' + frontType + ' (' + GBP(pf) + ' per m) + ' + (e08 / 1000).toFixed(1) + ' m at 0.8mm (' + GBP(p08) + ' per m), +' + c.waste + '% waste', edge]);
+  const colr = l.colourId ? DB.cabColours.find(x => x.id === l.colourId) : null, bp = colr && +colr.sheetPrice > 0 ? +colr.sheetPrice : c['board' + g];   // each colour has its own sheet price
+  const sheet = c.sheetL * c.sheetW, board = area / sheet * bp * wf, edge = (e2 / 1000 * pf + e08 / 1000 * p08) * wf;
+  lines.push(['Board', (area / 1e6).toFixed(2) + ' m² (' + (colr ? colr.code + ' ' : '') + 'sheet ' + GBP(bp) + ', +' + c.waste + '% waste)', board], ['Edging', (e2 / 1000).toFixed(1) + ' m at ' + frontType + ' (' + GBP(pf) + ' per m) + ' + (e08 / 1000).toFixed(1) + ' m at 0.8mm (' + GBP(p08) + ' per m), +' + c.waste + '% waste', edge]);
   const f = r.f, hw = [];
   const hu = (price, name) => { if (price > 0) return price; miss.push(name + ' priced as a 107° hinge'); return c.hinge; };
   const hingeEach = (COST_BLIND.includes(k) ? c.blindHinge : k === 'dlr' ? hu(c.hinge155, '155° hinge') : k === 'ff' ? hu(c.hingeAppl, 'Appliance hinge') : c.hinge) + c.hingePlate;
@@ -12899,12 +12936,13 @@ function summaryHTML() {
       <div class="fr"><span>Door colour</span>${!st || st.none ? '<b class="muted">No doors</b>' : dc ? miniSw(dc) + `<b>${esc(dc.name)}</b>` : '<b class="muted">Not chosen</b>'}</div>
       <div class="fr"><span>Edging ${d.edgingType || '2mm'}</span>${(() => { const ed = edgeCol(d); return ed ? miniSw(ed) + `<b>${esc(ed.name)}${!d.edging || d.edging === 'match' ? ' <span class="muted">(matches)</span>' : ''}</b>` : '<b class="muted">Not chosen</b>'; })()}</div>
       <div class="fr"><span>Worktop</span>${(() => { const wt = worktopCol(d); return wt ? miniSw(wt) + `<b>${esc(wt.name)}</b>` : `<b class="muted">${d.worktop === 'none' ? 'None' : 'Not chosen'}</b>`; })()}</div>
-      <div class="fr"><span>Drawers</span>${(() => { const dr = drawerOf(d); return dr ? `<b>${esc(dr.name)}</b>` : '<b class="muted">Not chosen</b>'; })()}</div>
+      <div class="fr"><span>Room</span><b>${qRoom(d)}</b></div>
+      <div class="fr"><span>Drawers</span>${(() => { const dr = drawerOf(d); return dr ? `<b>${esc(drawerShow(dr.name))}</b>` : '<b class="muted">Not chosen</b>'; })()}</div>
     </div>
     <div class="sum-row"><span>Items</span><span><b>${t.lines}</b> lines · ${t.units} units</span></div>
     ${priceRows(t)}
     <p class="hint" style="margin-top:10px">Your customer discount of ${t.pct}% is applied automatically and can’t be changed here.</p>
-    <div class="stack" style="gap:8px;margin-top:14px">${s < 2 ? `<button class="btn btn-primary btn-lg" data-act="toReview">Review Quote ${ic('arrowR', 17)}</button>` : `<button class="btn btn-olive btn-lg" data-act="submitAsk">${ic('send', 17)} Submit Quote</button>`}</div>
+    <div class="stack" style="gap:8px;margin-top:14px">${s < 2 ? `<button class="btn btn-primary btn-lg" data-act="toNewOrders">Choose cabinets ${ic('arrowR', 17)}</button>` : `<button class="btn btn-olive btn-lg" data-act="submitAsk">${ic('send', 17)} Submit Quote</button>`}</div>
   </section>`;
 }
 function drawSummary() { const el = $('#bSummary'); if (el) el.innerHTML = summaryHTML(); }
@@ -12926,9 +12964,8 @@ function bStep1() {
     </div>
   </section>
   ${finishSections()}
-  ${itemsSections()}
-  ${designSections()}
-  ${stepNav(0, 2, 'Review Quote')}`;
+  ${toOrdersSection()}
+  ${designSections()}`;
 }
 IN.df = t => { UI.draft[t.dataset.k] = t.value; if (UI.errors[t.dataset.k]) { delete UI.errors[t.dataset.k]; t.classList.remove('err'); const m = $(`[data-err="${t.dataset.k}"]`); if (m) m.textContent = ''; } save(); };
 function validateStep(n) {
@@ -12957,20 +12994,20 @@ function cbxList(kind) {
   }
   if (kind === 'drawer') {
     const cur = UI.draft.drawerType || '';
-    const list = DB.drawerTypes.filter(x => x.active).sort((a, b) => (a.sort || 0) - (b.sort || 0));
+    const list = qDrawerList(UI.draft);
     UI.cbxOpts = list.map(x => x.id);
     if (!list.length) return `<div class="empty" style="padding:24px"><p>No drawer types yet. An admin can add them.</p></div>`;
-    return list.map(x => `<button type="button" class="cbx-opt ${x.id === cur ? 'on' : ''}" role="option" aria-selected="${x.id === cur}" data-act="cbxPick" data-k="drawer" data-id="${x.id}"><span class="cbx-pf">${drawerGlyph(x.none, 22)}</span><span style="min-width:0"><b>${esc(x.name)}</b><small style="font-family:var(--font)">${esc(x.desc || '')}</small></span>${x.id === cur ? `<span class="cbx-tick">${ic('check', 16, 2.4)}</span>` : ''}</button>`).join('');
+    return list.map(x => `<button type="button" class="cbx-opt ${x.id === cur ? 'on' : ''}" role="option" aria-selected="${x.id === cur}" data-act="cbxPick" data-k="drawer" data-id="${x.id}"><span class="cbx-pf">${drawerGlyph(x.none, 22)}</span><span style="min-width:0"><b>${esc(drawerShow(x.name))}</b><small style="font-family:var(--font)">${esc(drawerShow(x.desc || ''))}</small></span>${x.id === cur ? `<span class="cbx-tick">${ic('check', 16, 2.4)}</span>` : ''}</button>`).join('');
   }
   const d = UI.draft, q = (UI.cbxQ || '').toLowerCase().trim(), g = UI.cbxG || '';
-  const src = kind === 'worktop' ? DB.worktopColours : (kind === 'cab' || kind === 'edge' || kind === 'edge08') ? DB.cabColours : DB.doorColours;
+  const web = kind === 'cab' || kind === 'edge' || kind === 'edge08';   // cabinet and edging colours: the board sheet, in price Group 1 (board groups 1 and 2) and Group 2 (board group 3)
+  const src = kind === 'worktop' ? DB.worktopColours : web ? ocList() : DB.doorColours;
   const cur = kind === 'worktop' ? (d.worktop || 'none') : kind === 'cab' ? d.cabColour : kind === 'edge' ? (d.edging || 'match') : kind === 'edge08' ? (d.edging08 || 'match') : (d.doorColour || 'match');
-  const web = kind === 'cab' || kind === 'edge' || kind === 'edge08';   // cabinet and edging colours: website Group 1 and Group 2 only
-  const list = src.filter(c => c.active && (!web || c.group === 1 || c.group === 3) && (!g || String(c.group) === g) && (!q || (c.name + ' ' + c.code).toLowerCase().includes(q)));
+  const list = src.filter(c => c.active !== false && (!g || String(web ? ocGroup(c) : c.group) === g) && (!q || (c.name + ' ' + c.code).toLowerCase().includes(q)));
   const opts = [];
   if (kind === 'worktop' && !q) { opts.push({ id: 'none', name: 'No worktop', code: 'Cabinets only, no worktop', bg: 'repeating-linear-gradient(45deg,var(--surface-2) 0 5px,var(--surface-3) 5px 10px)', tag: 'Default' }); }
   if ((kind === 'door' || kind === 'edge' || kind === 'edge08') && !q && !g) { const cab = cabCol(d.cabColour); opts.push({ id: 'match', name: 'Match cabinet colour', code: cab ? cab.name + ' · ' + cab.code : 'Uses the cabinet colour', bg: cab ? swatchBg(cab) : 'repeating-linear-gradient(45deg,var(--surface-2) 0 5px,var(--surface-3) 5px 10px)', tag: 'Default' }); }
-  list.forEach(c => opts.push({ id: c.id, name: c.name, code: c.code + (c.adj ? ' · +' + c.adj + '%' : ''), bg: swatchBg(c), tag: kind === 'worktop' ? (c.finish === 'wood' ? 'Timber' : c.finish === 'gloss' ? 'Polished' : 'Matt') : web ? webGroup(c.group) : GROUPS[c.group] }));
+  list.forEach(c => opts.push({ id: c.id, name: c.name, code: c.code + (c.adj ? ' · +' + c.adj + '%' : ''), bg: swatchBg(c), tag: kind === 'worktop' ? (c.finish === 'wood' ? 'Timber' : c.finish === 'gloss' ? 'Polished' : 'Matt') : web ? '' : GROUPS[c.group] }));
   UI.cbxOpts = opts.map(o => o.id);
   if (UI.cbxHi >= opts.length) UI.cbxHi = Math.max(0, opts.length - 1);
   if (!opts.length) return `<div class="empty" style="padding:24px">${ic('palette', 22)}<p>No colours match “${esc(UI.cbxQ)}”.</p></div>`;
@@ -12987,7 +13024,7 @@ function cbxInner(kind) {
   }
   if (kind === 'edge' || kind === 'edge08') {
     const d = UI.draft, f = kind === 'edge' ? 'edging' : 'edging08', open = UI.cbx === kind, m = !d[f] || d[f] === 'match';
-    const shown = m ? cabCol(d.cabColour) : (byId('cabColours', d[f]) || cabCol(d.cabColour)), n = DB.cabColours.filter(c => c.active && (c.group === 1 || c.group === 3)).length;
+    const shown = m ? cabCol(d.cabColour) : (byId('cabColours', d[f]) || cabCol(d.cabColour)), n = ocList().length;
     const title = m ? 'Match cabinet colour' : shown ? shown.name : 'Select an edging colour';
     const sub = m ? (shown ? shown.name + ' · ' + shown.code : 'Choose a cabinet colour first') : shown ? shown.code : n + ' edging colours';
     return `<button type="button" class="cbx-btn" data-act="cbxToggle" data-k="${kind}" aria-haspopup="listbox" aria-expanded="${open}" id="cbx-btn-${kind}">
@@ -12997,10 +13034,10 @@ function cbxInner(kind) {
       <div class="cbx-list" id="cbxList" role="listbox">${cbxList(kind)}</div></div>` : ''}`;
   }
   if (kind === 'drawer') {
-    const d = UI.draft, open = UI.cbx === 'drawer', dr = byId('drawerTypes', d.drawerType), err = UI.errors.drawerType, n = DB.drawerTypes.filter(x => x.active).length;
+    const d = UI.draft, open = UI.cbx === 'drawer', dr = byId('drawerTypes', d.drawerType), err = UI.errors.drawerType, n = qDrawerList(d).length;
     return `<button type="button" class="cbx-btn ${err ? 'err' : ''}" data-act="cbxToggle" data-k="drawer" aria-haspopup="listbox" aria-expanded="${open}" id="cbx-btn-drawer">
       <span class="cbx-sw cbx-pfbig">${drawerGlyph(dr && dr.none, 24)}</span>
-      <span class="cbx-t"><b>${dr ? esc(dr.name) : 'Select a drawer type'}</b><small style="font-family:var(--font)">${dr ? esc(dr.desc || '') : n + ' options'}</small></span>${ic('chevD', 18)}</button>
+      <span class="cbx-t"><b>${dr ? esc(drawerShow(dr.name)) : 'Select a drawer type'}</b><small style="font-family:var(--font)">${dr ? esc(drawerShow(dr.desc || '')) : n + ' options'}</small></span>${ic('chevD', 18)}</button>
     ${open ? `<div class="cbx-panel"><div class="cbx-list" id="cbxList" role="listbox">${cbxList('drawer')}</div></div>` : ''}`;
   }
   if (kind === 'style') {
@@ -13010,19 +13047,19 @@ function cbxInner(kind) {
   }
   const d = UI.draft, open = UI.cbx === kind, st = byId('doorStyles', d.doorStyle);
   const disabled = kind === 'door' && (!st || st.none);
-  const src = kind === 'cab' ? DB.cabColours : DB.doorColours;
-  const n = src.filter(c => c.active && (kind !== 'cab' || c.group === 1 || c.group === 3)).length;
+  const src = kind === 'cab' ? ocList() : DB.doorColours, gOf = c => kind === 'cab' ? ocGroup(c) : c.group;
+  const n = src.filter(c => c.active !== false).length;
   const match = kind === 'door' && (!d.doorColour || d.doorColour === 'match');
   const shown = kind === 'cab' ? cabCol(d.cabColour) : match ? cabCol(d.cabColour) : byId('doorColours', d.doorColour);
   const err = kind === 'cab' && UI.errors.cabColour;
   const title = disabled ? 'No doors' : match ? 'Match cabinet colour' : shown ? shown.name : 'Select a cabinet colour';
-  const sub = disabled ? (st ? 'Cabinet Only is selected' : 'Choose a door style to pick a door colour') : match ? (shown ? shown.name + ' · ' + shown.code : 'Choose a cabinet colour first') : shown ? `${shown.code} · ${kind === 'cab' ? webGroup(shown.group) : GROUPS[shown.group]}` : `${n} colours · search by name or code`;
-  const gchip = (v, l) => `<button type="button" class="chip ${(UI.cbxG || '') === v ? 'on' : ''}" data-act="cbxGroup" data-v="${v}">${l}<span class="n">${src.filter(c => c.active && (kind !== 'cab' || c.group === 1 || c.group === 3) && (!v || String(c.group) === v)).length}</span></button>`;
+  const sub = disabled ? (st ? 'Cabinet Only is selected' : 'Choose a door style to pick a door colour') : match ? (shown ? shown.name + ' · ' + shown.code : 'Choose a cabinet colour first') : shown ? `${kind === 'cab' ? shown.code : shown.code + ' · ' + GROUPS[shown.group]}` : `${n} colours · search by name or code`;
+  const gchip = (v, l) => `<button type="button" class="chip ${(UI.cbxG || '') === v ? 'on' : ''}" data-act="cbxGroup" data-v="${v}">${l}<span class="n">${src.filter(c => c.active !== false && (!v || String(gOf(c)) === v)).length}</span></button>`;
   return `<button type="button" class="cbx-btn ${err ? 'err' : ''}" data-act="cbxToggle" data-k="${kind}" aria-haspopup="listbox" aria-expanded="${open}" ${disabled ? 'disabled' : ''} id="cbx-btn-${kind}">
       <i class="cbx-sw" style="background:${!disabled && shown ? swatchBg(shown) : 'repeating-linear-gradient(45deg,var(--surface-2) 0 6px,var(--surface-3) 6px 12px)'}"></i>
       <span class="cbx-t"><b>${esc(title)}</b><small>${esc(sub)}</small></span>${ic('chevD', 18)}</button>
     ${open ? `<div class="cbx-panel"><div class="cbx-search input-wrap">${ic('search', 16)}<input class="input" id="cbx-q" data-in="cbxQ" placeholder="Search ${n} colours by name or code, e.g. U708" value="${esc(UI.cbxQ || '')}" autocomplete="off" aria-label="Search colours"></div>
-      <div class="chips cbx-groups">${kind === 'cab' ? `${gchip('', 'All')}${gchip('1', 'Group 1')}${gchip('3', 'Group 2')}` : `${gchip('', 'All')}${gchip('1', 'Plain')}${gchip('2', 'Woodgrain')}${gchip('3', 'Structure')}`}</div>
+      <div class="chips cbx-groups">${kind === 'cab' ? '' : `${gchip('', 'All')}${gchip('1', 'Plain')}${gchip('2', 'Woodgrain')}${gchip('3', 'Structure')}`}</div>
       <div class="cbx-list" id="cbxList" role="listbox">${cbxList(kind)}</div></div>` : ''}`;
 }
 function redrawCbx() { ['cab', 'style', 'door', 'edge', 'edge08', 'drawer', 'worktop'].forEach(k => { const el = document.getElementById('cbx-' + k); if (el) el.innerHTML = cbxInner(k); }); const q = $('#cbx-q'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
@@ -13039,17 +13076,24 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); UI.cbxHi = (UI.cbxHi + (e.key === 'ArrowDown' ? 1 : -1) + n) % n; $('#cbxList').innerHTML = cbxList(UI.cbx); const h = $('#cbxList .hi'); if (h) h.scrollIntoView({ block: 'nearest' }); }
   if (e.key === 'Enter') { e.preventDefault(); A.cbxPick({ dataset: { k: UI.cbx, id: UI.cbxOpts[UI.cbxHi] } }); }
 });
+/* the quote's room sets the drawer systems on offer: a kitchen takes Antaro, Legrabox or Merivo, a bedroom DTC */
+const Q_DRAWERS = { Kitchen: ['Antaro', 'Legra', 'Merivo'], Bedroom: ['DTC'] };
+const qRoom = d => d && d.room === 'Bedroom' ? 'Bedroom' : 'Kitchen';
+const drawerShow = s => String(s).replace(/\bLegra\b/g, 'Legrabox');
+const qDrawerList = d => { const want = Q_DRAWERS[qRoom(d)]; return DB.drawerTypes.filter(x => x.active && want.includes(x.name)).sort((a, b) => want.indexOf(a.name) - want.indexOf(b.name)); };
+A.pickQRoom = t => { const d = UI.draft; d.room = t.dataset.v === 'Bedroom' ? 'Bedroom' : 'Kitchen'; if (d.drawerType && !qDrawerList(d).some(x => x.id === d.drawerType)) d.drawerType = null; finishChanged('Room set to ' + d.room); };
 function finishSections() {
   const d = UI.draft, e = UI.errors, cab = cabCol(d.cabColour), st = byId('doorStyles', d.doorStyle);
   const sample = byId('items', 'it-004');
   return `<section class="card bpanel"><div class="bpanel-h"><div><h2>Finish</h2><p>Cabinet colour sets the price group for every cabinet. Door fronts are sized to each cabinet and priced by style.</p></div></div>
+    <div class="field" style="margin-bottom:14px"><span class="lbl">Room</span><div class="row" style="gap:8px">${['Kitchen', 'Bedroom'].map(r => `<button type="button" class="btn btn-secondary" style="flex:1;${qRoom(d) === r ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="pickQRoom" data-v="${r}">${qRoom(d) === r ? '&#9745;' : '&#9744;'} ${r}</button>`).join('')}</div></div>
     <div class="fin-row finish-primary-row"><div class="field"><span class="lbl">Cabinet colour</span><div class="cbx" id="cbx-cab">${cbxInner('cab')}</div>
       ${e.cabColour ? `<span class="err-msg">${e.cabColour}</span>` : ''}</div>
     <div class="field"><span class="lbl">Door style <span class="opt">optional</span></span><div class="cbx" id="cbx-style">${cbxInner('style')}</div><span class="hint">Door fronts are sized to each cabinet. Prices shown are for a 715 × 596 door.</span></div>
     <div class="field"><span class="lbl">Door colour <span class="opt">optional</span></span><div class="cbx" id="cbx-door">${cbxInner('door')}</div>
       <span class="hint">${!st ? 'Only needed when a door style is selected.' : st.none ? 'Not needed. Cabinet Only is selected, so no doors are added.' : 'Leave on “Match cabinet colour”, or choose a contrasting door colour.'}</span></div>
   </div>
-    ${cab ? `<div class="door-note">${ic('info', 16)}<span><b>${esc(cab.name)}</b> (${esc(cab.code)}) is in the <b>${webGroup(cab.group)}</b> price group${cab.group === 3 ? ' (higher price)' : cab.group === 1 ? ' (lower price)' : ''}, so items are priced from the ${GROUPS[cab.group]} column. A Base 600 costs ${GBP(sample ? sample[GROUP_KEY[cab.group]] : 0)} ex VAT in this finish.</span></div>` : ''}
+    ${cab ? `<div class="door-note">${ic('info', 16)}<span><b>${esc(cab.name)}</b> (${esc(cab.code)}) is your cabinet colour. Every cabinet is priced with this board.</span></div>` : ''}
     <div class="fin-row finish-options-row"><div class="field"><span class="lbl">Edging colour</span><div class="cbx" id="cbx-edge">${cbxInner('edge')}</div><span class="hint">Same colours as the cabinets. No extra charge.</span></div><div class="field"><label class="lbl" for="edging-type">Edging type</label><select class="select" id="edging-type" data-chg="edgingType"><option value="2mm" ${d.edgingType !== '0.8mm' ? 'selected' : ''}>2mm</option><option value="0.8mm" ${d.edgingType === '0.8mm' ? 'selected' : ''}>0.8mm</option></select></div>
     <div class="field"><span class="lbl">Type of drawers <span class="opt">optional</span></span><div class="cbx" id="cbx-drawer">${cbxInner('drawer')}</div>
       ${e.drawerType ? `<span class="err-msg">${e.drawerType}</span>` : '<span class="hint">Optional: choose a drawer system if needed. No extra charge.</span>'}</div>
@@ -13130,6 +13174,33 @@ ${buildDetailsHTML(it,bf)}
     <div class="row" style="margin-top:14px">${bf.editing ? `<button class="btn btn-ghost" data-act="cancelEdit">Cancel</button>` : ''}<span class="spacer"></span><button class="btn btn-primary" data-act="addLine">${bf.editing ? ic('check', 16) + ' Update line' : ic('plus', 16) + ' Add to Quote'}</button></div></div>`;
 }
 function linesCardHTML() { const d = UI.draft, t = bTotals(); return `<input type="file" id="lineFileIn" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple class="sr" data-chg="lineFileIn"><div class="card-head"><h3>Quote items</h3><span class="tag">${t.lines} lines · ${t.units} units</span><span class="spacer"></span><span class="strong tnum">${GBP(t.subtotal)} <span class="muted" style="font-weight:600;font-size:12px">before discount</span></span></div>${linesTable(d, 'builder')}${UI.errors.lines ? `<p class="err-msg" style="padding:0 20px 16px">${UI.errors.lines}</p>` : ''}`; }
+/* Cabinets now come from New Orders only (Bases, Wall Units, Larders; Lovenza kitchen and bedroom later): the old catalogue is not offered here.
+   Once the details and the finish are filled in, the customer goes to New Orders with the colour, edging and drawer system already set. */
+function toOrdersSection() {
+  const d = UI.draft, room = qRoom(d);
+  return `<section class="card bpanel"><div class="bpanel-h"><div><h2>Cabinets</h2><p>Pick your cabinets in New Orders: ${room === 'Bedroom' ? 'bedroom cabinets' : 'base units, wall units and larders'}. Your cabinet colour, edging and drawer system go with you.</p></div></div>
+    ${UI.errors.cabColour ? `<p class="err-msg">${esc(UI.errors.cabColour)}</p>` : ''}
+    <div class="row"><span class="spacer"></span><button class="btn btn-primary btn-lg" data-act="toNewOrders">Continue to New Orders (${room}) ${ic('arrowR', 17)}</button></div>
+  </section>`;
+}
+A.toNewOrders = () => {
+  const d = UI.draft, e = validateStep(1); delete e.lines;
+  if (Object.keys(e).length) { UI.errors = e; render(); const first = $('.err,.err-msg:not(:empty)'); if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' }); toast(Object.values(e)[0], { err: 1 }); return; }
+  UI.errors = {};
+  const inSheet = id => ocList().some(c => c.id === id);
+  if (inSheet(d.cabColour)) UI.orderColour = d.cabColour;
+  UI.orderEdge = d.edging && d.edging !== 'match' && inSheet(d.edging) ? d.edging : 'match';
+  UI.orderEdgeType = d.edgingType === '0.8mm' ? '0.8mm' : '2mm';
+  const dr = drawerOf(d), sys = dr ? ({ Antaro: 'Antaro', Legra: 'Legrabox', Merivo: 'Merivo' })[dr.name] : null;
+  if (sys) {                                                                                                            // the chosen drawer system on every drawer cabinet
+    Object.values(DPK).forEach(s => { s.sys = sys; s.hts = null; }); [DL, OVEN, PAN].forEach(s => { s.sys = sys; s.uh = null; });
+    if (OHL.sys !== 'none') { OHL.sys = sys; OHL.uh = null; } if (sys !== 'Merivo') { SPT.sys = sys; SPT.uh = null; }
+  }
+  UI.orderDraft = UI.orderDraft || { reference: '', notes: '', customerId: '' };
+  UI.orderDraft.reference = d.ref || '';
+  UI.orderDraft.notes = [d.contact ? 'Contact: ' + d.contact + (d.phone ? ', ' + d.phone : '') : '', d.address ? 'Deliver to: ' + d.address + (d.postcode ? ', ' + d.postcode : '') : '', d.delivery ? 'Delivery date: ' + fmtDate(d.delivery) : '', d.info || ''].filter(Boolean).join('. ');
+  save(); UI.orderStep = null; UI.orderCat = qRoom(d) === 'Bedroom' ? 'bedroom' : 'kitchen'; go('c-orders'); window.scrollTo(0, 0);
+};
 function itemsSections() {
   return `<section class="card bpanel"><div class="bpanel-h"><div><h2>Add cabinet items</h2><p>Pick a room, then a category, then the item. Each list updates from the live catalogue.</p></div></div>
     <div id="picker">${pickerHTML()}</div>
@@ -14141,16 +14212,17 @@ A.planRoom = () => {
     title: 'Easy Cab Builder — Room Planner',
     plan: d.roomPlan || null,
     styleSource: () => CD() || UI.draft || {},
-    addLabel: isDesign ? null : 'Add to quote',
+    addLabel: isDesign ? null : 'Add to basket',
     onSave: p => { const cur = CD(); if (cur) { p.savedAt = Date.now(); cur.roomPlan = p; save(); } },
-    onSync: isDesign ? null : ((lines, plan) => syncPlanLines(lines, plan)),
+    onSync: null,                                                                                     // the plan goes to the New Orders basket when the customer presses Add to basket
     onAdd: isDesign ? null : ((lines, plan) => {
-      plannerLines(lines, plan);
-      RoomPlanner.close();
-      render();
-      toast(lines.length + (lines.length === 1 ? ' line' : ' lines') + ' added to your quote from the room planner');
+      const cur = CD(); if (cur && plan) { plan.savedAt = Date.now(); cur.roomPlan = plan; }
+      const r = noPlanToBasket((plan && plan.units) || []);
+      RoomPlanner.close(); UI.plannerOpen = false; save();
+      UI.orderStep = null; go('c-basket');
+      toast(r.n + ' cabinet' + (r.n === 1 ? '' : 's') + ' added to the basket from the room planner' + (r.skipped ? ' (' + r.skipped + ' item' + (r.skipped === 1 ? '' : 's') + ' not from New Orders left out)' : ''));
     }),
-    onClose: () => { UI.plannerOpen = false; save(); render(); if (!isDesign && UI.draft && UI.draft.lines.some(l => l.fromPlan)) toast(UI.draft.lines.filter(l => l.fromPlan).length + ' lines on your quote from the room planner'); }
+    onClose: () => { UI.plannerOpen = false; save(); render(); }
   });
 };
 /* The room planner owns the lines it put on the quote: they carry fromPlan, and
@@ -14319,40 +14391,104 @@ A.catExport = () => {
 /* Every cabinet the New Order pages can produce, one row per code. The code functions are used where they depend on the page state (the state is put back afterwards).
    Prices are left blank because the New Order pages do not hold prices yet. */
 function newOrderInventory() {
-  const rows = [], add = (name, code, cat, pl, desc, h, w, d, o) => { o = o || {}; rows.push({ id: 'no-' + String(rows.length + 1).padStart(3, '0'), name, code, cat, room: o.room || 'Kitchen', pl, desc, h, w, d, plain: '', wood: '', struct: '', finishes: 'All finishes', doors: o.doors !== false, blank: !!o.blank, sections: !!o.sections, sides: !!o.sides, active: true, notes: 'New Order cabinet. ' + (o.note || '') }); };
+  /* every row also carries no: { k, p }: the New Orders cabinet (bkLine key) and the settings that make this row, so the room planner can price
+     a placed unit with the cost calculator and add it to the basket exactly as the New Orders card would */
+  const rows = [], seen = {}, add = (name, code, cat, pl, desc, h, w, d, o) => { o = o || {}; const id = 'no:' + code + (seen[code] ? '-' + (++seen[code]) : (seen[code] = 1, '')); rows.push({ id, name, code, cat, room: o.room || 'Kitchen', pl, desc, h, w, d, plain: '', wood: '', struct: '', finishes: 'All finishes', doors: o.doors !== false, blank: !!o.blank, sections: !!o.sections, sides: !!o.sides, active: true, notes: 'New Order cabinet. ' + (o.note || ''), no: o.no || null }); };
   const WP = { 575: 'Wall 575 High', 720: 'Wall 720 High', 900: 'Wall 900 High' }, WPK = { 575: 'Wall575H', 720: 'Wall720H', 900: 'Wall900H' };
-  baseWidths().forEach(i => { const w = +i.w; add('Highline Base Unit ' + w, 'BHL' + w, 'cat-base', 'Base', 'Single or pair of doors, 1 shelf. Gola option available.', BASE_H, w, 570); add('Gola Highline Base Unit ' + w, 'GBCHL' + w, 'cat-base', 'Base', 'Highline base with the Gola J profile cut-out.', BASE_H, w, 570); });
-  SINK_WIDTHS.forEach(w => add('Single Sink Base Unit ' + w, 'BHL' + w + 'S', 'cat-base', 'Base', 'Sink base, horizontal or vertical front top rail, optional sink liner and removable back.', BASE_H, w, 560));
-  DL_WIDTHS.forEach(w => add('Drawerline Single Base Unit ' + w, 'BDL' + w, 'cat-base', 'BaseDline', 'Top drawer over a door. Antaro, Legrabox or Merivo.', BASE_H, w, 560));
-  BIN_WIDTHS.forEach(w => add('Highline Bin Unit ' + w, 'BHL' + w + 'BS', 'cat-base', 'Base', 'Pull-out bins.', BASE_H, w, 570));
-  SPO_WIDTHS.forEach(w => add('Highline Slim Pull-out Unit ' + w, 'BHL' + w + 'SPO', 'cat-base', 'Base', 'Slim pull-out.', BASE_H, w, 570));
-  Object.keys(BEL_HEIGHTS).forEach(w => BEL_HEIGHTS[w].forEach(h => add('Belfast Sink Base Unit ' + w, belCode(+w, h), 'cat-base', 'Base', 'Belfast sink base, full top, 1 shelf.', h, +w, 560)));
-  WINE_OPTS.forEach(o => add('Base ' + (o.x ? 'X ' : '') + 'Wine Rack ' + o.w, o.code, 'cat-base', 'Base', o.label, BASE_H, o.w, 570, { doors: false }));
-  [['', 'No drawer'], ['A', 'Antaro drawer'], ['L', 'Legrabox drawer'], ['M', 'Merivo drawer']].forEach(([s, t]) => add('Built Under Oven Housing, ' + t, '600_BUOH' + s, 'cat-appl', 'Larders', 'Open oven space on top' + (s ? ', drawer underneath' : '') + '.', BASE_H, 600, 570, { doors: false }));
-  DP_TYPES.forEach(t => DP_WIDTHS.forEach(w => add(t.name + ' ' + w, dpCode(t, w), 'cat-drawer', 'DrawPack', 'Drawer pack. Antaro, Legrabox or Merivo.' + (t.gola ? ' Gola.' : ''), BASE_H, w, 570, { doors: false })));
-  CORNER_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Base Unit ' + w + ' ' + s + ' hand blank', 'BCHL' + w + (s === 'right' ? 'RB' : 'LB'), 'cat-corner', 'CornerBase', 'One door and a blank panel; the customer sets the door size. Optional corner carousel.', BASE_H, w, 570, { blank: true })));
-  add('L Shape Corner Base Unit', 'BCHL' + LSH.rh + 'x' + LSH.lh, 'cat-corner', 'CornerBase', 'Right hand and left hand widths set by the customer (code BCHL + right width x left width). Gola option GBCHL.', BASE_H, LSH.rh, LSH.d);
-  [false, true].forEach(g => WALL_HEIGHTS.forEach(h => WALL_WIDTHS.forEach(w => add((g ? 'Glass Wall Unit ' : 'Wall Unit ') + h + ' x ' + w, (g ? WALL_GPREFIX : WALL_PREFIX)[h] + w, 'cat-wall', WPK[h], g ? 'Glass door wall unit with glass shelves.' : 'Wall unit.', h, w, 300))));
-  WALL_HEIGHTS.forEach(h => CW_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Wall Unit ' + h + ' x ' + w + ' ' + s + ' hand blank', WALL_PREFIX[h] + w + (s === 'right' ? 'RB' : 'LB'), 'cat-wall', WPK[h], 'Corner wall unit, one door and a blank.', h, w, 300, { blank: true }))));
-  WALL_HEIGHTS.forEach(h => add('L Shape Corner Wall Unit ' + h, WALL_PREFIX[h] + LW.rh + 'x' + LW.lh, 'cat-wall', WPK[h], 'Right hand and left hand widths set by the customer; starts at 600 x 600.', h, LW.rh, 300));
-  WALL_HEIGHTS.forEach(h => add('Diagonal Wall Unit ' + h, WALL_PREFIX[h] + '6X6D', 'cat-wall', WPK[h], 'Diagonal corner wall unit, 600 x 600.', h, 600, 300));
-  WALL_HEIGHTS.forEach(h => add('Microwave Wall Unit ' + h, WALL_PREFIX[h] + '600MICRO', 'cat-wall', WPK[h], 'Microwave opening, no back behind it, 1 fixed shelf.', h, 600, 300));
-  add('Boiler Wall Housing', 'WT600BOILER', 'cat-wall', 'Wall900H', 'No back, supplied flat pack.', 900, 600, 400);
-  { const s = { h: DRS.h, w: DRS.w }; DRS_HEIGHTS.forEach(h => DRS_WIDTHS.forEach(w => { DRS.h = h; DRS.w = w; add('Dresser ' + h + ' x ' + w, drsCode(), 'cat-wall', 'Dresser', 'Dresser with doors, shelves and optional drawers.', h, w, 300); })); DRS.h = s.h; DRS.w = s.w; }
-  BRG_WIDTHS.forEach(w => BRG_TYPES.forEach(t => add('Bridging Unit ' + w + ' ' + t.label, 'BUS' + w + (t.d === 330 ? '33D' : 'HKT'), 'cat-wall', 'Wall575H', 'Bridging unit with a flap door, ' + t.label + '.', BRG_H, w, t.d)));
-  robeWidths().forEach(i => add('Single Hanging Robe ' + i.w, i.code, 'cat-robe', 'ROBES', 'Hanging robe.', +i.h || 2150, +i.w, 570, { room: 'Bedroom' }));
-  [[2150, 'FFT'], [1970, 'FFM']].forEach(([h, p]) => ['50/50', '70/30'].forEach(s => add('Fridge Freezer Larder ' + h + ' ' + s, p + '600' + s, 'cat-tall', 'Larders', '600 Fridge Freezer Larder ' + h + ' High 570 Deep to suit a ' + s + ' split. 1800 opening, fixed shelf above, 5 appliance hinges. Gola option.', h, 600, 570)));
-  OHL_P.forEach(p => (p.dr ? ['Antaro', 'Legrabox', 'Merivo'] : [null]).forEach(s => add('600 ' + OHL_TEXT(p) + (s ? ' (' + s + ' drawers)' : ''), OHL_CODE(p, s), 'cat-appl', 'Larders', 'Oven housing larder. Gola option.', p.h, 600, 570)));
-  [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => [['A', 'Antaro'], ['L', 'Legrabox'], ['M', 'Merivo']].forEach(([c, sys]) => add('Pantry Larder 1000 ' + h + ' ' + sys, p + c + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 2 shelves and 3 ' + sys + ' internal scalloped fronts, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570)));
-  [[1970, 'LMSP'], [2150, 'LTSP']].forEach(([hh, p]) => [['A', 'Antaro'], ['L', 'Legra']].forEach(([c, sys]) => SPT_WIDTHS.forEach(w => add(w + ' ' + sys + ' Space Tower Larder ' + hh, p + c + w, 'cat-tall', 'Larders', w + ' ' + sys + ' Space Tower Larder ' + hh + ' High 570 Deep, 5 internal drawers with internal fronts.', hh, w, 570))));
-  [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => add('Pantry Larder 1000 ' + h + ' without internal chest', p + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 5 equal adjustable shelves, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570));
-  [[1970, 'LMC'], [2150, 'LTC']].forEach(([h, p]) => LC_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Larder ' + w + ' ' + h + ' ' + s + ' hand blank', p + w + (s === 'right' ? 'RB' : 'LB'), 'cat-tall', 'Larders', 'Corner larder, one door and a blank; the customer sets the door size. MTM option.', h, w, 570, { blank: true }))));
-  WALL_HEIGHTS.forEach(h => [['WR', 300, 'Wall Wine Rack'], ['WRX', 600, 'Wall X Wine Rack']].forEach(([t, w, nm]) => add(nm + ' ' + w + ' ' + h, WALL_PREFIX[h] + t + w, 'cat-wall', 'Wall' + h + 'H', nm + ', ' + h + ' High 300 Deep. Any width.', h, w, 300, { doors: false })));
-  [[1970, 'LMD'], [2150, 'LTD']].forEach(([h, p]) => [DLR_START].forEach(rw => [DLR_START].forEach(lw => add('Diagonal Larder ' + rw + ' x ' + lw + ' ' + h, p + rw + 'X' + lw, 'cat-tall', 'Larders', 'Diagonal larder, right hand width ' + rw + ' and left hand width ' + lw + ', ' + h + ' High 570 Deep, diagonal top, base and 5 diagonal shelves, one door on the diagonal.', h, rw, 570))));
+  const SYS = { A: 'Antaro', L: 'Legrabox', M: 'Merivo' };
+  baseWidths().forEach(i => { const w = +i.w; add('Highline Base Unit ' + w, 'BHL' + w, 'cat-base', 'Base', 'Single or pair of doors, 1 shelf. Gola option available.', BASE_H, w, 570, { no: { k: 'base', p: { w, gola: false, mtm: false } } }); add('Gola Highline Base Unit ' + w, 'GBCHL' + w, 'cat-base', 'Base', 'Highline base with the Gola J profile cut-out.', BASE_H, w, 570, { no: { k: 'base', p: { w, gola: true, mtm: false } } }); });
+  SINK_WIDTHS.forEach(w => add('Single Sink Base Unit ' + w, 'BHL' + w + 'S', 'cat-base', 'Base', 'Sink base, horizontal or vertical front top rail, optional sink liner and removable back.', BASE_H, w, 560, { no: { k: 'sink', p: { w, mtm: false } } }));
+  DL_WIDTHS.forEach(w => add('Drawerline Single Base Unit ' + w, 'BDL' + w, 'cat-base', 'BaseDline', 'Top drawer over a door. Antaro, Legrabox or Merivo.', BASE_H, w, 560, { no: { k: 'dl', p: { w, mtm: false } } }));
+  BIN_WIDTHS.forEach(w => add('Highline Bin Unit ' + w, 'BHL' + w + 'BS', 'cat-base', 'Base', 'Pull-out bins.', BASE_H, w, 570, { no: { k: 'bin', p: { w, opt: 0 } } }));
+  SPO_WIDTHS.forEach(w => add('Highline Slim Pull-out Unit ' + w, 'BHL' + w + 'SPO', 'cat-base', 'Base', 'Slim pull-out.', BASE_H, w, 570, { no: { k: 'spo', p: { w } } }));
+  Object.keys(BEL_HEIGHTS).forEach(w => BEL_HEIGHTS[w].forEach(h => add('Belfast Sink Base Unit ' + w, belCode(+w, h), 'cat-base', 'Base', 'Belfast sink base, full top, 1 shelf.', h, +w, 560, { no: { k: 'bel', p: { w: +w, h } } })));
+  WINE_OPTS.forEach((o, i) => add('Base ' + (o.x ? 'X ' : '') + 'Wine Rack ' + o.w, o.code, 'cat-base', 'Base', o.label, BASE_H, o.w, 570, { doors: false, no: { k: 'wine', p: { opt: i } } }));
+  [['', 'No drawer'], ['A', 'Antaro drawer'], ['L', 'Legrabox drawer'], ['M', 'Merivo drawer']].forEach(([s, t]) => add('Built Under Oven Housing, ' + t, '600_BUOH' + s, 'cat-appl', 'Larders', 'Open oven space on top' + (s ? ', drawer underneath' : '') + '.', BASE_H, 600, 570, { doors: false, no: { k: 'oven', p: s ? { drawer: true, sys: SYS[s] } : { drawer: false } } }));
+  DP_TYPES.forEach(t => DP_WIDTHS.forEach(w => add(t.name + ' ' + w, dpCode(t, w), 'cat-drawer', 'DrawPack', 'Drawer pack. Antaro, Legrabox or Merivo.' + (t.gola ? ' Gola.' : ''), BASE_H, w, 570, { doors: false, no: { k: 'dp:' + t.id, p: { w, mtm: false } } })));
+  CORNER_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Base Unit ' + w + ' ' + s + ' hand blank', 'BCHL' + w + (s === 'right' ? 'RB' : 'LB'), 'cat-corner', 'CornerBase', 'One door and a blank panel; the customer sets the door size. Optional corner carousel.', BASE_H, w, 570, { blank: true, no: { k: 'corner', p: { w, side: s, mtm: false } } })));
+  add('L Shape Corner Base Unit', 'BCHL' + LSH.rh + 'x' + LSH.lh, 'cat-corner', 'CornerBase', 'Right hand and left hand widths set by the customer (code BCHL + right width x left width). Gola option GBCHL.', BASE_H, LSH.rh, LSH.d, { no: { k: 'lsh', p: {} } });
+  [false, true].forEach(g => WALL_HEIGHTS.forEach(h => WALL_WIDTHS.forEach(w => add((g ? 'Glass Wall Unit ' : 'Wall Unit ') + h + ' x ' + w, (g ? WALL_GPREFIX : WALL_PREFIX)[h] + w, 'cat-wall', WPK[h], g ? 'Glass door wall unit with glass shelves.' : 'Wall unit.', h, w, 300, { no: { k: g ? 'wallg' : 'wall', p: { h, w, mtm: false, shelves: null } } }))));
+  WALL_HEIGHTS.forEach(h => CW_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Wall Unit ' + h + ' x ' + w + ' ' + s + ' hand blank', WALL_PREFIX[h] + w + (s === 'right' ? 'RB' : 'LB'), 'cat-wall', WPK[h], 'Corner wall unit, one door and a blank.', h, w, 300, { blank: true, no: { k: 'cwall', p: { h, w, side: s, mtm: false } } }))));
+  WALL_HEIGHTS.forEach(h => add('L Shape Corner Wall Unit ' + h, WALL_PREFIX[h] + LW.rh + 'x' + LW.lh, 'cat-wall', WPK[h], 'Right hand and left hand widths set by the customer; starts at 600 x 600.', h, LW.rh, 300, { no: { k: 'lwall', p: { h } } }));
+  WALL_HEIGHTS.forEach(h => add('Diagonal Wall Unit ' + h, WALL_PREFIX[h] + '6X6D', 'cat-wall', WPK[h], 'Diagonal corner wall unit, 600 x 600.', h, 600, 300, { no: { k: 'dwall', p: { h } } }));
+  WALL_HEIGHTS.forEach(h => add('Microwave Wall Unit ' + h, WALL_PREFIX[h] + '600MICRO', 'cat-wall', WPK[h], 'Microwave opening, no back behind it, 1 fixed shelf.', h, 600, 300, { no: { k: 'mwall', p: { h } } }));
+  add('Boiler Wall Housing', 'WT600BOILER', 'cat-wall', 'Wall900H', 'No back, supplied flat pack.', 900, 600, 400, { no: { k: 'blwall', p: {} } });
+  { const s = { h: DRS.h, w: DRS.w }; DRS_HEIGHTS.forEach(h => DRS_WIDTHS.forEach(w => { DRS.h = h; DRS.w = w; add('Dresser ' + h + ' x ' + w, drsCode(), 'cat-wall', 'Dresser', 'Dresser with doors, shelves and optional drawers.', h, w, 300, { no: { k: 'dresser', p: { h, w, mtm: false } } }); })); DRS.h = s.h; DRS.w = s.w; }
+  BRG_WIDTHS.forEach(w => BRG_TYPES.forEach(t => add('Bridging Unit ' + w + ' ' + t.label, 'BUS' + w + (t.d === 330 ? '33D' : 'HKT'), 'cat-wall', 'Wall575H', 'Bridging unit with a flap door, ' + t.label + '.', BRG_H, w, t.d, { no: { k: 'brg', p: { w, d: t.d } } })));
+  robeWidths().forEach(i => add('Single Hanging Robe ' + i.w, i.code, 'cat-robe', 'ROBES', 'Hanging robe.', +i.h || 2150, +i.w, 570, { room: 'Bedroom', no: { k: 'robe', p: { w: +i.w } } }));
+  [[2150, 'FFT'], [1970, 'FFM']].forEach(([h, p]) => ['50/50', '70/30'].forEach(s => add('Fridge Freezer Larder ' + h + ' ' + s, p + '600' + s, 'cat-tall', 'Larders', '600 Fridge Freezer Larder ' + h + ' High 570 Deep to suit a ' + s + ' split. 1800 opening, fixed shelf above, 5 appliance hinges. Gola option.', h, 600, 570, { no: { k: 'ff', p: { h, split: s } } })));
+  OHL_P.forEach(p => (p.dr ? ['Antaro', 'Legrabox', 'Merivo'] : [null]).forEach(s => add('600 ' + OHL_TEXT(p) + (s ? ' (' + s + ' drawers)' : ''), OHL_CODE(p, s), 'cat-appl', 'Larders', 'Oven housing larder. Gola option.', p.h, 600, 570, { no: { k: 'ohl', p: { cfg: p.id, h: p.h, sys: s || 'none', mtm: false, top: null } } })));
+  [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => [['A', 'Antaro'], ['L', 'Legrabox'], ['M', 'Merivo']].forEach(([c, sys]) => add('Pantry Larder 1000 ' + h + ' ' + sys, p + c + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 2 shelves and 3 ' + sys + ' internal scalloped fronts, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570, { no: { k: 'pan', p: { h, sys, chest: true } } })));
+  [[1970, 'LMSP'], [2150, 'LTSP']].forEach(([hh, p]) => [['A', 'Antaro'], ['L', 'Legra']].forEach(([c, sys]) => SPT_WIDTHS.forEach(w => add(w + ' ' + sys + ' Space Tower Larder ' + hh, p + c + w, 'cat-tall', 'Larders', w + ' ' + sys + ' Space Tower Larder ' + hh + ' High 570 Deep, 5 internal drawers with internal fronts.', hh, w, 570, { no: { k: 'spt', p: { h: hh, w, sys: c === 'L' ? 'Legrabox' : 'Antaro', uh: null } } }))));
+  [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => add('Pantry Larder 1000 ' + h + ' without internal chest', p + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 5 equal adjustable shelves, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570, { no: { k: 'pan', p: { h, chest: false } } }));
+  [[1970, 'LMC'], [2150, 'LTC']].forEach(([h, p]) => LC_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Larder ' + w + ' ' + h + ' ' + s + ' hand blank', p + w + (s === 'right' ? 'RB' : 'LB'), 'cat-tall', 'Larders', 'Corner larder, one door and a blank; the customer sets the door size. MTM option.', h, w, 570, { blank: true, no: { k: 'lc', p: { h, w, side: s, mtm: false } } }))));
+  WALL_HEIGHTS.forEach(h => [['WR', 300, 'Wall Wine Rack'], ['WRX', 600, 'Wall X Wine Rack']].forEach(([t, w, nm]) => add(nm + ' ' + w + ' ' + h, WALL_PREFIX[h] + t + w, 'cat-wall', 'Wall' + h + 'H', nm + ', ' + h + ' High 300 Deep. Any width.', h, w, 300, { doors: false, no: { k: 'wwine', p: { h, w, type: t === 'WR' ? 'slot' : 'x' } } })));
+  [[1970, 'LMD'], [2150, 'LTD']].forEach(([h, p]) => [DLR_START].forEach(rw => [DLR_START].forEach(lw => add('Diagonal Larder ' + rw + ' x ' + lw + ' ' + h, p + rw + 'X' + lw, 'cat-tall', 'Larders', 'Diagonal larder, right hand width ' + rw + ' and left hand width ' + lw + ', ' + h + ' High 570 Deep, diagonal top, base and 5 diagonal shelves, one door on the diagonal.', h, rw, 570, { no: { k: 'dlr', p: { h } } }))));
   const rooms = DB.rooms.filter(r => ['Kitchen', 'Bedroom'].includes(r.name));
   const usedCats = new Set(rows.map(r => r.cat)), cats = DB.categories.filter(c => usedCats.has(c.id));
   return { rooms, categories: cats, items: rows };
 }
+/* ---------- Room planner on the New Orders cabinets ----------
+   The planner lists the New Orders cabinets (noItems), prices each placed unit with the cost calculator, and adds the plan to the basket. */
+let NO_ITEMS = null;
+function noItems() { if (!NO_ITEMS) { try { NO_ITEMS = newOrderInventory().items; } catch (e) { NO_ITEMS = null; return []; } } return NO_ITEMS; }
+const noItem = id => noItems().find(i => i.id === id) || null;
+function noState(k) { return ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[k] || (k && k.slice(0, 3) === 'dp:' ? DPK[k.slice(3)] : null); }
+/* the basket line for a planner unit: the row's settings, then the unit's own width, depth and hinge (a width or depth off the standard makes it MTM) */
+function noLine(it, u) {
+  if (!it || !it.no) return null;
+  const k = it.no.k, st = noState(k); if (!st) return null;
+  const keep = JSON.parse(JSON.stringify(st)), wk = WK, uh = u || {};
+  try {
+    Object.assign(st, JSON.parse(JSON.stringify(it.no.p)));
+    if (uh.no) Object.assign(st, JSON.parse(JSON.stringify(uh.no)));                                 // the options set on this unit in the planner
+    if (+uh.w && Math.round(+uh.w) !== +it.w && 'w' in st) { st.w = Math.round(+uh.w); if ('mtm' in st) st.mtm = true; }
+    if (+uh.d && Math.round(+uh.d) !== +it.d && 'd' in st) { st.d = Math.round(+uh.d); if ('mtm' in st) st.mtm = true; }
+    if ((uh.hinge === 'left' || uh.hinge === 'right') && 'hinge' in st) st.hinge = uh.hinge;
+    if (k === 'corner') CORNER.door = cornerDoor(); if (k === 'lc') LC.door = lcDoor(); if (k === 'cwall') CW.door = Math.round(CW.w / 2);
+    if (k.slice(0, 3) === 'dp:' && !uh.no) st.hts = null;                                             // defaults, unless the unit has its own drawer heights
+    const l = bkLine(k); return l ? JSON.parse(JSON.stringify(l)) : null;
+  } catch (e) { return null; }
+  finally { Object.keys(st).forEach(x => { if (!(x in keep)) delete st[x]; }); Object.assign(st, keep); WK = wk; }
+}
+const noPrice = (it, u) => { const l = noLine(it, u), cu = l && costUnit(l); return cu ? cu.price : null; };
+/* planner units into the New Orders basket, one line per cabinet (the same cabinets merge into one line with a quantity) */
+function noPlanToBasket(units) {
+  const sig = x => [x.code, x.w, x.d, x.v, x.opt, x.colourId].join('|'); let n = 0, skipped = 0;
+  UI.basket = UI.basket || [];
+  (units || []).forEach(u => { const it = noItem(u.itemId), l = it && noLine(it, u); if (!l) { skipped++; return; } const same = UI.basket.find(x => sig(x) === sig(l)); if (same) same.qty += 1; else UI.basket.push(Object.assign(l, { id: uid('bk'), qty: 1 })); n++; });
+  save(); return { n, skipped };
+}
+/* Options for one placed unit: its own New Orders card opens over the planner with the unit's settings loaded. Every choice on the card
+   (drawer heights, runners, Gola, bins, internal front, MTM size ...) works as usual; Save keeps them on the unit (u.no), Cancel drops them.
+   The global card state is put back afterwards, so the New Orders pages are not changed. */
+const NO_CARDS = { base: () => baseCard(), sink: () => sinkCard(), dl: () => dlCard(), bin: () => binCard(), spo: () => spoCard(), bel: () => belCard(), wine: () => wineCard(), oven: () => ovenCard(), ff: () => ffCard(), ohl: () => ohlCard(), lc: () => lcCard(), pan: () => panCard(), spt: () => sptCard(), dlr: () => dlrCard(), lsh: () => lshCard(), wall: () => wallCard(false), wallg: () => wallCard(true), cwall: () => cwCard(), lwall: () => lwCard(), dwall: () => dwCard(), wwine: () => wwCard(), mwall: () => mwCard(), blwall: () => blCard(), dresser: () => drsCard(), brg: () => brgCard(), corner: () => cornerCard(), robe: () => robeCard() };
+function noEditOpen(it, u, done) {
+  if (!it || !it.no) return;
+  const k = it.no.k, st = noState(k), card = k.slice(0, 3) === 'dp:' ? () => dpCard(k.slice(3)) : NO_CARDS[k]; if (!st || !card) { toast('This cabinet has no options to set'); return; }
+  const keep = JSON.parse(JSON.stringify(st)), wk = WK, cat = UI.orderCat;
+  Object.assign(st, JSON.parse(JSON.stringify(it.no.p)), u && u.no ? JSON.parse(JSON.stringify(u.no)) : {});
+  if (u) { if (+u.w && 'w' in st) { if (Math.round(+u.w) !== +it.w && 'mtm' in st) st.mtm = true; st.w = Math.round(+u.w); } if (+u.d && 'd' in st && Math.round(+u.d) !== +it.d) { st.d = Math.round(+u.d); if ('mtm' in st) st.mtm = true; } if ((u.hinge === 'left' || u.hinge === 'right') && 'hinge' in st) st.hinge = u.hinge; }
+  if (k === 'wallg') WK = 'g'; else if (k === 'wall') WK = 'w';
+  UI.orderCat = 'planner-options';                                                                   // the cards refresh in place, not as a details page
+  const ov = document.createElement('div'); ov.className = 'no-edit';
+  ov.innerHTML = `<div class="no-edit-box"><div class="row" style="gap:10px"><b style="font-size:16px">Cabinet options</b><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-noedit="cancel">Cancel</button><button class="btn btn-primary btn-sm" data-noedit="save">Save options</button></div><p class="muted" style="font-size:13px;margin:4px 0 10px">Set it the same way as in New Orders. The price at the bottom follows your choices.</p><div class="no-edit-card">${card()}</div></div>`;
+  document.body.appendChild(ov);
+  const finish = save => {
+    if (save && u) {
+      const snap = JSON.parse(JSON.stringify(st));
+      u.no = snap;                                                                                    // everything on the card, kept on the unit
+      if (+snap.w) u.w = +snap.w; if (+snap.d) u.d = +snap.d; if (snap.h && (k === 'wall' || k === 'wallg' || k === 'dresser' || k === 'ff' || k === 'pan' || k === 'spt' || k === 'lc' || k === 'dlr' || k === 'bel')) u.h = +snap.h;
+      if (snap.hinge === 'left' || snap.hinge === 'right') u.hinge = snap.hinge;
+      try { const l = bkLine(k); const m = l && noItems().find(i => i.code === l.code.replace(/-MTM$/, '')); if (m) u.itemId = m.id; } catch (e) { }
+    }
+    Object.keys(st).forEach(x => { if (!(x in keep)) delete st[x]; }); Object.assign(st, keep); WK = wk; UI.orderCat = cat;
+    ov.remove(); if (save && typeof done === 'function') done();
+  };
+  ov.addEventListener('click', e => { const b = e.target.closest('[data-noedit]'); if (b) finish(b.dataset.noedit === 'save'); else if (e.target === ov) finish(false); });
+}
+window.noEditOpen = noEditOpen;
+window.noItems = noItems; window.noItem = noItem; window.noPrice = noPrice;
 A.catExport3 = () => {
   if (!window.CatalogueIO || !CatalogueIO.ready()) { toast('The spreadsheet reader did not load.', { err: 1 }); return; }
   const inv = newOrderInventory(), dup = {}, dups = [];
