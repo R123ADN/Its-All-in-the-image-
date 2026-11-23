@@ -7595,6 +7595,8 @@ OHL_P.forEach(p => (p.dr ? ['Antaro', 'Legrabox', 'Merivo'] : [null]).forEach(s 
   const sl = PRICELIST.find(r => r[0] === pr) || [], nm = '1000 Pantry Larder With 2 Shelves & 3 ' + sys + ' Internal scalloped fronts ' + hh + ' High 570 Deep';
   PRICELIST.push([cp + c + '1000', nm, 'cat-tall', 'Kitchen', hh, 1000, 570, sl[7] || 0, sl[8] || 0, sl[9] || 0, 1, 'Larders', '', nm]);
 }));
+/* Space Tower Larders, 1970 high, 570 deep: LMSPA (Antaro) / LMSPL (Legra) + width. The live price comes from the cost calculator. */
+[[1970, 'LMSP', 'SL'], [2150, 'LTSP', 'TL']].forEach(([hh, cp, pr]) => [['A', 'Antaro'], ['L', 'Legra']].forEach(([c, sys]) => [300, 350, 400, 450, 500, 550, 600, 700, 800, 900, 1000, 1100, 1200].forEach(w => { const sl = PRICELIST.find(r => r[0] === pr + w) || [], nm = w + ' ' + sys + ' Space Tower Larder ' + hh + ' High 570 Deep'; PRICELIST.push([cp + c + w, nm, 'cat-tall', 'Kitchen', hh, w, 570, sl[7] || 0, sl[8] || 0, sl[9] || 0, 1, 'Larders', '', nm]); })));
 [[1970, 'LMP'], [2150, 'LTP']].forEach(([hh, cp]) => { const sl = PRICELIST.find(r => r[0] === 'PL1000') || [], nm = '1000 Pantry Larder With 5 Adjustable Shelves ' + hh + ' High 570 Deep'; PRICELIST.push([cp + '1000', nm, 'cat-tall', 'Kitchen', hh, 1000, 570, sl[7] || 0, sl[8] || 0, sl[9] || 0, 1, 'Larders', '', nm]); });
 /* Corner larders, 1970 high, 570 deep: LMC + width + LB or RB (left or right hand blank). Priced like the plain larder of the same width. */
 [[1970, 'SL', 'LMC'], [2150, 'TL', 'LTC']].forEach(([hh, pr, cp]) => [800, 900, 1000, 1100, 1200].forEach(w => ['L', 'R'].forEach(s => {
@@ -9173,6 +9175,13 @@ function baseArt(w, d, h, hinge, vd, opts) {
   const ln = (a, b, c, sw) => out.push(`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`);
   const qg = (a, op) => out.push(`<polygon points="${a.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="#bcd9e2" fill-opacity="${op}" stroke="#5f8794" stroke-width="1.1" stroke-linejoin="round"/>`);   // clear glass
   /* drawer heights in 3D: a = { s: side height, top: rail or glass top, glass }. Antaro D is an 84 side with a gallery rail (or glass) up to 203; Legrabox C with glass is an M side plus glass up to 177 */
+  /* a Blum inner front (internal front), grey metal: an end cap each side, a low panel, and on C / D heights a top rail with a gap below it */
+  const innerFront = (xl, xr, yf, z, a) => {
+    const s = (a && a.s) || 84, top = (a && a.top) || (s > 150 ? s : null), hh = top || s, low = top && s > 150 ? 90 : s, cw = 16, zc = z + 3;
+    q([P(xl + cw, yf - 6, z), P(xr - cw, yf - 6, z), P(xr - cw, yf + low + 4, z), P(xl + cw, yf + low + 4, z)], '#b4babf', 1);          // the low panel
+    if (top) q([P(xl + cw, yf + hh - 16, z), P(xr - cw, yf + hh - 16, z), P(xr - cw, yf + hh, z), P(xl + cw, yf + hh, z)], '#c3c8cc', 1);                // the top rail (C / D)
+    [[xl, xl + cw], [xr - cw, xr]].forEach(([a0, a1]) => q([P(a0, yf - 8, zc), P(a1, yf - 8, zc), P(a1, yf + hh + 2, zc), P(a0, yf + hh + 2, zc)], '#8f969c', 1));   // end caps
+  };
   const antTop = (xl, xr, yf, z0, z1, a) => {
     if (!a || !a.top) return; const s = yf + a.s, gh = yf + a.top, glass = a.glass;
     [xl, xr].forEach(x => { if (glass) qg([P(x, s, z0), P(x, s, z1), P(x, gh, z1), P(x, gh, z0)], 0.45); else { ln(P(x, gh, z0 + 20), P(x, gh, z1 - 8), '#6f767c', 3.4); ln(P(x, s, z1 - 8), P(x, gh, z1 - 8), '#6f767c', 3.4); ln(P(x, s, z0 + 20), P(x, gh, z0 + 20), '#6f767c', 3.4); } });
@@ -9357,10 +9366,14 @@ function baseArt(w, d, h, hinge, vd, opts) {
         q([P(xl, yf, zb), P(xr, yf, zb), P(xr, yf + sh, zb), P(xl, yf + sh, zb)], '#a7adb2');                                // box back
         q([P(xl, yf, zb), P(xl, yf + sh, zb), P(xl, yf + sh, zf), P(xl, yf, zf)], '#9aa0a6');                                // box left wall, inside
         q([P(xr, yf, zb), P(xr, yf, zf), P(xr, yf + sh, zf), P(xr, yf + sh, zb)], '#b9bfc4');                                // box right wall, outside
-        if (j.inf) q([P(xl - 4, yf - 8, zf), P(xr + 4, yf - 8, zf), P(xr + 4, yf + sh + 22, zf), P(xl - 4, yf + sh + 22, zf)], baseShade(col, 0.2), 1.1);   // the internal front on the internal drawer, in the cabinet colour
+        if (j.inf || (dr.allInf && o.noFronts && j.front)) innerFront(xl - 4, xr + 4, yf, zf, j.ah || { s: sh });   // the internal front on the internal drawer: a Blum inner front
         if (j.ah) antTop(xl, xr, yf, zb, zf, j.ah);                                                               // D drawers: gallery rail or glass sides
       });
       if (!j.front || o.noFronts) return;
+      if (dr.inFronts) {                                                                                                  // internal fronts only (space tower): a low plain front on each drawer, set back behind the door, no handle
+        faces.forEach(([fa, fb]) => innerFront(fa + T, fb - T, j.ybot + 14, zf - 22, j.ah || { s: 84 }));
+        return;
+      }
       faces.forEach(([fa, fb]) => {
         q([P(fa, j.ybot, zf), P(fb, j.ybot, zf), P(fb, j.ytop, zf), P(fa, j.ytop, zf)], baseShade(col, 0.24), 1.3);
         if (j.pull > 0) q([P(fa, j.ytop, zf - T), P(fb, j.ytop, zf - T), P(fb, j.ytop, zf), P(fa, j.ytop, zf)], baseShade(eh, 0.32), esw);
@@ -9379,7 +9392,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     [[T, T + f.w], [w - T - f.w, w - T]].forEach(([xa, xb]) => q([P(xa, y0 + T, d), P(xb, y0 + T, d), P(xb, y0 + f.h, d), P(xa, y0 + f.h, d)], baseShade(col, 0.16), 1.2));
   }
   const door = (hx, sgn, dw, ang, ylo, yhi) => {
-    const c = Math.cos(ang || TH), s = Math.sin(ang || TH), cl = o.blank && o.blank.inside ? 2.5 : 3, yb = ylo != null ? ylo : (o.doorFrom != null ? o.doorFrom : y0) + cl, yt = yhi != null ? yhi : y1 - cl - (o.gola ? GOLA_CUT.h : 0) - (o.drawers && o.drawers.h ? o.drawers.h + 4 : 0);   // a Gola door stops below the notch; a drawerline unit keeps its drawer above the door
+    const c = Math.cos(ang || TH), s = Math.sin(ang || TH), cl = o.blank && o.blank.inside ? 2.5 : 3, yb = ylo != null ? ylo : (o.doorFrom != null ? o.doorFrom : y0) + cl, yt = yhi != null ? yhi : y1 - cl - (o.gola ? GOLA_CUT.h : 0) - (o.drawers && o.drawers.h && !o.drawers.bottom ? o.drawers.h + 4 : 0);   // a Gola door stops below the notch; a drawerline unit keeps its drawer above the door
     const at = (t, y) => P(hx + sgn * dw * c * t, y, d + dw * s * t);
     const m = Math.min(0.2, 55 / dw);
     if (o.glass) {                                                                                                          // a framed glass door on standard hinges: the cabinet-colour frame round a clear glass panel
@@ -9451,7 +9464,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     q([P(3, yt, zf - T), P(w - 3, yt, zf - T), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(eh, 0.32), esw);                  // top edge
   } else if (o.doors && o.splitDoors) {          // a pair, each side split in two: the lower door, then the upper door, with a 5 mm gap between
     const sd = o.splitDoors, ya = y0 + 2.5, yb1 = ya + sd.bot, yt0 = yb1 + 5, yt1 = y1 - 2.5;
-    [[ya, yb1], [yt0, yt1]].forEach(([a, b]) => { door(0, 1, w / 2 - 3, null, a, b); door(w, -1, w / 2 - 3, 150 * Math.PI / 180, a, b); });
+    [[ya, yb1], [yt0, yt1]].forEach(([a, b]) => { if (single && !o.pair) { if (hinge === 'right') door(w, -1, w - 4, 150 * Math.PI / 180, a, b); else door(0, 1, w - 4, null, a, b); } else { door(0, 1, w / 2 - 3, null, a, b); door(w, -1, w / 2 - 3, 150 * Math.PI / 180, a, b); } });
   } else if (o.doors) { if (single) door(0, 1, w - 4); else { door(0, 1, w / 2 - 3); door(w, -1, w / 2 - 3, 150 * Math.PI / 180); } }   // the right door swings wider so it opens clear of the right half
   if (o.ffOpen) {                 // fridge freezer larder: the two doors hinged on the same side, swung open together like one leaf
     const f = o.ffOpen, dw = w - 4, c = Math.cos(TH), s = Math.sin(TH), at = (t, y) => P(dw * c * t, y, d + dw * s * t), m = Math.min(0.2, 55 / dw);
@@ -10303,6 +10316,82 @@ A.panSys = t => { PAN.sys = t.dataset.v; panRefresh(); };
 A.panGola = t => { PAN.gola = t.dataset.v; panRefresh(); };
 CH.panDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = PAN[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), PAN.d - 200); PAN[k] = v; panRefresh(); };
 CH.ffDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = FF[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), FF.d - 200); FF[k] = v; ffRefresh(); };
+/* Kitchen > All Larders: Space Tower Larder, 1970 high, 570 deep, 300 to 1200 wide. Behind tall doors: 5 internal drawers, every one with an
+   internal front (4 pan drawers, D on Antaro / C on Legrabox, and 1 M on top), a fixed top over them and 2 shelves above.
+   Codes: LMSP + A (Antaro) or L (Legrabox) + width, e.g. LMSPA600. One door up to 600 wide, a pair from 700; full height or split doors. */
+const SPT = { h: 1970, w: 600, sys: 'Antaro', doors: 'full', hinge: 'left', d: 570, v: 50, run: 450 };
+const SPT_WIDTHS = [300, 350, 400, 450, 500, 550, 600, 700, 800, 900, 1000, 1100, 1200], SPT_SYS = ['Antaro', 'Legrabox'];
+const SPT_FM = [200, 300, 300, 300, 300];                                       // the room each internal drawer has, top first (sets which heights fit)
+const SPT_ZONE = 160 + 4 * 260 + 4 * 3 + 4;                                     // the height the 5 internal drawers take
+const sptCode = () => (SPT.h === 2150 ? 'LTSP' : 'LMSP') + (SPT.sys === 'Legrabox' ? 'L' : 'A') + SPT.w;
+const sptPair = () => SPT.w > 600;
+const sptSplit = () => SPT.doors === 'split';
+const sptDoorTxt = () => (sptPair() ? 'Pair of ' : 'Single ') + (sptSplit() ? 'split doors (top 1245, bottom ' + (SPT.h - 10 - 1245) + ')' : 'full height door' + (sptPair() ? 's' : '')) + (sptPair() ? '' : ', ' + SPT.hinge + ' hinge');
+const sptHinges = () => sptPair() ? 10 : 5;                                     // no blank: 5 hinges a side (full height, or 3 on the top door and 2 on the bottom)
+const sptArt = (extra, bare) => { drwUSync('spt'); const ah = (SPT.uh || []).map(h => drwAh(SPT.sys, h, !!SPT.uglass && drwGlassOk(SPT.sys, h, SPT.run)));
+  return baseArt(SPT.w, SPT.d, SPT.h, hArt(SPT.hinge), SPT.v, Object.assign({ doors: !bare, pair: sptPair(), noPost: true, fullTop: true, noRail: true, splitDoors: sptSplit() ? { bot: SPT.h - 10 - 1245 } : null,
+    shelfN: 2, shelfFrom: 150 + SPT_ZONE + 18, fixedShelfAt: 150 + SPT_ZONE + 18,
+    drawers: { fronts: [160, 260, 260, 260, 260], open: bare ? [] : [0, 170, 0, 0, 0], h: SPT_ZONE - 4, bottom: true, sides: ah, allInf: true, inFronts: true } }, extra)); };
+function sptPick(sel) {
+  const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(x => btn('sptH', x, x + ' high', SPT.h === x)).join('')}</div>
+    <div class="muted">Width:</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${SPT_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === SPT.w)}" data-act="sptW" data-v="${x}">${x}</button>`).join('')}</div>
+    <div class="muted">Doors:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('sptDoors', 'full', 'Full height door' + (sptPair() ? 's' : ''), !sptSplit())}${btn('sptDoors', 'split', 'Split doors', sptSplit())}</div>
+    ${sptPair() ? '<p class="muted" style="margin:0">Over 600 wide, so it takes a pair of doors.</p>' : `<div class="muted">Door hinge:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('sptHinge', 'left', 'Left hinge', SPT.hinge === 'left')}${btn('sptHinge', 'right', 'Right hinge', SPT.hinge === 'right')}</div>`}
+    <div class="muted">Drawer type:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${SPT_SYS.map(s => btn('sptSys', s, s, SPT.sys === s)).join('')}</div>
+    <div class="muted" style="font-size:13px">5 internal drawers, each with an internal front.</div>
+    ${drwPick('spt')}`;
+}
+function sptCard() {
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="sptDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="spt" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', SPT.h)}${chip('W', SPT.w)}${chip('D', SPT.d)}${chip('Void', SPT.v)}</div>
+    <div style="height:480px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${sptArt()}</div>
+    <div class="row"><div><h3 style="margin:0">Space Tower Larder</h3><span class="mono">${sptCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="sptMore">More Details ${ic('chevR', 14)}</button></div>
+    ${sptPick(sel)}
+    <div class="row" style="gap:10px">${num('d', 'Depth (mm)', SPT.d)}${num('v', 'Void (mm)', SPT.v)}</div>
+    ${bkRow('spt')}
+  </article>`;
+}
+function sptDetails() {
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="sptDim" data-k="${k}"></label>`;
+  drwUSync('spt'); const S = drwS(SPT.sys), lab = ['Top', 'Pan drawer 1', 'Pan drawer 2', 'Pan drawer 3', 'Pan drawer 4'];
+  const drs = (SPT.uh || []).map((h, i) => lab[i] + ': ' + h + ' height (' + S.h[h].mm + ' mm) with internal front').join('<br>');
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Larders</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(sptArt({ noFronts: true }, true), 520)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', sptCode())}${row('Width', SPT.w + ' mm')}${row('Height (without legs)', SPT.h + ' mm')}${row('Height (with legs)', (SPT.h + 150) + ' mm')}${row('Depth', SPT.d + ' mm')}${row('Void', SPT.v + ' mm')}${row('Leg height', '150 mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${SPT.w}MM SPACE TOWER LARDER ${SPT.h}</h1>
+      <span class="mono">${sptCode()}</span>
+      <p class="muted" style="margin:0">${SPT.w} ${SPT.sys} Space Tower Larder ${SPT.h} High ${SPT.d} Deep.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + sptCode())}${row('DOORS', sptDoorTxt())}${row('INTERNAL DRAWERS', 'Quantity: 5 x ' + SPT.sys + ' internal drawers, ' + SPT.run + ' mm runners<br>' + drs)}${row('FIXED TOP', 'Quantity: 1 x fixed internal top, on top of the drawers')}${row('SHELVES', 'Quantity: 2 x adjustable shelves above')}${row('HINGES', 'Quantity: ' + sptHinges() + ' x hinges')}${row('LEGS', 'Quantity: ' + tallLegs(SPT.w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(SPT.w) + ' x plinth clips')}</div>
+      ${sptPick(sel)}
+      ${ocDetail(null)}
+      <div class="row" style="gap:10px">${num('d', 'Depth (mm)', SPT.d)}${num('v', 'Void (mm)', SPT.v)}</div>
+      ${bkRow('spt')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(sptArt({ dims: true, noFronts: true }, true), 640)}</div>`;
+}
+const sptRefresh = () => { if (UI.orderCat === 'sptdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#spt'); if (el) el.outerHTML = sptCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.sptMore = () => { UI.orderCat = 'sptdetails'; render(); window.scrollTo(0, 0); };
+A.sptW = t => { SPT.w = +t.dataset.v; sptRefresh(); };
+A.sptH = t => { SPT.h = +t.dataset.v; sptRefresh(); };
+A.sptDoors = t => { SPT.doors = t.dataset.v; sptRefresh(); };
+A.sptHinge = t => { SPT.hinge = t.dataset.v; sptRefresh(); };
+A.sptSys = t => { SPT.sys = t.dataset.v; SPT.uh = null; sptRefresh(); };
+CH.sptDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = SPT[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), SPT.d - 200); SPT[k] = v; sptRefresh(); };
 /* Kitchen > All Larders: Diagonal Larder. Two gables (each as deep as the cabinet) and one door across the diagonal. The customer sets the
    right hand and left hand widths (start from 1000). The top, the base and all 5 shelves are diagonal too. Height 1970 (LMD) or 2150 (LTD),
    code LMD / LTD + right hand width + X + left hand width, e.g. LMD1000X1000. Diagonal = the straight line between the two gables' front corners,
@@ -11501,6 +11590,8 @@ function bkLine(key) {
   } else if (key === 'ff') {
     const fd = ffDoors();
     l = { name: 'Fridge Freezer Larder', code: ffCode(), w: FF.w, h: FF.h, d: FF.d, v: FF.v, opt: FF.split + ' split, ' + FF.hinge + ' door hinge, doors ' + fd.w + ' x ' + fd.b + ' and ' + fd.w + ' x ' + fd.t + ' mm, ' + FF_AP + ' mm appliance opening with 1 x fixed shelf above, full top, fixed back on the top section, removable back ' + FF_RB + ' mm high in the middle of the opening, 5 x appliance hinges' + (FF.gola !== 'none' ? ', ' + lgText(FF) : '') };
+  } else if (key === 'spt') {
+    drwUSync('spt'); l = { name: 'Space Tower Larder', code: sptCode(), w: SPT.w, h: SPT.h, d: SPT.d, v: SPT.v, opt: sptDoorTxt() + ', 5 x ' + SPT.sys + ' internal drawers with internal fronts, 1 x fixed internal top, 2 x adjustable shelves above, ' + sptHinges() + ' x hinges, ' + tallLegs(SPT.w) + ' x legs' };
   } else if (key === 'pan') {
     l = { name: 'Pantry Larder', code: panCode(), w: PAN_W, h: PAN.h, d: PAN.d, v: PAN.v, opt: panDoorTxt() + ', no centre post, ' + (PAN.chest ? 'internal chest of 3 x ' + PAN.sys + ' drawers with scalloped fronts and a ' + PAN_FILL + ' mm filler each side, 1 x fixed internal top on top of the drawers, 3 x equal adjustable shelves above' : 'no internal chest, 5 x equal adjustable shelves') + ', ' + panHinges() + ' x hinges' };
   } else if (key === 'dlr') {
@@ -11560,7 +11651,7 @@ function bkLine(key) {
     l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers, ' + s.run + ' mm' + (s.sys === 'Legrabox' && (s.hd || LG_RUN[s.run] == null) ? ' 70 kg' : '') + ' runners' + (S ? ', heights ' + s.hts.map(hmm).join(' / ') + ' mm (top to bottom)' : '') + (s.inner ? ', internal front' + (S ? ' ' + hmm(s.inH) + ' mm' : '') : '') + (S && s.glass ? ', ' + (s.sys === 'Legrabox' ? s.gtype + ' glass sides on the C drawers' : 'glass sides on the D drawers') : '') + (s.ct && ctFor(s.w, s.sys, s.run) ? ', ' + ctText(ctFor(s.w, s.sys, s.run)) : '') + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
   if (DRW_UNITS[key]) drwUSync(key);
-  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
+  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   if (DRW_UNITS[key]) { try { const r = poUnit(l); if (r && r.drw && r.drw.length) { const g = {}; r.drw.forEach(x => { const n = dpDrawerName(x); g[n] = (g[n] || 0) + 1; }); l.opt += ', ' + Object.entries(g).map(([n, c]) => c + ' x ' + n).join(', '); } if (r && r.ct) l.opt += ', ' + ctText(r.ct); } catch (e) { } }   // the drawer boxes the customer picked
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
@@ -11917,6 +12008,14 @@ function poUnit(u) {
   if (k === 'oven') {
     const r = C({ top: 'none', back: false, shelves: 0, fixed: 1, fronts: s.drawer ? [[w - 4, 115]] : [], legs: true });      // the fixed shelf comes with or without the drawer
     if (s.drawer) { r.drw = antDr(1, 115, { h: 'N' }); r.f.runners[s.sys || 'Antaro'] = 1; } return r;
+  }
+  if (k === 'spt') {                                                                                    // space tower: full top, back, fixed top over the 5 internal drawers, 2 shelves, tall doors
+    const pair = w > 600, split = s.doors === 'split', dd = split ? (pair ? [[(w - 7) / 2, 1245], [(w - 7) / 2, 1245], [(w - 7) / 2, H - 10 - 1245], [(w - 7) / 2, H - 10 - 1245]] : [[w - 4, 1245], [w - 4, H - 10 - 1245]]) : doorSet(w, H, pair);
+    const r = C({ top: 'full', back: true, shelves: 2, fixed: 1, doors: dd, legs: true });
+    r.f.hinges = pair ? 10 : 5; r.f.legs = tallLegs(w); r.f.clips = tallClips(w);
+    const fms = SPT_FM, uh = s.uh || ['M', 'D', 'D', 'D', 'D']; r.drw = [];
+    fms.forEach((fm, i) => { const x = antDr(1, fm, { h: uh[i], run: s.run, glass: s.uglass, gtype: s.ugtype, hd: s.uhd })[0]; x.inDr = true; r.drw.push(x, { sys: x.sys, L: x.L, h: x.h, inner: true, fo: true }); });   // every drawer carries an internal front
+    r.f.runners[s.sys || 'Antaro'] = fms.length; return r;
   }
   if (k === 'pan') {                                                                                    // pair of full height doors, 2 shelves, 3 internal drawers, centre posts, full top and back
     const chest = s.chest !== false, z = 3 * 160 + 2 * 3 + 4;
@@ -12384,7 +12483,7 @@ const dpDrawerName = x => {
   const mm = drwMm(x), hh = x.h ? ' ' + x.h + ' (' + mm + ' mm)' : '';
   if (x.fo) return x.sys + ' internal front' + hh + (x.sys === 'Antaro' ? ' with internal front clips' : '');
   const extra = x.sys === 'Antaro' && x.h === 'D' ? (x.glass ? ', glass sides' : ', gallery rail') : x.glass ? ', ' + x.gtype + ' glass sides' : '';
-  return x.sys + (x.inner ? ' internal' : '') + ' drawer' + hh + ', ' + (x.L ? x.L + ' mm' + (drwRun70(x) ? ' 70 kg' : '') + ' runners' : 'NO RUNNER FITS') + extra + (x.inDr ? ', internal drawer behind the deep front (takes the internal front)' : '') + (x.board ? ', scalloped front cut from the cabinet board' : '');
+  return x.sys + (x.inner ? ' internal' : '') + ' drawer' + hh + ', ' + (x.L ? x.L + ' mm' + (drwRun70(x) ? ' 70 kg' : '') + ' runners' : 'NO RUNNER FITS') + extra + (x.inDr ? ', internal drawer (takes the internal front)' : '') + (x.board ? ', scalloped front cut from the cabinet board' : '');
 };
 function antDrawerCost(x) {                                                             // Antaro and Legrabox; Merivo is not priced yet
   const S = drwS(x.sys), H = S && S.h[x.h], L = x.L; if (!H) return null;
@@ -12406,14 +12505,17 @@ const drwAh = (sys, h, glass) => { const S = drwS(sys), H = S && S.h[h]; if (!H)
 const DRW_UNITS = {
   dl: { s: () => DL, fms: () => [200], labels: () => [DL.w > 600 ? 'Drawers (x2)' : 'Drawer'], ref: () => dlRefresh() },
   pan: { s: () => PAN, fms: () => [160], labels: () => ['Internal drawers (x3)'], ref: () => panRefresh(), noGlass: true },
+  spt: { s: () => SPT, fms: () => SPT_FM.slice(), labels: () => ['Top', 'Pan 1', 'Pan 2', 'Pan 3', 'Pan 4'], ref: () => sptRefresh(), innerOnly: true, top: 'M' },   // space tower: every drawer takes an internal front
   ohl: { s: () => OHL, fms: () => (ohlP().dr || []).slice(), labels: () => (ohlP().dr || []).map((f, i, a) => a.length === 1 ? 'Drawer' : i === 0 ? 'Top' : 'Drawer ' + (i + 1)), ref: () => ohlRefresh() }
 };
 function drwUSync(k) {
   const U = DRW_UNITS[k], s = U.s(), S = drwS(s.sys), fms = U.fms(), ins = s.d - (s.v || 0) - PO_T, lens = (S || DRW_SYS.Antaro).lens.filter(L => L + DP_CLEAR <= ins);
   if (!(S || DRW_SYS.Antaro).lens.includes(s.run)) s.run = DP_RUN_STD;
   if (lens.length && !lens.includes(s.run)) s.run = lens.filter(L => L <= s.run).pop() || lens[0];
-  if (!Array.isArray(s.uh) || s.uh.length !== fms.length) s.uh = fms.map(f => k === 'pan' ? 'M' : dpDefH(f, s.sys, s.run));
-  if (S) s.uh = s.uh.map((h, i) => dpHOpts(fms[i], s.run, s.sys).includes(h) ? h : (k === 'pan' && dpHOpts(fms[i], s.run, s.sys).includes('M') ? 'M' : dpDefH(fms[i], s.sys, s.run)));
+  const opts = i => dpHOpts(fms[i], s.run, s.sys).filter(h => !U.innerOnly || dpInOpts(s.run, s.sys).includes(h));
+  const def = i => { const o = opts(i), d = k === 'pan' || (U.top && i === 0) ? (U.top || 'M') : dpDefH(fms[i], s.sys, s.run); return o.includes(d) ? d : o.includes('M') ? 'M' : o[0] || d; };
+  if (!Array.isArray(s.uh) || s.uh.length !== fms.length) s.uh = fms.map((f, i) => def(i));
+  if (S) s.uh = s.uh.map((h, i) => opts(i).includes(h) ? h : def(i));
   s.uglass = !U.noGlass && !!s.uglass && !!S && s.uh.some(h => drwGlassOk(s.sys, h, s.run));
   if (s.ugtype !== 'smoke') s.ugtype = 'clear';
   s.uhd = !!s.uhd && s.sys === 'Legrabox';
@@ -12427,7 +12529,7 @@ function drwPick(k) {
   const run = lens.length ? sel('run', '', lens.map(L => [L, L + (L === DP_RUN_STD ? ' (standard)' : '') + (s.sys === 'Legrabox' && LG_RUN[L] == null ? ' (70 kg only)' : '')]), s.run, 'Runner length (mm)', 150) : `<div class="muted" style="font-size:13px">Too shallow for any runner.</div>`;
   if (!S) return run;
   const labels = U.labels();
-  const heights = `<div class="muted" style="font-size:13px">Drawer box height (mm):</div><div class="row" style="gap:6px;flex-wrap:wrap">${fms.map((f, i) => sel('h', `data-i="${i}"`, dpHOpts(f, s.run, s.sys).map(h => [h, h + ' ' + S.h[h].mm]), s.uh[i], labels[i])).join('')}</div>`;
+  const heights = `<div class="muted" style="font-size:13px">Drawer box height (mm):</div><div class="row" style="gap:6px;flex-wrap:wrap">${fms.map((f, i) => sel('h', `data-i="${i}"`, dpHOpts(f, s.run, s.sys).filter(h => !U.innerOnly || dpInOpts(s.run, s.sys).includes(h)).map(h => [h, h + ' ' + S.h[h].mm]), s.uh[i], labels[i])).join('')}</div>`;
   const hd = s.sys === 'Legrabox' && LG_R70[s.run] != null ? (LG_RUN[s.run] == null ? `<div class="muted" style="font-size:13px">${s.run} mm runners come as 70 kg runners only.</div>`
     : `<label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="uDrw" data-k="${k}" data-f="hd" ${s.uhd ? 'checked' : ''}><span><b>70 kg runners</b> (heavy duty, on the M, C and F drawers)</span></label>`) : '';
   const gOk = !U.noGlass && fms.some(f => dpHOpts(f, s.run, s.sys).includes(S.glassH)) && drwGlassOk(s.sys, S.glassH, s.run);
@@ -12585,6 +12687,7 @@ function cOrders() {
   if (UI.orderCat === 'ohldetails') return ohlDetails();
   if (UI.orderCat === 'lcdetails') return lcDetails();
   if (UI.orderCat === 'pandetails') return panDetails();
+  if (UI.orderCat === 'sptdetails') return sptDetails();
   if (UI.orderCat === 'dlrdetails') return dlrDetails();
   if (UI.orderCat === 'lshdetails') return lshDetails();
   if (UI.orderCat === 'walldetails') return wallDetails();
@@ -12615,7 +12718,7 @@ function cOrders() {
   if (UI.orderCat === 'larders') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Larders</h1><p>Choose a width, then the height and door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${ffCard()}${ohlCard()}${lcCard()}${panCard()}${dlrCard()}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${ffCard()}${ohlCard()}${lcCard()}${panCard()}${sptCard()}${dlrCard()}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -12632,7 +12735,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', wwinedetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', sptdetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', wwinedetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
@@ -14241,6 +14344,7 @@ function newOrderInventory() {
   [[2150, 'FFT'], [1970, 'FFM']].forEach(([h, p]) => ['50/50', '70/30'].forEach(s => add('Fridge Freezer Larder ' + h + ' ' + s, p + '600' + s, 'cat-tall', 'Larders', '600 Fridge Freezer Larder ' + h + ' High 570 Deep to suit a ' + s + ' split. 1800 opening, fixed shelf above, 5 appliance hinges. Gola option.', h, 600, 570)));
   OHL_P.forEach(p => (p.dr ? ['Antaro', 'Legrabox', 'Merivo'] : [null]).forEach(s => add('600 ' + OHL_TEXT(p) + (s ? ' (' + s + ' drawers)' : ''), OHL_CODE(p, s), 'cat-appl', 'Larders', 'Oven housing larder. Gola option.', p.h, 600, 570)));
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => [['A', 'Antaro'], ['L', 'Legrabox'], ['M', 'Merivo']].forEach(([c, sys]) => add('Pantry Larder 1000 ' + h + ' ' + sys, p + c + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 2 shelves and 3 ' + sys + ' internal scalloped fronts, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570)));
+  [[1970, 'LMSP'], [2150, 'LTSP']].forEach(([hh, p]) => [['A', 'Antaro'], ['L', 'Legra']].forEach(([c, sys]) => SPT_WIDTHS.forEach(w => add(w + ' ' + sys + ' Space Tower Larder ' + hh, p + c + w, 'cat-tall', 'Larders', w + ' ' + sys + ' Space Tower Larder ' + hh + ' High 570 Deep, 5 internal drawers with internal fronts.', hh, w, 570))));
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => add('Pantry Larder 1000 ' + h + ' without internal chest', p + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 5 equal adjustable shelves, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570));
   [[1970, 'LMC'], [2150, 'LTC']].forEach(([h, p]) => LC_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Larder ' + w + ' ' + h + ' ' + s + ' hand blank', p + w + (s === 'right' ? 'RB' : 'LB'), 'cat-tall', 'Larders', 'Corner larder, one door and a blank; the customer sets the door size. MTM option.', h, w, 570, { blank: true }))));
   WALL_HEIGHTS.forEach(h => [['WR', 300, 'Wall Wine Rack'], ['WRX', 600, 'Wall X Wine Rack']].forEach(([t, w, nm]) => add(nm + ' ' + w + ' ' + h, WALL_PREFIX[h] + t + w, 'cat-wall', 'Wall' + h + 'H', nm + ', ' + h + ' High 300 Deep. Any width.', h, w, 300, { doors: false })));
