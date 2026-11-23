@@ -9680,12 +9680,18 @@ CH.dlDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFi
 /* Kitchen > All Bases: Highline Bin Unit, a pull-out bin cabinet. The width sets the
    bin layouts: 600 has two (2 x 45L, or 2 x 25L + 2 x 15L), 500 has 2 x 35L, 400 and 300 have 1 x 25L. */
 const BIN = { w: 600, opt: 0, d: 570, v: 50 };           // pull-outs are fixed at 570 deep with a 50 void
-const BIN_WIDTHS = [300, 400, 500, 600];
+const BIN_WIDTHS = [300, 400, 450, 500, 600];
+/* the pull-out bin sets we buy (cost prices given 23 Nov 2026): Integra soft close pull-outs, and the Vauth-Sagel Envi Space XX Pro S for 450 */
 const BIN_OPTS = {
-  300: [{ label: '1 x 25L', cols: [[25]] }],
-  400: [{ label: '1 x 25L', cols: [[25]] }],
-  500: [{ label: '2 x 35L', cols: [[35], [35]] }],
-  600: [{ label: '2 x 45L', cols: [[45], [45]] }, { label: '2 x 25L + 2 x 15L', cols: [[25, 15], [25, 15]] }]
+  300: [{ label: '1 x 35L', name: 'Integra 300mm pull-out soft close waste bin 35L (1 x 35L)', p: 99.00, cols: [[35]] }],
+  400: [{ label: '2 x 32L', name: 'Integra 400mm pull-out soft close waste bin 64L (2 x 32L)', p: 111.63, cols: [[32], [32]] }],
+  450: [{ label: '2 x 35L', name: 'Integra 450mm pull-out soft close waste bin 70L (2 x 35L)', p: 113.00, cols: [[35], [35]] },
+        { label: 'Vauth-Sagel Envi Space XX Pro S', name: 'Vauth-Sagel VS Envi Space XX Pro S 450mm pull-out waste bin', p: 199.63, cols: [[35], [20]] }],
+  500: [{ label: '2 x 35L', name: 'Integra 500mm pull-out soft close waste bin 70L (2 x 35L)', p: 116.00, cols: [[35], [35]] },
+        { label: '1 x 60L', name: 'Integra 500mm pull-out soft close waste bin 60L (1 x 60L)', p: 138.00, cols: [[60]] }],
+  600: [{ label: '2 x 45L', name: 'Integra 600mm pull-out soft close waste bin 90L (2 x 45L)', p: 144.00, cols: [[45], [45]] },
+        { label: '2 x 35L + 2 x 8L', name: 'Integra 600mm pull-out soft close waste bin 86L (2 x 35L + 2 x 8L)', p: 136.29, cols: [[35, 8], [35, 8]] },
+        { label: '3 x 32L', name: 'Integra 600mm pull-out soft close waste bin 96L (3 x 32L)', p: 145.00, cols: [[32], [32], [32]] }]
 };
 Object.keys(BIN_OPTS).forEach(k => BIN_OPTS[k].push({ label: 'No bin', cols: null }));   // every width also comes with no bin fitted
 const binCode = w => 'BHL' + w + 'BS';                // BHL + width + BS, e.g. BHL600BS
@@ -9728,7 +9734,7 @@ function binDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${BIN_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="binW" data-w="${x}">${x}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + binCode(w))}${row('BINS', binOpt().label)}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + binCode(w))}${row('BINS', binOpt().cols ? binOpt().name : 'No bin')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${binPick(sel)}
       ${ocDetail(null)}
       ${bkRow('bin')}
@@ -9979,12 +9985,12 @@ A.ovenSys = t => { OVEN.sys = t.dataset.v; ovenRefresh(); };
 /* Kitchen > All Larders: Fridge Freezer Larder, 600 wide, 1970 (FFM) or 2150 (FFT) high, for a 50/50 or 70/30 fridge freezer.
    The heights are the cabinet without legs. Inside, 1800 mm from the base panel is the opening for the appliance, with a fixed shelf on top of it.
    Two doors: the lower one over the freezer, the upper one over the fridge. */
-const FF = { h: 2150, split: '50/50', hinge: 'left', w: 600, d: 570, v: 50, gola: 'none' };
+const FF = { h: 1970, split: '50/50', hinge: 'left', w: 600, d: 570, v: 50, gola: 'none' };
 const FF_AP = 1800;                                                // the opening for the appliance, from the top of the base panel to the underside of the fixed shelf
 const FF_T = 18.2;
 const FF_RB = 400;                                                 // the removable back: just a panel in the middle of the opening, 400 high (a guess)
 const ffCode = () => (FF.h === 2150 ? 'FFT' : 'FFM') + FF.w + FF.split;
-const ffDoors = () => { const fz = FF.split === '70/30' ? 0.3 : 0.5, b = Math.round(FF_T + fz * FF_AP); return { w: FF.w - 4, b, t: FF.h - 10 - b }; };   // doors sit on the cabinet: width less 4, and the two heights add up to the height less 5 top and bottom plus a 5 gap
+const ffDoors = () => { const fz = FF.split === '70/30' ? 0.3 : 0.5, b = FF.h === 2150 && fz === 0.5 ? 895 : Math.round(FF_T + fz * FF_AP); return { w: FF.w - 4, b, t: FF.h - 10 - b }; };   // 2150 high, 50/50: 1245 top and 895 bottom (user, 23 Nov 2026)   // doors sit on the cabinet: width less 4, and the two heights add up to the height less 5 top and bottom plus a 5 gap
 /* Larder Gola: the customer picks the gable (left or right) that carries the Gola; that gable is set back 20 mm from the front. */
 const LGOLA_SB = 20;
 const lgSet = s => s && s.gola && s.gola !== 'none' ? { side: s.gola, d: LGOLA_SB } : null;
@@ -9997,7 +10003,7 @@ const ffArt = (extra, bare) => baseArt(FF.w, FF.d, FF.h, hArt(FF.hinge), FF.v, O
 function ffPick(sel) {
   const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
   const grid = items => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${items.join('')}</div>`;
-  return `<div class="muted">Height:</div>${grid([2150, 1970].map(h => btn('ffH', h, h + ' high', FF.h === h)))}
+  return `<div class="muted">Height:</div>${grid([1970, 2150].map(h => btn('ffH', h, h + ' high', FF.h === h)))}
     <div class="muted">Fridge freezer split:</div>${grid(['50/50', '70/30'].map(s => btn('ffSplit', s, s, FF.split === s)))}
     <div class="muted">Door hinge:</div>${grid(['left', 'right'].map(h => btn('ffHinge', h, h === 'left' ? 'Left hinge' : 'Right hinge', FF.hinge === h)))}
     ${lgPick('ffGola', FF, sel)}`;
@@ -11134,14 +11140,13 @@ const DRS_RUN = { M: 270, N: 450 };
 const drsLens = () => [DRS_RUN[DRS.dh] || 270];
 function drsSync() {
   DRS.sys = 'Antaro';
-  if (!DRS_RUN[DRS.dh]) DRS.dh = 'M';
+  DRS.dh = 'M';                                                                            // the dresser drawer is always Antaro M on 270 runners (user, 23 Nov 2026)
   DRS.run = DRS_RUN[DRS.dh]; DRS.fh = DRS_FH[DRS.dh]; DRS.dglass = false;
 }
 const drsHText = h => h + ' height (' + ANT_H[h].mm + ' mm high sides), ' + DRS_RUN[h] + ' mm runners and sides';
 const drsDrawerSpec = () => 'Antaro ' + drsHText(DRS.dh) + ', ' + DRS.fh + ' mm front';
 function drsDrawerOpts(btn) {
-  return `<div class="muted">Drawer:</div><div class="stack" style="gap:6px">${btn('drsDh', 'M', 'Standard: M height, 84 mm sides, 270 mm runners', DRS.dh === 'M')}${btn('drsDh', 'N', 'Option: N height, 68.5 mm sides, 450 runners', DRS.dh === 'N')}</div>
-    <div class="muted" style="font-size:13px;line-height:1.5">Chosen: <b>Antaro ${drsHText(DRS.dh)}</b>, ${DRS.fh} mm drawer front.</div>`;
+  return `<div class="muted" style="font-size:13px;line-height:1.5">Drawer: <b>Antaro ${drsHText('M')}</b>, ${DRS.fh} mm drawer front.</div>`;
 }
 const DRS_WIDTHS = [300, 350, 400, 450, 500, 550, 600, 700, 800, 900, 1000, 1100, 1200];
 const drsPrefix = () => ({ 1065: 'DS', 1210: 'DM', 1390: 'DT' })[DRS.h];                    // 1065 is DS, 1210 is DM, 1390 is DT
@@ -11541,7 +11546,7 @@ function bkLine(key) {
   } else if (key === 'spo') {
     l = { name: 'Highline Slim Pull-out Unit', code: spoCode(SPO.w), w: SPO.w, d: SPO.d, v: SPO.v, opt: SPO.pull !== false ? 'Slim pull-out' : 'Without pull-out, plain door cabinet' };
   } else if (key === 'bin') {
-    l = { name: 'Highline Bin Unit', code: binCode(BIN.w), w: BIN.w, d: BIN.d, v: BIN.v, opt: binOpt().cols ? 'Pull-out bins, ' + binOpt().label : 'No bin' };
+    l = { name: 'Highline Bin Unit', code: binCode(BIN.w), w: BIN.w, d: BIN.d, v: BIN.v, opt: binOpt().cols ? 'Pull-out bins, ' + binOpt().name : 'No bin' };
   } else if (key === 'dl') {
     l = { name: 'Drawerline Single Base Unit', code: dlCode(DL.w), w: DL.w, d: DL.d, v: DL.v, opt: (DL.w <= 600 ? hingeText(DL.hinge, DL.w) : 'Pair of doors') + ', ' + (dlDouble() ? 'double ' : 'single ') + DL.sys + ' drawer' };
   } else if (key === 'sink') {
@@ -11552,12 +11557,12 @@ function bkLine(key) {
   } else {
     const id = key.slice(3), tp = dpType(id), s = DPK[id]; if (!tp) return; dpSync(tp, s);
     const S = drwS(s.sys), hmm = h => h + ' ' + S.h[h].mm;
-    l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers, ' + s.run + ' mm' + (s.sys === 'Legrabox' && (s.hd || LG_RUN[s.run] == null) ? ' 70 kg' : '') + ' runners' + (S ? ', heights ' + s.hts.map(hmm).join(' / ') + ' mm (top to bottom)' : '') + (s.inner ? ', internal front' + (S ? ' ' + hmm(s.inH) + ' mm' : '') : '') + (S && s.glass ? ', ' + (s.sys === 'Legrabox' ? s.gtype + ' glass sides on the C drawers' : 'glass sides on the D drawers') : '') + (tp.gola ? ', ' + dpGolaText(tp) : '') };
+    l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers, ' + s.run + ' mm' + (s.sys === 'Legrabox' && (s.hd || LG_RUN[s.run] == null) ? ' 70 kg' : '') + ' runners' + (S ? ', heights ' + s.hts.map(hmm).join(' / ') + ' mm (top to bottom)' : '') + (s.inner ? ', internal front' + (S ? ' ' + hmm(s.inH) + ' mm' : '') : '') + (S && s.glass ? ', ' + (s.sys === 'Legrabox' ? s.gtype + ' glass sides on the C drawers' : 'glass sides on the D drawers') : '') + (s.ct && ctFor(s.w, s.sys, s.run) ? ', ' + ctText(ctFor(s.w, s.sys, s.run)) : '') + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
   if (DRW_UNITS[key]) drwUSync(key);
   { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
-  if (DRW_UNITS[key]) { try { const r = poUnit(l); if (r && r.drw && r.drw.length) { const g = {}; r.drw.forEach(x => { const n = dpDrawerName(x); g[n] = (g[n] || 0) + 1; }); l.opt += ', ' + Object.entries(g).map(([n, c]) => c + ' x ' + n).join(', '); } } catch (e) { } }   // the drawer boxes the customer picked
+  if (DRW_UNITS[key]) { try { const r = poUnit(l); if (r && r.drw && r.drw.length) { const g = {}; r.drw.forEach(x => { const n = dpDrawerName(x); g[n] = (g[n] || 0) + 1; }); l.opt += ', ' + Object.entries(g).map(([n, c]) => c + ' x ' + n).join(', '); } if (r && r.ct) l.opt += ', ' + ctText(r.ct); } catch (e) { } }   // the drawer boxes the customer picked
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
   Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: col ? 'Group ' + ocGroup(col) : '', pgrp: col ? ocGroup(col) : 1, edging: ocEdgeText() });
   return l;
@@ -11882,7 +11887,7 @@ function poUnit(u) {
     const sys = s.sys || 'Antaro', S = drwS(sys), ok = (S || DRW_SYS.Antaro).lens.filter(L => L + DP_CLEAR <= d - v - T), want = o.run || DP_RUN_STD;
     const L = o.force ? want : !ok.length ? null : ok.includes(want) ? want : (ok.filter(x => x <= want).pop() || ok[0]);
     let h = o.h || dpDefH(fm, sys, L); if (S && L && !drwAvail(sys, h, L)) h = dpDefH(fm, sys, L);
-    return Array.from({ length: n }, () => ({ sys, L, h: S ? h : null, glass: !!S && !!o.glass && drwGlassOk(sys, h, L), gtype: o.gtype || 'clear', hd: !!o.hd, inner: !!o.inner }));
+    return Array.from({ length: n }, () => ({ sys, L, h: S ? h : null, glass: !!S && !!o.glass && drwGlassOk(sys, h, L), gtype: o.gtype || 'clear', hd: !!o.hd, inner: !!o.inner, lw: o.lw || w - 2 * T }));
   };
   const lgPo = (r, sp) => {                                                                         // larder Gola: the gable on the Gola side is 20 shallower
     if (!sp || !sp.gola || sp.gola === 'none') return r;
@@ -11897,10 +11902,14 @@ function poUnit(u) {
   if (k === 'dl') {
     const dbl = w > 600, fr = dbl ? [[(w - 7) / 2, 200], [(w - 7) / 2, 200]] : [[w - 4, 200]];
     const r = C({ top: 'rail', back: true, shelves: 1, fronts: fr, doors: doorSet(w, H - 204, pairBase), posts: dbl ? 2 : 0, postLen: H - T - 230, legs: true, extra: dbl ? [{ name: 'Drawer divider', l: 230, w: d - v - T - fe, q: 1, ef: 230, er: 230 }] : [] });
-    r.drw = antDr(fr.length, 200, { h: (s.uh || [])[0], run: s.run, glass: s.uglass, gtype: s.ugtype, hd: s.uhd }); r.f.runners[s.sys || 'Antaro'] = fr.length; return r;
+    r.drw = antDr(fr.length, 200, { h: (s.uh || [])[0], run: s.run, glass: s.uglass, gtype: s.ugtype, hd: s.uhd, lw: dbl ? (w - 3 * T) / 2 : w - 2 * T }); if (s.ct && !dbl) r.ct = ctFor(w, s.sys || 'Antaro', r.drw[0] && r.drw[0].L); r.f.runners[s.sys || 'Antaro'] = fr.length; return r;
   }
   if (k === 'bin' && u.opt === 'No bin') return C({ top: 'rail', back: true, shelves: 0, doors: [[w - 4, H - 5]], legs: true });      // no bin: a plain door cabinet, priced as the cabinet
-  if (k === 'bin') return sup(C({ top: 'rail', back: true, shelves: 0, doors: [[w - 6, H - 6]], hingesPerDoor: 0, legs: true }), 'bin', 'Bin pull-out set (' + (u.opt || 'bins') + ')');
+  if (k === 'bin') {                                                                                    // the bin set is bought in: priced from its own cost
+    const r = C({ top: 'rail', back: true, shelves: 0, doors: [[w - 6, H - 6]], hingesPerDoor: 0, legs: true }), o = (BIN_OPTS[w] || []).find(x => x.cols && ('Pull-out bins, ' + x.name === u.opt || 'Pull-out bins, ' + x.label === u.opt)) || (BIN_OPTS[w] || [])[s.opt];
+    if (o && o.p) r.binSet = { name: o.name, p: o.p }; else r.f.other['Bin pull-out set (' + (u.opt || 'bins') + ')'] = 1;
+    return r;
+  }
   if (k === 'spo' && s.pull === false) return C({ top: 'rail', back: true, shelves: 0, doors: [[w - 4, H - 5]], legs: true });      // without the pull-out: a plain door cabinet, priced as the cabinet
   if (k === 'spo') return sup(C({ top: 'rail', back: true, shelves: 0, doors: [[w - 6, H - 6]], hingesPerDoor: 0, legs: true }), 'spo', 'Slim pull-out set');
   if (k === 'bel') { const pair = w > 600 || s.doors === 'double'; return C({ top: 'full', back: true, shelves: 1, doors: doorSet(w, H, pair), posts: pair ? 2 : 0, postLen: H - 2 * T, legs: true }); }
@@ -11959,7 +11968,7 @@ function poUnit(u) {
     const avail = BASE_H - 5 - (n - 1) * 3, hs = t.hs ? t.hs : t.fronts.map(x => poR(avail * x));
     const fr = hs.map(x => [w - 4, x]), mg = t.id ? dpMerge(t, s) : -1; if (mg > 0) fr.splice(mg - 1, 2, [w - 4, hs[mg - 1] + 3 + hs[mg]]);   // internal front: the top front and the deep front become one front
     const r = C({ top: 'rail', back: true, shelves: 0, fronts: fr, legs: true });
-    r.drw = t.id ? dpDrawers(t, s) : null;                                                         // each drawer: system, height, runner length, glass sides, internal
+    r.drw = t.id ? dpDrawers(t, s).map(x => Object.assign(x, { lw: w - 2 * T })) : null; if (s.ct) r.ct = ctFor(w, s.sys || 'Antaro', s.run || DP_RUN_STD);                                                         // each drawer: system, height, runner length, glass sides, internal
     r.f.runners[s.sys || 'Antaro'] = r.drw ? r.drw.filter(x => !x.fo).length : n; return r;          // the internal front has no runners
   }
   if (k === 'wall' || k === 'wallg') {
@@ -12009,13 +12018,13 @@ function poUnit(u) {
     const sh = Math.max(1, Math.floor((H - zone) / 270)), fw = cols === 2 ? (w - 7) / 2 : w - 4, fr = [];
     for (let i = 0; i < rows * cols; i++) fr.push([fw, fh]);
     const r = wallBase({ shelves: sh, glassShelves: !!s.glass, fixed: rows ? 1 : 0, doors: doorSet(w, dh + 5, pair), fronts: fr, extra: cols === 2 ? [{ name: 'Drawer divider', l: zone, w: d - v - T - fe, q: 1, ef: zone, er: zone }] : [] });
-    if (rows) { r.drw = antDr(rows * cols, fh, { h: s.dh === 'N' ? 'N' : 'M', run: s.dh === 'N' ? 450 : 270, force: true }); r.f.runners[s.sys || 'Antaro'] = rows * cols; } return r;
+    if (rows) { r.drw = antDr(rows * cols, fh, { h: 'M', run: 270, force: true, lw: cols === 2 ? (w - 3 * T) / 2 : w - 2 * T }); r.f.runners[s.sys || 'Antaro'] = rows * cols; } return r;
   }
   return null;
 }
 /* board nesting: strips across the sheet, longest side along the sheet; a fair estimate of how many sheets the pieces need */
-function poNest(pieces) {
-  const L = PO.L - 2 * PO.trim, W = PO.W - 2 * PO.trim, kf = PO.kerf, sheets = [];
+function poNest(pieces, sl, sw) {
+  const L = (sl || PO.L) - 2 * PO.trim, W = (sw || PO.W) - 2 * PO.trim, kf = PO.kerf, sheets = [];
   pieces.map(p => p.l >= p.w ? { a: p.l, b: p.w } : { a: p.w, b: p.l }).sort((x, y) => y.b - x.b || y.a - x.a).forEach(p => {
     let placed = false;
     for (const sh of sheets) {
@@ -12043,11 +12052,17 @@ function poBuild(order) {
     });
     Object.keys(R.f).forEach(x => R.f[x] += r.f[x] || 0);
     Object.entries(r.f.runners).forEach(([k, n]) => R.runners[k] = (R.runners[k] || 0) + n);
-    (r.drw || []).forEach(x => { const nm = dpDrawerName(x); R.drw[nm] = (R.drw[nm] || 0) + 1; });
+    (r.drw || []).forEach(x => { const nm = dpDrawerName(x); R.drw[nm] = (R.drw[nm] || 0) + 1;
+      drwPanels(x).forEach(p => { const cc = costCfg(), db = R.boards[DRW_BOARD] = R.boards[DRW_BOARD] || { pieces: [], area: 0, count: 0, sl: cc.dboardL, sw: cc.dboardW };
+        db.pieces.push({ l: p.l, w: p.w }); db.area += p.l * p.w; db.count++;
+        const ck = DRW_BOARD + '|' + p.name + '|' + p.l + '|' + p.w; R.cut[ck] = R.cut[ck] || { board: DRW_BOARD, name: p.name, l: p.l, w: p.w, q: 0 }; R.cut[ck].q++; }); });
+    R.euro = (R.euro || 0) + drwEuro(r, costCfg().euroPerRunner);
+    if (r.binSet) { R.other2 = R.other2 || {}; R.other2[r.binSet.name] = (R.other2[r.binSet.name] || 0) + 1; }
+    if (r.ct) { const ck = 'Cutlery tray ' + r.ct.code + ' (422 x ' + r.ct.w + ' mm, charcoal)'; R.other2 = R.other2 || {}; R.other2[ck] = (R.other2[ck] || 0) + 1; }
     Object.entries(r.f.other).forEach(([k, n]) => R.other[k] = (R.other[k] || 0) + n);
     r.glass.forEach(g => { const gk = g.what + ' ' + g.w + ' x ' + g.d + ' mm'; R.glass[gk] = (R.glass[gk] || 0) + 1; });
   });
-  Object.values(R.boards).forEach(b => { b.sheets = poNest(b.pieces); b.util = b.sheets ? b.area / (b.sheets * PO.L * PO.W) : 0; });
+  Object.values(R.boards).forEach(b => { b.sheets = poNest(b.pieces, b.sl, b.sw); b.util = b.sheets ? b.area / (b.sheets * (b.sl || PO.L) * (b.sw || PO.W)) : 0; });
   return R;
 }
 /* ---------- Price calculator (New Orders) ----------
@@ -12056,8 +12071,8 @@ function poBuild(order) {
    Doors and fronts are counted as board and edging too. Prices are typed in under Admin > Pricing and saved in the settings. */
 const COST_META = [
   ['General', [['labourRate', 'Labour rate (£ per hour)', 12.71], ['labourHours', 'Labour hours per cabinet', 2], ['overhead', 'Overhead (% on materials and labour)', 5], ['markup', 'Markup (% on the cost)', 54], ['mtmSur', 'MTM surcharge (% on the price, 0 = none)', 0], ['waste', 'Board and edging waste (%)', 10], ['sheetL', 'Board sheet length (mm)', 2800], ['sheetW', 'Board sheet width (mm)', 2070], ['doorsOn', 'Include doors and fronts in the price (1 = yes, 0 = cabinets only)', 0]]],
-  ['Board and edging', [['board1', '18.2mm MFC sheet 2800 x 2070, Group 1 (£)', 48.10], ['board2', '18.2mm MFC sheet 2800 x 2070, Group 2 (£)', 64.00], ['edge1', '2mm edging per metre, Group 1 (£)', 0.31], ['edge2', '2mm edging per metre, Group 2 (£)', 0.40], ['edge08_1', '0.8mm edging per metre, Group 1 (£)', 0.31], ['edge08_2', '0.8mm edging per metre, Group 2 (£)', 0.40]]],
-  ['Hardware', [['legTop', 'Leg top section 637.81.302 (each)', 0.20], ['legFoot', 'Leg 150mm foot shaft 637.81.375 (each)', 0.38], ['clip', 'Plinth clip 637.81.340 (each)', 0.02], ['peg', 'Shelf support 2-pin F0022546 (each)', 0.05], ['dowel100', 'Wooden dowel 8 x 35mm J66-417 (per box of 100)', 0.72], ['cam', '18mm cam J601-509 (each)', 0.03], ['mpin', '34mm metal pin J601-517 (each)', 0.04], ['hanger', 'Traser cabinet hanger I41-0400 (per pair)', 1.72], ['plate', 'Wall plate I40-184 (each)', 0.08], ['hinge', '107 degree hinge 75BB1550 (each)', 1.63], ['hingePlate', 'Hinge mounting plate 174H7100E (each)', 0.57], ['blindHinge', '9 x 9 blind corner hinge SYH060 (each)', 0.81], ['glassM2', 'Glass shelf (per square metre)', 100.50], ['glassPeg', 'Glass shelf peg (each, 0 = not priced yet)', 0]]],
+  ['Board and edging', [['board1', '18.2mm MFC sheet 2800 x 2070, Group 1 (£)', 48.10], ['board2', '18.2mm MFC sheet 2800 x 2070, Group 2 (£)', 64.00], ['edge1', '2mm edging per metre, Group 1 (£)', 0.31], ['edge2', '2mm edging per metre, Group 2 (£)', 0.40], ['edge08_1', '0.8mm edging per metre, Group 1 (£)', 0.31], ['edge08_2', '0.8mm edging per metre, Group 2 (£)', 0.40], ['dboard', 'Drawer bottom and back board, 16mm pre-edged sheet (£)', 33.60], ['dboardL', 'Drawer board sheet length (mm)', 2650], ['dboardW', 'Drawer board sheet width (mm)', 650]]],
+  ['Hardware', [['legTop', 'Leg top section 637.81.302 (each)', 0.20], ['legFoot', 'Leg 150mm foot shaft 637.81.375 (each)', 0.38], ['clip', 'Plinth clip 637.81.340 (each)', 0.02], ['peg', 'Shelf support 2-pin F0022546 (each)', 0.05], ['dowel100', 'Wooden dowel 8 x 35mm J66-417 (per box of 100)', 0.72], ['cam', '18mm cam J601-509 (each)', 0.03], ['mpin', '34mm metal pin J601-517 (each)', 0.04], ['hanger', 'Traser cabinet hanger I41-0400 (per pair)', 1.72], ['plate', 'Wall plate I40-184 (each)', 0.08], ['hinge', '107 degree hinge 75BB1550 (each)', 1.63], ['hingePlate', 'Hinge mounting plate 174H7100E (each)', 0.57], ['blindHinge', '9 x 9 blind corner hinge SYH060 (each)', 0.81], ['euroScrew', 'Euro screw for the runners (each)', 0.01], ['euroPerRunner', 'Euro screws per runner (a drawer has 2 runners)', 4], ['glassM2', 'Glass shelf (per square metre)', 100.50], ['glassPeg', 'Glass shelf peg (each, 0 = not priced yet)', 0]]],
   ['Still to be priced (blank = not priced)', [['hinge155', '155 degree hinge (each)', 0], ['hingeAppl', 'Appliance hinge (each)', 0], ['cap', 'Cover cap (each)', 0], ['gas', 'Gas stay (each)', 0], ['hk', 'HK Top lift-up fitting (each)', 0], ['runAntaro', 'Antaro runners and sides, per drawer', 0], ['runLegrabox', 'Legrabox runners and sides, per drawer', 0], ['runMerivo', 'Merivo runners and sides, per drawer', 0]]]
 ];
 const costCfg = () => { const c = {}, s = DB.settings.cost || {}; COST_META.forEach(([, l]) => l.forEach(([k, , d]) => { c[k] = s[k] != null && s[k] !== '' && isFinite(+s[k]) ? +s[k] : d; })); return c; };
@@ -12086,6 +12101,10 @@ function costUnit(l) {
   add('Wall hangers', f.hangers, c.hanger / 2);
   add('Wall plates', f.plates, c.plate);
   [['caps', 'Cover caps', c.cap], ['gas', 'Gas stays', c.gas], ['hk', 'HK lift-up fittings', c.hk]].forEach(([x, nm, p]) => { if (f[x] > 0) { add(nm, f[x], p); if (!p) miss.push(nm + ' not priced'); } });
+  { const dp = [].concat(...(r.drw || []).map(drwPanels)); if (dp.length) { const a = dp.reduce((s2, p) => s2 + p.l * p.w, 0), cost = a / (c.dboardL * c.dboardW) * c.dboard * wf; hw.push(['Drawer bottoms and backs, 16mm pre-edged board (' + (a / 1e6).toFixed(3) + ' m² at ' + GBP(c.dboard) + ' a ' + c.dboardL + ' x ' + c.dboardW + ' sheet, +' + c.waste + '% waste)', dp.length, cost]); } }
+  if (r.ct) add('Cutlery tray ' + r.ct.code + ' (422 x ' + r.ct.w + ' mm)', 1, r.ct.p);
+  if (r.binSet) add(r.binSet.name, 1, r.binSet.p);
+  if (r.drw && r.drw.length) add('Euro screws for the runners', drwEuro(r, c.euroPerRunner), c.euroScrew);
   if (antOk) { const g = {}; r.drw.forEach(x => { const nm = dpDrawerName(x); g[nm] = g[nm] || { n: 0, each: antDrawerCost(x).total }; g[nm].n++; }); Object.entries(g).forEach(([nm, o]) => add(nm, o.n, o.each)); }
   else Object.entries(f.runners || {}).forEach(([sys, n]) => { const p = c['run' + sys] || 0; add(sys + ' drawers (runners and sides)', n, p); if (!p) miss.push(sys + ' runners and sides not priced'); });
   Object.keys(f.other || {}).forEach(x => miss.push(x + ' not priced'));
@@ -12128,7 +12147,7 @@ function buildPoPdf(o) {
   };
   // 1. boards
   const bk = Object.entries(R.boards), totSheets = bk.reduce((a, [, b]) => a + b.sheets, 0);
-  tbl('1. BOARD SHEETS (' + PO.L + ' x ' + PO.W + ' mm, 18 mm)', ['Board / colour', 'Pieces', 'Area m2', 'Fill', 'Sheets'], bk.map(([k, b]) => [k, String(b.count), (b.area / 1e6).toFixed(2), Math.round(b.util * 100) + '%', String(b.sheets)]), { 1: { halign: 'right', cellWidth: 22 }, 2: { halign: 'right', cellWidth: 24 }, 3: { halign: 'right', cellWidth: 20 }, 4: { halign: 'right', cellWidth: 22, fontStyle: 'bold' } }, ['Total sheets', '', '', '', String(totSheets)]);
+  tbl('1. BOARD SHEETS (' + PO.L + ' x ' + PO.W + ' mm, 18 mm)', ['Board / colour', 'Pieces', 'Area m2', 'Fill', 'Sheets'], bk.map(([k, b]) => [k + (b.sl ? ' (' + b.sl + ' x ' + b.sw + ' sheet)' : ''), String(b.count), (b.area / 1e6).toFixed(2), Math.round(b.util * 100) + '%', String(b.sheets)]), { 1: { halign: 'right', cellWidth: 22 }, 2: { halign: 'right', cellWidth: 24 }, 3: { halign: 'right', cellWidth: 20 }, 4: { halign: 'right', cellWidth: 22, fontStyle: 'bold' } }, ['Total sheets', '', '', '', String(totSheets)]);
   // 2. edging
   const ed = Object.entries(R.edge).filter(([, mm]) => mm > 0).map(([k, mm]) => { const [col, th] = k.split('|'); const net = mm / 1000; return { col, th, net, ord: Math.ceil(net * (1 + PO.waste)) }; }).sort((a, b) => a.col.localeCompare(b.col) || a.th.localeCompare(b.th));
   tbl('2. EDGING TAPE', ['Edging colour', 'Thickness', 'Used (m)', 'To order (m, +' + Math.round(PO.waste * 100) + '%)'], ed.map(e => [e.col, e.th, e.net.toFixed(1), String(e.ord)]), { 1: { cellWidth: 24 }, 2: { halign: 'right', cellWidth: 26 }, 3: { halign: 'right', cellWidth: 38, fontStyle: 'bold' } });
@@ -12136,6 +12155,8 @@ function buildPoPdf(o) {
   const fit = [['Metal pins (MP)', R.f.mp], ['Wooden dowels (WD)', R.f.wd], ['Shelf pegs', R.f.pegs], ['Glass shelf pegs', R.f.glassPegs], ['Hinges (with mounting plates)', R.f.hinges]];
   Object.entries(R.runners).forEach(([k, n]) => fit.push(['Drawer runners / drawer sets: ' + k, n]));
   Object.entries(R.drw || {}).sort((a, b) => a[0].localeCompare(b[0])).forEach(([k, n]) => fit.push(['  of which: ' + k, n]));
+  Object.entries(R.other2 || {}).forEach(([k, n]) => fit.push([k, n]));
+  fit.push(['Euro screws for the runners (' + costCfg().euroPerRunner + ' per runner, 2 runners a drawer)', R.euro || 0]);
   fit.push(['Legs', R.f.legs], ['Plinth clips', R.f.clips], ['Wall hangers', R.f.hangers], ['Wall plates', R.f.plates], ['Cover caps', R.f.caps], ['Gas stays', R.f.gas], ['HK Top lift-up fittings', R.f.hk]);
   Object.entries(R.other).forEach(([k, n]) => fit.push([k, n]));
   Object.entries(R.glass).forEach(([k, n]) => fit.push([k, n]));
@@ -12301,7 +12322,7 @@ const LG_H = {
 };
 const DRW_SYS = {
   Antaro: { lens: ANT_LENS, run: ANT_RUN, run70: null, h: ANT_H, order: ['N', 'M', 'K', 'D'], fit: { N: 90, M: 100, K: 140, D: 225 }, pref: ['D', 'M'], glassH: 'D', inH: ['M', 'K', 'D'] },
-  Legrabox: { lens: LG_LENS, run: LG_RUN, run70: LG_R70, h: LG_H, order: ['N', 'M', 'K', 'C', 'F'], fit: { N: 90, M: 110, K: 150, C: 200, F: 260 }, pref: ['F', 'C', 'M'], glassH: 'C', inH: ['M', 'C'] }
+  Legrabox: { lens: LG_LENS, run: LG_RUN, run70: LG_R70, h: LG_H, order: ['N', 'M', 'K', 'C', 'F'], fit: { N: 90, M: 110, K: 150, C: 200, F: 260 }, pref: ['C', 'M'], glassH: 'C', inH: ['M', 'C'] }
 };
 const DP_RUN_STD = 450, DP_CLEAR = 3;                                                   // Blum: the inside depth must be at least the runner length + 3 mm
 const drwS = sys => DRW_SYS[sys] || null;
@@ -12340,9 +12361,24 @@ const dpDrawers = (t, s) => {
   const sys = s.sys || 'Antaro', S = drwS(sys), L = s.run || DP_RUN_STD, hts = s.hts || dpFrontsMm(t).map((f, i) => dpDefT(t, i, f, sys, L));
   const m = dpMerge(t, s);
   const list = hts.map((h, i) => ({ sys, L, h: S ? h : null, glass: !!S && !!s.glass && drwGlassOk(sys, h, L), gtype: s.gtype || 'clear', hd: !!s.hd, inner: false, inDr: i === m - 1 }));
+  if ((s.inner || t.internal) && m < 0) list.push({ sys, L, h: S ? (s.inH || 'M') : null, glass: false, gtype: 'clear', hd: !!s.hd, inner: false, inDr: true });   // 2 Pan + 1 Internal (and Gola): a real internal drawer with runners, it carries the internal front
   if (s.inner || t.internal) list.push({ sys, L, h: S ? (s.inH || 'M') : null, glass: false, inner: true, fo: true });   // internal front: just the front (it goes on a drawer that is already there)
   return list;
 };
+/* drawer bottom and back, cut from the 16mm pre-edged drawer board (no edging). lw = the opening between the gables, L = the runner length.
+   PLACEHOLDER sizes, to be confirmed by the factory: bottom = (lw - bw) x (L - bd), back = (lw - kw) x the back height for the drawer height. */
+const DRW_PANEL = {
+  Antaro: { bw: 75, bd: 10, kw: 87, kh: { N: 44, M: 59, K: 91, D: 59 } },
+  Legrabox: { bw: 35, bd: 10, kw: 38, kh: { N: 40, M: 63, K: 101, C: 150, F: 214 } }
+};
+const DRW_BOARD = 'Drawer board 16mm pre-edged';
+/* Vogue 'Antaro' cutlery trays, 422 deep, charcoal (cost prices given 23 Nov 2026). The tray is the cabinet width less 86. Antaro drawers on 450 runners only. */
+const CUTLERY = [['CT1015', 214, 300, 3.07], ['CT1016', 314, 400, 4.09], ['CT1017', 364, 450, 4.09], ['CT1018', 414, 500, 4.28], ['CT1019', 514, 600, 5.07], ['CT1021', 714, 800, 8.10], ['CT1022', 814, 900, 8.98], ['CT1023', 914, 1000, 9.86]].map(([code, w, cab, p]) => ({ code, w, cab, p }));
+const ctFor = (cabW, sys, run) => sys === 'Antaro' && run === 450 ? CUTLERY.find(c => c.cab === cabW) || null : null;
+const ctText = c => 'Cutlery tray ' + c.code + ' (422 x ' + c.w + ' mm, charcoal) in the top drawer';
+const ctTick = (chg, extra, on, c) => c ? `<label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="${chg}" ${extra} ${on ? 'checked' : ''}><span><b>Cutlery tray</b> in the top drawer (${c.code}, 422 x ${c.w} mm, charcoal)</span></label>` : '';
+const drwPanels = x => { const P = DRW_PANEL[x.sys]; if (x.fo || !P || !x.h || !x.L || !x.lw) return []; const kh = P.kh[x.h]; return [{ name: 'Drawer bottom', l: poR(x.lw - P.bw), w: poR(x.L - P.bd) }].concat(kh ? [{ name: 'Drawer back', l: poR(x.lw - P.kw), w: kh }] : []); };
+const drwEuro = (r, per) => (r.drw || []).filter(x => !x.fo).length * 2 * (per == null ? 4 : per);   // every drawer with runners: 2 runners (left and right), each fixed with euro screws
 const drwRun70 = x => { const S = drwS(x.sys), H = S && S.h[x.h]; return !!(H && H.r70 && S.run70 && S.run70[x.L] != null && (x.hd || S.run[x.L] == null)); };
 const dpDrawerName = x => {
   const mm = drwMm(x), hh = x.h ? ' ' + x.h + ' (' + mm + ' mm)' : '';
@@ -12397,7 +12433,8 @@ function drwPick(k) {
   const gOk = !U.noGlass && fms.some(f => dpHOpts(f, s.run, s.sys).includes(S.glassH)) && drwGlassOk(s.sys, S.glassH, s.run);
   const glass = gOk ? `<label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="uDrw" data-k="${k}" data-f="glass" ${s.uglass ? 'checked' : ''}><span><b>Glass sides</b> (made on ${S.glassH} height, ${S.h[S.glassH].mm} mm${s.uh.includes(S.glassH) ? '' : ': the drawer changes to ' + S.glassH}${s.sys === 'Antaro' ? ', in place of the gallery rail' : ''})</span></label>`
     + (s.uglass && s.sys === 'Legrabox' ? sel('gtype', '', [['clear', 'Clear glass'], ['smoke', 'Smoke glass']], s.ugtype, 'Glass', 150) : '') : '';
-  return `${run}${hd}${heights}${glass}`;
+  const ct = k === 'dl' && DL.w <= 600 ? ctTick('uCt', '', DL.ct, ctFor(DL.w, s.sys, s.run)) : '';
+  return `${run}${hd}${heights}${glass}${ct}`;
 }
 CH.uDrw = t => {
   const U = DRW_UNITS[t.dataset.k]; if (!U) return; const s = U.s(), f = t.dataset.f;
@@ -12425,7 +12462,8 @@ function dpOpts(id) {
   const glass = !canGH ? '' : !drwGlassOk(s.sys, gH, s.run) ? `<div class="muted" style="font-size:13px">Glass sides (${gH} drawers only) come only with ${s.sys === 'Legrabox' ? '400 to 600' : '270 to 650'} mm runners.</div>`
     : `<label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="dpGlass" data-id="${id}" ${s.glass ? 'checked' : ''}><span><b>Glass sides</b>${s.sys === 'Antaro' ? ' on the D drawers (in place of the gallery rail)' : ' (made on C height, ' + S.h[gH].mm + ' mm: the deep drawers change to C)'}</span></label>`
       + (s.glass && s.sys === 'Legrabox' ? `<div class="row" style="gap:6px">${sel('dpGtype', '', [['clear', 'Clear glass'], ['smoke', 'Smoke glass']], s.gtype, 'Glass', 150)}</div>` : '');
-  return `${run}${hd}${heights}${inner}${glass}`;
+  const ct = ctTick('dpCt', 'data-id="' + id + '"', s.ct, ctFor(s.w, s.sys, s.run)) || (s.sys === 'Antaro' && CUTLERY.some(c => c.cab === s.w) ? '<div class="muted" style="font-size:13px">Cutlery tray: comes with 450 runners only.</div>' : '');
+  return `${run}${hd}${heights}${inner}${glass}${ct}`;
 }
 function dpCard(id) {
   const t = dpType(id), s = DPK[id], w = s.w; dpSync(t, s);
@@ -12612,6 +12650,8 @@ CH.dpGlass = t => {
   dpRefresh(t.dataset.id);
 };
 CH.dpGtype = t => { DPK[t.dataset.id].gtype = t.value; dpRefresh(t.dataset.id); };
+CH.dpCt = t => { DPK[t.dataset.id].ct = !!t.checked; dpRefresh(t.dataset.id); };
+CH.uCt = t => { DL.ct = !!t.checked; dlRefresh(); };
 CH.dpHd = t => { DPK[t.dataset.id].hd = !!t.checked; dpRefresh(t.dataset.id); };
 CH.dpDim = t => { const s = DPK[t.dataset.id], k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = s[k]; if (k === 'd') v = Math.min(800, Math.max(s.mtm ? 200 : 300, v)); else v = Math.min(Math.max(0, v), s.d - 200); s[k] = v; dpRefresh(t.dataset.id); };
 A.baseMore = () => { UI.orderCat = 'basedetails'; render(); window.scrollTo(0, 0); };
