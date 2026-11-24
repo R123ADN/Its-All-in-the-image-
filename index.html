@@ -8361,6 +8361,8 @@ const BOARD_SHEET = [
 ];
 /* edging tape keeps its two prices (user, 23 Nov 2026): the colours that were in the old board Group 3 take the dearer edging, the rest the standard edging */
 const EDGE_DEAR = ['F186 ST9', 'F417 ST10', 'F433 ST10', 'F422 ST10', 'F637 ST10', 'H1180 ST37', 'H1181 ST37', 'H1330 ST10', 'H3176 ST37', 'H3309 ST28', 'H3317 ST28', 'H3331 ST10', 'H1369 ST40'];
+/* the real colour of each board: the average colour of its picture on the Lawcris site (taken from the saved Lawcris pages, 23 Nov 2026) */
+const BOARD_HEX = { 'U963 ST9': '#28282A', '0162': '#5B5754', '5994': '#3C5162', '8984 BS': '#092A3D', 'F186 ST9': '#91908E', 'F237 ST76': '#252423', 'F243 ST76': '#9D9C98', 'F244 ST76': '#515354', 'F417 ST10': '#BBB3A8', 'F422 ST10': '#EEF0E4', 'F433 ST10': '#76736F', 'F528 ST20': '#624C3C', 'F579 ST20': '#A08D7E', 'F637 ST10': '#E0DCCD', 'F661 ST76': '#D8C7B7', 'F662 ST76': '#B4A69A', 'H1145 ST10': '#BA9D82', 'H1146 ST10': '#AC8F77', 'H1154 ST7': '#B4956F', 'H1180 ST37': '#B69774', 'H1181 ST37': '#755C46', 'H1225 ST12': '#E8E3E0', 'H1242 ST10': '#C09E7B', 'H1277 ST9': '#E2CAB0', 'H1307 ST19': '#5A3D2B', 'H1313 ST10': '#76706C', 'H1316 ST17': '#C39A72', 'H1318 ST10': '#B4936E', 'H1330 ST10': '#725F4B', 'H1334 ST9': '#D0A477', 'H1357 ST10': '#A4927F', 'H1362 ST12': '#C5AA90', 'H1367 ST40': '#C2A483', 'H1369 ST40': '#443731', 'H1385 ST40': '#AA8664', 'H1732 ST9': '#DEC5A5', 'H2033 ST10': '#68482A', 'H3043 ST12': '#190E0E', 'H3131 ST12': '#B9A384', 'H3133 ST12': '#7B6754', 'H3146 ST19': '#A29586', 'H3157 ST12': '#C6A882', 'H3158 ST19': '#887D6F', 'H3170 ST12': '#B29679', 'H3176 ST37': '#79614B', 'H3198 ST19': '#5C5450', 'H3303 ST10': '#B99970', 'H3309 ST28': '#C0A284', 'H3317 ST28': '#A58365', 'H3331 ST10': '#B7997A', 'H3332 ST10': '#7E6F61', 'H3368 ST9': '#BC9263', 'H3700 ST10': '#A88A6D', 'H3702 ST10': '#5E4B3B', 'H3704 ST7': '#6E4125', 'H3710 ST12': '#735F4C', 'H3730 ST10': '#BC976C', 'H3734 ST9': '#865C3A', 'H3787 ST19': '#70503C', 'K358 PW': '#AB8D71', 'K365 PW': '#998160', 'K542': '#9C8E7F', 'U100 ST9': '#DFD1B7', 'U104 ST9': '#FFFADA', 'U115 ST17': '#EADBC5', 'U115 ST9': '#EEE3C3', 'U125 ST9': '#EDCC6F', 'U201 ST9': '#B3AB9E', 'U211 ST9': '#A79990', 'U216 ST9': '#FBF0DC', 'U220 ST9': '#EFE5DB', 'U222 ST9': '#FFF1D4', 'U325 ST9': '#B88E98', 'U399 ST9': '#43091F', 'U502 ST9': '#426E87', 'U504 ST9': '#3D4F63', 'U540 ST9': '#8E9EAB', 'U565 ST9': '#1B4D58', 'U599 ST9': '#142132', 'U604 ST19': '#747F73', 'U604 ST17': '#737E72', 'U604 ST9': '#747E75', 'U608 ST9': '#C7D0BD', 'U636 ST9': '#939D9C', 'U638 ST9': '#B2BE98', 'U665 ST9': '#3B5C53', 'U669 ST9': '#808078', 'U699 ST9': '#102B1A', 'U702 ST40': '#D4C6BA', 'U702 ST9': '#D1C9BC', 'U705 ST9': '#DCD4C7', 'U708 ST9': '#CFCCC3', 'U717 ST9': '#B4A794', 'U727 ST9': '#A69989', 'U732 ST9': '#787876', 'U748 ST9': '#4A4944', 'U750 ST19': '#D0C7B9', 'U750 ST17': '#CCC4B6', 'U750 ST9': '#C4B7A6', 'U763 ST9': '#B5BFB6', 'U775 ST9': '#E2DACF', 'U899 ST9': '#212526', 'U961 ST17': '#423D3A', 'U961 ST19': '#413C39', 'U961 ST40': '#423D39', 'U961 ST7': '#1E1A1B', 'U999 ST7': '#030408', 'W1000 ST30': '#F8F9F6', 'W1000 ST9': '#FCFDF5', 'W1100 ST9': '#FFFFF7', 'W1200 ST19': '#F4F0E3', 'W1200 ST17': '#F0EBDF', 'W1200 ST9': '#F5F2DF' };
 /* a swatch colour for a new board, from its name, until a real swatch is set */
 const boardHexGuess = n => { n = String(n).toLowerCase(); return /white|alabaster|porcelain|alpine|chromix|linen/.test(n) && !/anthracite/.test(n) ? '#ECEAE4' : /black/.test(n) ? '#1E1E1E' : /graphite|anthracite/.test(n) ? '#46484A' : /tobacco|truffle|dark|brown|marone|mocha|eucalyptus/.test(n) ? '#6A4A33' : /oak|walnut|wood|ash|acacia|hickory|birch|castello|fineline|santa fe|river/.test(n) ? '#A8825A' : /navy|indigo|denim|tyrolean|ocean/.test(n) ? '#3F5670' : /blue/.test(n) ? '#A9B7C3' : /green|pistachio/.test(n) ? '#7D8B6E' : /red|garnet/.test(n) ? '#7A2E2E' : /rose/.test(n) ? '#C9A2A0' : /yellow/.test(n) ? '#D9C27A' : /beige|sand|crema|camel|almond|carat|cashmere/.test(n) ? '#CDBEA4' : /bronze|champagne|metal/.test(n) ? '#A08A66' : /grey|gray|slate|marble|stone|concrete|textile|pebble/.test(n) ? '#9C9A95' : '#BDB6AA'; };
 const BOARD_NEW_HEX = { 'W1200 ST12': '#F1EFE8', 'U502 ST9': '#A9B7C3', 'U504 ST9': '#3F5A72', 'U705 ST9': '#B8B2A8', 'U115 ST9': '#D3C6AE', 'H1154 ST15': '#C8A27A', 'U608 ST9': '#B9C49E', 'U741 ST9': '#5A5955' };
@@ -8372,7 +8374,7 @@ function syncBoardSheet0() {
   const nz = s => String(s || '').toUpperCase().replace(/\s+/g, '').replace(/O/g, '0').replace(/[LI]/g, '1');
   const claimed = new Set(), was = new Map(DB.cabColours.filter(c => c.sheet).map(c => [c, c.sheetOrder])); let changed = false;
   DB.cabColours.forEach(c => { if (c.sheet) { delete c.sheet; delete c.sheetOrder; } });
-  const fit = (c, code, name, price, i) => { const g = EDGE_DEAR.includes(code) ? 3 : 1; if (c.code !== code || c.name !== name || c.group !== g || c.sheetPrice !== price || was.get(c) !== i) changed = true; Object.assign(c, { code, name, group: g, sheetPrice: price, sheet: true, sheetOrder: i }); claimed.add(c); };
+  const fit = (c, code, name, price, i) => { const g = EDGE_DEAR.includes(code) ? 3 : 1; if (c.code !== code || c.name !== name || c.group !== g || c.sheetPrice !== price || was.get(c) !== i) changed = true; Object.assign(c, { code, name, group: g, sheetPrice: price, sheet: true, sheetOrder: i }); if (BOARD_HEX[code] && c.hex !== BOARD_HEX[code]) { c.hex = BOARD_HEX[code]; changed = true; } claimed.add(c); };
   const left = [];
   BOARD_SHEET.forEach(([code, name, g], i) => { const c = DB.cabColours.find(x => !claimed.has(x) && nz(x.code) === nz(code)); if (c) fit(c, code, name, g, i); else left.push([code, name, g, i]); });
   left.forEach(([code, name, g, i]) => {
@@ -10354,7 +10356,9 @@ CH.ffDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFi
 /* Kitchen > All Larders: Space Tower Larder, 1970 high, 570 deep, 300 to 1200 wide. Behind tall doors: 5 internal drawers, every one with an
    internal front (4 pan drawers, D on Antaro / C on Legrabox, and 1 M on top), a fixed top over them and 2 shelves above.
    Codes: LMSP + A (Antaro) or L (Legrabox) + width, e.g. LMSPA600. One door up to 600 wide, a pair from 700; full height or split doors. */
-const SPT = { h: 1970, w: 600, sys: 'Antaro', doors: 'full', hinge: 'left', d: 570, v: 50, run: 450 };
+const SPT = { h: 1970, w: 600, sys: 'Antaro', doors: 'full', hinge: 'left', d: 570, v: 50, run: 450, top: true };   // top: false = just the 4 pan drawers, no top drawer
+const sptFms = s => (s || SPT).top === false ? SPT_FM.slice(1) : SPT_FM.slice();
+const sptN = () => sptFms().length;
 const SPT_WIDTHS = [300, 350, 400, 450, 500, 550, 600, 700, 800, 900, 1000, 1100, 1200], SPT_SYS = ['Antaro', 'Legrabox'];
 const SPT_FM = [200, 300, 300, 300, 300];                                       // the room each internal drawer has, top first (sets which heights fit)
 const SPT_ZONE = 160 + 4 * 260 + 4 * 3 + 4;                                     // the height the 5 internal drawers take
@@ -10366,7 +10370,7 @@ const sptHinges = () => sptPair() ? 10 : 5;                                     
 const sptArt = (extra, bare) => { drwUSync('spt'); const ah = (SPT.uh || []).map(h => drwAh(SPT.sys, h, !!SPT.uglass && drwGlassOk(SPT.sys, h, SPT.run)));
   return baseArt(SPT.w, SPT.d, SPT.h, hArt(SPT.hinge), SPT.v, Object.assign({ doors: !bare, pair: sptPair(), noPost: true, fullTop: true, noRail: true, splitDoors: sptSplit() ? { bot: SPT.h - 10 - 1245 } : null,
     shelfN: 2, shelfFrom: 150 + SPT_ZONE + 18, fixedShelfAt: 150 + SPT_ZONE + 18,
-    drawers: { fronts: [160, 260, 260, 260, 260], open: bare ? [] : [0, 170, 0, 0, 0], h: SPT_ZONE - 4, bottom: true, sides: ah, allInf: true, inFronts: true } }, extra)); };
+    drawers: { fronts: (SPT.top === false ? [260, 260, 260, 260] : [160, 260, 260, 260, 260]), open: bare ? [] : (SPT.top === false ? [170, 0, 0, 0] : [0, 170, 0, 0, 0]), h: SPT_ZONE - 4, bottom: true, sides: ah, allInf: true, inFronts: true } }, extra)); };
 function sptPick(sel) {
   const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
   return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(x => btn('sptH', x, x + ' high', SPT.h === x)).join('')}</div>
@@ -10374,7 +10378,8 @@ function sptPick(sel) {
     <div class="muted">Doors:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('sptDoors', 'full', 'Full height door' + (sptPair() ? 's' : ''), !sptSplit())}${btn('sptDoors', 'split', 'Split doors', sptSplit())}</div>
     ${sptPair() ? '<p class="muted" style="margin:0">Over 600 wide, so it takes a pair of doors.</p>' : `<div class="muted">Door hinge:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('sptHinge', 'left', 'Left hinge', SPT.hinge === 'left')}${btn('sptHinge', 'right', 'Right hinge', SPT.hinge === 'right')}</div>`}
     <div class="muted">Drawer type:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${SPT_SYS.map(s => btn('sptSys', s, s, SPT.sys === s)).join('')}</div>
-    <div class="muted" style="font-size:13px">5 internal drawers, each with an internal front.</div>
+    <div class="muted">Top drawer:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('sptTop', 'yes', 'With top drawer', SPT.top !== false)}${btn('sptTop', 'no', '4 pan drawers only', SPT.top === false)}</div>
+    <div class="muted" style="font-size:13px">${sptN()} internal drawers, each with an internal front.</div>
     ${drwPick('spt')}`;
 }
 function sptCard() {
@@ -10395,7 +10400,7 @@ function sptDetails() {
   const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
   const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
   const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="sptDim" data-k="${k}"></label>`;
-  drwUSync('spt'); const S = drwS(SPT.sys), lab = ['Top', 'Pan drawer 1', 'Pan drawer 2', 'Pan drawer 3', 'Pan drawer 4'];
+  drwUSync('spt'); const S = drwS(SPT.sys), lab = (SPT.top === false ? [] : ['Top']).concat(['Pan drawer 1', 'Pan drawer 2', 'Pan drawer 3', 'Pan drawer 4']);
   const drs = (SPT.uh || []).map((h, i) => lab[i] + ': ' + h + ' height (' + S.h[h].mm + ' mm) with internal front').join('<br>');
   return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Larders</button>
   <div class="two-col" style="align-items:start">
@@ -10409,7 +10414,7 @@ function sptDetails() {
       <span class="mono">${sptCode()}</span>
       <p class="muted" style="margin:0">${SPT.w} ${SPT.sys} Space Tower Larder ${SPT.h} High ${SPT.d} Deep.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + sptCode())}${row('DOORS', sptDoorTxt())}${row('INTERNAL DRAWERS', 'Quantity: 5 x ' + SPT.sys + ' internal drawers, ' + SPT.run + ' mm runners<br>' + drs)}${row('FIXED TOP', 'Quantity: 1 x fixed internal top, on top of the drawers')}${row('SHELVES', 'Quantity: 2 x adjustable shelves above')}${row('HINGES', 'Quantity: ' + sptHinges() + ' x hinges')}${row('LEGS', 'Quantity: ' + tallLegs(SPT.w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(SPT.w) + ' x plinth clips')}</div>
+      <div>${row('CABINET', 'Code: ' + sptCode())}${row('DOORS', sptDoorTxt())}${row('INTERNAL DRAWERS', 'Quantity: ' + sptN() + ' x ' + SPT.sys + ' internal drawers, ' + SPT.run + ' mm runners<br>' + drs)}${row('FIXED TOP', 'Quantity: 1 x fixed internal top, on top of the drawers')}${row('SHELVES', 'Quantity: 2 x adjustable shelves above')}${row('HINGES', 'Quantity: ' + sptHinges() + ' x hinges')}${row('LEGS', 'Quantity: ' + tallLegs(SPT.w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(SPT.w) + ' x plinth clips')}</div>
       ${sptPick(sel)}
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', SPT.d)}${num('v', 'Void (mm)', SPT.v)}</div>
@@ -10423,6 +10428,7 @@ const sptRefresh = () => { if (UI.orderCat === 'sptdetails') { const y = window.
 A.sptMore = () => { UI.orderCat = 'sptdetails'; render(); window.scrollTo(0, 0); };
 A.sptW = t => { SPT.w = +t.dataset.v; sptRefresh(); };
 A.sptH = t => { SPT.h = +t.dataset.v; sptRefresh(); };
+A.sptTop = t => { SPT.top = t.dataset.v === 'yes'; SPT.uh = null; sptRefresh(); };
 A.sptDoors = t => { SPT.doors = t.dataset.v; sptRefresh(); };
 A.sptHinge = t => { SPT.hinge = t.dataset.v; sptRefresh(); };
 A.sptSys = t => { SPT.sys = t.dataset.v; SPT.uh = null; sptRefresh(); };
@@ -11627,7 +11633,7 @@ function bkLine(key) {
     const fd = ffDoors();
     l = { name: 'Fridge Freezer Larder', code: ffCode(), w: FF.w, h: FF.h, d: FF.d, v: FF.v, opt: FF.split + ' split, ' + FF.hinge + ' door hinge, doors ' + fd.w + ' x ' + fd.b + ' and ' + fd.w + ' x ' + fd.t + ' mm, ' + FF_AP + ' mm appliance opening with 1 x fixed shelf above, full top, fixed back on the top section, removable back ' + FF_RB + ' mm high in the middle of the opening, 5 x appliance hinges' + (FF.gola !== 'none' ? ', ' + lgText(FF) : '') };
   } else if (key === 'spt') {
-    drwUSync('spt'); l = { name: 'Space Tower Larder', code: sptCode(), w: SPT.w, h: SPT.h, d: SPT.d, v: SPT.v, opt: sptDoorTxt() + ', 5 x ' + SPT.sys + ' internal drawers with internal fronts, 1 x fixed internal top, 2 x adjustable shelves above, ' + sptHinges() + ' x hinges, ' + tallLegs(SPT.w) + ' x legs' };
+    drwUSync('spt'); l = { name: 'Space Tower Larder', code: sptCode(), w: SPT.w, h: SPT.h, d: SPT.d, v: SPT.v, opt: sptDoorTxt() + ', ' + sptN() + ' x ' + SPT.sys + ' internal drawers with internal fronts' + (SPT.top === false ? ' (4 pan drawers, no top drawer)' : '') + ', 1 x fixed internal top, 2 x adjustable shelves above, ' + sptHinges() + ' x hinges, ' + tallLegs(SPT.w) + ' x legs' };
   } else if (key === 'pan') {
     l = { name: 'Pantry Larder', code: panCode(), w: PAN_W, h: PAN.h, d: PAN.d, v: PAN.v, opt: panDoorTxt() + ', no centre post, ' + (PAN.chest ? 'internal chest of 3 x ' + PAN.sys + ' drawers with scalloped fronts and a ' + PAN_FILL + ' mm filler each side, 1 x fixed internal top on top of the drawers, 3 x equal adjustable shelves above' : 'no internal chest, 5 x equal adjustable shelves') + ', ' + panHinges() + ' x hinges' };
   } else if (key === 'dlr') {
@@ -12049,7 +12055,7 @@ function poUnit(u) {
     const pair = w > 600, split = s.doors === 'split', dd = split ? (pair ? [[(w - 7) / 2, 1245], [(w - 7) / 2, 1245], [(w - 7) / 2, H - 10 - 1245], [(w - 7) / 2, H - 10 - 1245]] : [[w - 4, 1245], [w - 4, H - 10 - 1245]]) : doorSet(w, H, pair);
     const r = C({ top: 'full', back: true, shelves: 2, fixed: 1, doors: dd, legs: true });
     r.f.hinges = pair ? 10 : 5; r.f.legs = tallLegs(w); r.f.clips = tallClips(w);
-    const fms = SPT_FM, uh = s.uh || ['M', 'D', 'D', 'D', 'D']; r.drw = [];
+    const fms = sptFms(s), uh = s.uh || fms.map((f, i) => i === 0 && s.top !== false ? 'M' : 'D'); r.drw = [];
     fms.forEach((fm, i) => { const x = antDr(1, fm, { h: uh[i], run: s.run, glass: s.uglass, gtype: s.ugtype, hd: s.uhd })[0]; x.inDr = true; r.drw.push(x, { sys: x.sys, L: x.L, h: x.h, inner: true, fo: true }); });   // every drawer carries an internal front
     r.f.runners[s.sys || 'Antaro'] = fms.length; return r;
   }
@@ -12544,7 +12550,7 @@ const drwAh = (sys, h, glass) => { const S = drwS(sys), H = S && S.h[h]; if (!H)
 const DRW_UNITS = {
   dl: { s: () => DL, fms: () => [200], labels: () => [DL.w > 600 ? 'Drawers (x2)' : 'Drawer'], ref: () => dlRefresh() },
   pan: { s: () => PAN, fms: () => [160], labels: () => ['Internal drawers (x3)'], ref: () => panRefresh(), noGlass: true },
-  spt: { s: () => SPT, fms: () => SPT_FM.slice(), labels: () => ['Top', 'Pan 1', 'Pan 2', 'Pan 3', 'Pan 4'], ref: () => sptRefresh(), innerOnly: true, top: 'M' },   // space tower: every drawer takes an internal front
+  spt: { s: () => SPT, fms: () => sptFms(), labels: () => (SPT.top === false ? [] : ['Top']).concat(['Pan 1', 'Pan 2', 'Pan 3', 'Pan 4']), ref: () => sptRefresh(), innerOnly: true, get top() { return SPT.top === false ? null : 'M'; } },   // space tower: every drawer takes an internal front
   ohl: { s: () => OHL, fms: () => (ohlP().dr || []).slice(), labels: () => (ohlP().dr || []).map((f, i, a) => a.length === 1 ? 'Drawer' : i === 0 ? 'Top' : 'Drawer ' + (i + 1)), ref: () => ohlRefresh() }
 };
 function drwUSync(k) {
