@@ -9494,6 +9494,19 @@ function baseArt(w, d, h, hinge, vd, opts) {
     if (o.blank.inside) { const dw = o.blank.door - 4, hx = o.blank.side === 'right' ? w - T - o.blank.w : T + o.blank.w; if (o.blank.side === 'right') door(hx, -1, dw, 150 * Math.PI / 180); else door(hx, 1, dw); }   // hinged on the blank's free edge; 4mm clearance off the door width
     else { const dw = w - o.blank.w - T - 4; if (o.blank.side === 'right') door(dw, -1, dw, 150 * Math.PI / 180); else door(w - dw, 1, dw); }   // the door is always hinged on the blank: the blank carries the hinges
   }
+  else if (o.lpull) {                 // pull-out larder: the door is fixed to the pull-out frame; dark wire baskets on the frame behind it
+    const pz = o.lpull.out ? 420 : 0, zf = d + pz, zb = Math.max(vd + 30, zf - (d - 60)), n = o.lpull.n || 5, x1 = T + 12, x2 = w - T - 12, step = (y1 - y0 - 160) / n;
+    q([P(w / 2 - 6, y0 + 30, zb), P(w / 2 + 6, y0 + 30, zb), P(w / 2 + 6, y1 - 30, zb), P(w / 2 - 6, y1 - 30, zb)], '#3a3d41', 1);            // the frame post at the back
+    for (let i = 0; i < n; i++) { const yb = y0 + 80 + i * step, rim = Math.min(70, step * 0.35);
+      q([P(x1, yb, zb), P(x2, yb, zb), P(x2, yb, zf - 25), P(x1, yb, zf - 25)], '#4a4e53', 1);                                                  // basket floor
+      q([P(x1, yb, zb), P(x2, yb, zb), P(x2, yb + rim, zb), P(x1, yb + rim, zb)], '#2f3236', 1);                                                // back rail
+      q([P(x1, yb, zb), P(x1, yb, zf - 25), P(x1, yb + rim, zf - 25), P(x1, yb + rim, zb)], '#3c4044', 1);                                        // side rail
+      q([P(x2, yb, zb), P(x2, yb, zf - 25), P(x2, yb + rim, zf - 25), P(x2, yb + rim, zb)], '#5a5f64', 1); }
+    if (o.doors) { const yb = y0 + 3, yt = y1 - 3, m = 55;
+      q([P(3, yb, zf), P(w - 3, yb, zf), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(col, 0.24), 1.3);
+      q([P(3 + m, yb + 75, zf), P(w - 3 - m, yb + 75, zf), P(w - 3 - m, yt - 75, zf), P(3 + m, yt - 75, zf)], baseShade(col, 0.08), 1);
+      q([P(3, yt, zf - T), P(w - 3, yt, zf - T), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(eh, 0.32), esw); }
+  }
   else if (o.doors && o.bins) {        // a bin unit's door is fixed to the pull-out frame and slides out with the bins
     const zf = d + BIN_PULL, yb = y0 + 3, yt = y1 - 3, m = 55;
     q([P(3, yb, zf), P(w - 3, yb, zf), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(col, 0.24), 1.3);                    // door face
@@ -10433,6 +10446,61 @@ A.sptDoors = t => { SPT.doors = t.dataset.v; sptRefresh(); };
 A.sptHinge = t => { SPT.hinge = t.dataset.v; sptRefresh(); };
 A.sptSys = t => { SPT.sys = t.dataset.v; SPT.uh = null; sptRefresh(); };
 CH.sptDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = SPT[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), SPT.d - 200); SPT[k] = v; sptRefresh(); };
+/* Kitchen > All Larders: Pull-out Larder, 1970 (LMP) or 2150 (LTP) high, 570 deep, 300 to 600 wide. The door is fixed to a Proline Anthracite
+   soft close larder pull-out with 5 baskets (no hinges). Pull-out cost prices given 24 Nov 2026; there is no 600 price yet. Code: LMP / LTP + width, e.g. LMP300. */
+const LPL = { h: 1970, w: 300, d: 570, v: 50 };
+const LPL_WIDTHS = [300, 400, 500, 600];
+const LPL_SET = { 300: ['I560-073', 277.45], 400: ['I560-074', 293.02], 500: ['I560-075', 322.71] };
+const lplCode = () => (LPL.h === 2150 ? 'LTP' : 'LMP') + LPL.w;
+const lplSet = w => { const s = LPL_SET[w]; return s ? { code: s[0], p: s[1], name: 'Proline Anthracite ' + w + 'mm SC Larder pull-out (' + s[0] + ')' } : null; };
+const lplArt = (extra, bare) => baseArt(LPL.w, LPL.d, LPL.h, 'left', LPL.v, Object.assign({ doors: !bare, noShelf: true, fullTop: true, noRail: true, lpull: { out: !bare, n: LPL.h === 2150 ? 6 : 5 } }, extra));
+function lplPick(sel) {
+  const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  const s = lplSet(LPL.w);
+  return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(x => btn('lplH', x, x + ' high', LPL.h === x)).join('')}</div>
+    <div class="muted">Width:</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${LPL_WIDTHS.map(x => btn('lplW', x, x, LPL.w === x)).join('')}</div>
+    <div class="muted" style="font-size:13px;line-height:1.5">Pull-out: <b>${s ? s.name : 'Proline Anthracite 600mm larder pull-out: price to be confirmed'}</b>, soft close, the door fixed to the frame.</div>`;
+}
+function lplCard() {
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="lplDim" data-k="${k}"></label>`;
+  return `<article class="card card-pad stack" id="lpl" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', LPL.h)}${chip('W', LPL.w)}${chip('D', LPL.d)}${chip('Void', LPL.v)}</div>
+    <div style="height:480px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${lplArt()}</div>
+    <div class="row"><div><h3 style="margin:0">Pull-out Larder</h3><span class="mono">${lplCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="lplMore">More Details ${ic('chevR', 14)}</button></div>
+    ${lplPick(sel)}
+    <div class="row" style="gap:10px">${num('v', 'Void (mm)', LPL.v)}</div>
+    ${bkRow('lpl')}
+  </article>`;
+}
+function lplDetails() {
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '', s = lplSet(LPL.w);
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Larders</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(lplArt({ doors: false, lpull: { out: true, n: LPL.h === 2150 ? 6 : 5 } }, false), 520)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', lplCode())}${row('Width', LPL.w + ' mm')}${row('Height (without legs)', LPL.h + ' mm')}${row('Height (with legs)', (LPL.h + 150) + ' mm')}${row('Depth', LPL.d + ' mm')}${row('Void', LPL.v + ' mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">${LPL.w}MM PULL-OUT LARDER ${LPL.h}</h1>
+      <span class="mono">${lplCode()}</span>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + lplCode())}${row('PULL-OUT', s ? s.name + ', soft close' : '600mm pull-out: price to be confirmed')}${row('DOOR', 'Full height door fixed to the pull-out frame (no hinges)')}${row('LEGS', 'Quantity: ' + tallLegs(LPL.w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(LPL.w) + ' x plinth clips')}</div>
+      ${lplPick(sel)}
+      ${ocDetail(null)}
+      ${bkRow('lpl')}
+    </div>
+  </div>`;
+}
+const lplRefresh = () => { if (UI.orderCat === 'lpldetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#lpl'); if (el) el.outerHTML = lplCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.lplMore = () => { UI.orderCat = 'lpldetails'; render(); window.scrollTo(0, 0); };
+A.lplH = t => { LPL.h = +t.dataset.v; lplRefresh(); };
+A.lplW = t => { LPL.w = +t.dataset.v; lplRefresh(); };
+CH.lplDim = t => { let v = Math.round(+t.value); if (!isFinite(v)) v = LPL.v; LPL.v = Math.min(100, Math.max(0, v)); lplRefresh(); };
 /* Kitchen > All Larders: Diagonal Larder. Two gables (each as deep as the cabinet) and one door across the diagonal. The customer sets the
    right hand and left hand widths (start from 1000). The top, the base and all 5 shelves are diagonal too. Height 1970 (LMD) or 2150 (LTD),
    code LMD / LTD + right hand width + X + left hand width, e.g. LMD1000X1000. Diagonal = the straight line between the two gables' front corners,
@@ -11632,6 +11700,8 @@ function bkLine(key) {
   } else if (key === 'ff') {
     const fd = ffDoors();
     l = { name: 'Fridge Freezer Larder', code: ffCode(), w: FF.w, h: FF.h, d: FF.d, v: FF.v, opt: FF.split + ' split, ' + FF.hinge + ' door hinge, doors ' + fd.w + ' x ' + fd.b + ' and ' + fd.w + ' x ' + fd.t + ' mm, ' + FF_AP + ' mm appliance opening with 1 x fixed shelf above, full top, fixed back on the top section, removable back ' + FF_RB + ' mm high in the middle of the opening, 5 x appliance hinges' + (FF.gola !== 'none' ? ', ' + lgText(FF) : '') };
+  } else if (key === 'lpl') {
+    const s = lplSet(LPL.w); l = { name: 'Pull-out Larder', code: lplCode(), w: LPL.w, h: LPL.h, d: LPL.d, v: LPL.v, opt: 'Full height door fixed to the pull-out, ' + (s ? s.name : '600mm larder pull-out (price to be confirmed)') + ', soft close, ' + tallLegs(LPL.w) + ' x legs' };
   } else if (key === 'spt') {
     drwUSync('spt'); l = { name: 'Space Tower Larder', code: sptCode(), w: SPT.w, h: SPT.h, d: SPT.d, v: SPT.v, opt: sptDoorTxt() + ', ' + sptN() + ' x ' + SPT.sys + ' internal drawers with internal fronts' + (SPT.top === false ? ' (4 pan drawers, no top drawer)' : '') + ', 1 x fixed internal top, 2 x adjustable shelves above, ' + sptHinges() + ' x hinges, ' + tallLegs(SPT.w) + ' x legs' };
   } else if (key === 'pan') {
@@ -11693,7 +11763,7 @@ function bkLine(key) {
     l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers, ' + s.run + ' mm' + (s.sys === 'Legrabox' && (s.hd || LG_RUN[s.run] == null) ? ' 70 kg' : '') + ' runners' + (S ? ', heights ' + s.hts.map(hmm).join(' / ') + ' mm (top to bottom)' : '') + (s.inner ? ', internal front' + (S ? ' ' + hmm(s.inH) + ' mm' : '') : '') + (S && s.glass ? ', ' + (s.sys === 'Legrabox' ? s.gtype + ' glass sides on the C drawers' : 'glass sides on the D drawers') : '') + (s.ct && ctFor(s.w, s.sys, s.run) ? ', ' + ctText(ctFor(s.w, s.sys, s.run)) : '') + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
   if (DRW_UNITS[key]) drwUSync(key);
-  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
+  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   if (DRW_UNITS[key]) { try { const r = poUnit(l); if (r && r.drw && r.drw.length) { const g = {}; r.drw.forEach(x => { const n = dpDrawerName(x); g[n] = (g[n] || 0) + 1; }); l.opt += ', ' + Object.entries(g).map(([n, c]) => c + ' x ' + n).join(', '); } if (r && r.ct) l.opt += ', ' + ctText(r.ct); } catch (e) { } }   // the drawer boxes the customer picked
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
@@ -12050,6 +12120,12 @@ function poUnit(u) {
   if (k === 'oven') {
     const r = C({ top: 'none', back: false, shelves: 0, fixed: 1, fronts: s.drawer ? [[w - 4, 115]] : [], legs: true });      // the fixed shelf comes with or without the drawer
     if (s.drawer) { r.drw = antDr(1, 115, { h: 'N' }); r.f.runners[s.sys || 'Antaro'] = 1; } return r;
+  }
+  if (k === 'lpl') {                                                                                    // pull-out larder: full top, back, no shelves; the door rides on the pull-out frame (no hinges)
+    const r = C({ top: 'full', back: true, shelves: 0, doors: [[w - 4, H - 5]], hingesPerDoor: 0, legs: true });
+    r.f.legs = tallLegs(w); r.f.clips = tallClips(w);
+    const sw = lplSet(w); if (sw) r.binSet = { name: sw.name, p: sw.p }; else r.f.other['Larder pull-out ' + w + 'mm (price to be confirmed)'] = 1;
+    return r;
   }
   if (k === 'spt') {                                                                                    // space tower: full top, back, fixed top over the 5 internal drawers, 2 shelves, tall doors
     const pair = w > 600, split = s.doors === 'split', dd = split ? (pair ? [[(w - 7) / 2, 1245], [(w - 7) / 2, 1245], [(w - 7) / 2, H - 10 - 1245], [(w - 7) / 2, H - 10 - 1245]] : [[w - 4, 1245], [w - 4, H - 10 - 1245]]) : doorSet(w, H, pair);
@@ -12734,6 +12810,7 @@ function cOrders() {
   if (UI.orderCat === 'lcdetails') return lcDetails();
   if (UI.orderCat === 'pandetails') return panDetails();
   if (UI.orderCat === 'sptdetails') return sptDetails();
+  if (UI.orderCat === 'lpldetails') return lplDetails();
   if (UI.orderCat === 'dlrdetails') return dlrDetails();
   if (UI.orderCat === 'lshdetails') return lshDetails();
   if (UI.orderCat === 'walldetails') return wallDetails();
@@ -12764,7 +12841,7 @@ function cOrders() {
   if (UI.orderCat === 'larders') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Larders</h1><p>Choose a width, then the height and door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${ffCard()}${ohlCard()}${lcCard()}${panCard()}${sptCard()}${dlrCard()}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${ffCard()}${ohlCard()}${lcCard()}${panCard()}${sptCard()}${lplCard()}${dlrCard()}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -12781,7 +12858,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', sptdetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', wwinedetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', sptdetails: 'larders', lpldetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', wwinedetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
@@ -14429,6 +14506,7 @@ function newOrderInventory() {
   OHL_P.forEach(p => (p.dr ? ['Antaro', 'Legrabox', 'Merivo'] : [null]).forEach(s => add('600 ' + OHL_TEXT(p) + (s ? ' (' + s + ' drawers)' : ''), OHL_CODE(p, s), 'cat-appl', 'Larders', 'Oven housing larder. Gola option.', p.h, 600, 570, { no: { k: 'ohl', p: { cfg: p.id, h: p.h, sys: s || 'none', mtm: false, top: null } } })));
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => [['A', 'Antaro'], ['L', 'Legrabox'], ['M', 'Merivo']].forEach(([c, sys]) => add('Pantry Larder 1000 ' + h + ' ' + sys, p + c + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 2 shelves and 3 ' + sys + ' internal scalloped fronts, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570, { no: { k: 'pan', p: { h, sys, chest: true } } })));
   [[1970, 'LMSP'], [2150, 'LTSP']].forEach(([hh, p]) => [['A', 'Antaro'], ['L', 'Legra']].forEach(([c, sys]) => SPT_WIDTHS.forEach(w => add(w + ' ' + sys + ' Space Tower Larder ' + hh, p + c + w, 'cat-tall', 'Larders', w + ' ' + sys + ' Space Tower Larder ' + hh + ' High 570 Deep, 5 internal drawers with internal fronts.', hh, w, 570, { no: { k: 'spt', p: { h: hh, w, sys: c === 'L' ? 'Legrabox' : 'Antaro', uh: null } } }))));
+  [[1970, 'LMP'], [2150, 'LTP']].forEach(([hh, p]) => [300, 400, 500, 600].forEach(w => add(w + ' Larder With Pull-out ' + hh, p + w, 'cat-tall', 'Larders', w + ' Larder with Proline Anthracite soft close pull-out, ' + hh + ' High 570 Deep.', hh, w, 570, { doors: false, no: { k: 'lpl', p: { h: hh, w } } })));
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => add('Pantry Larder 1000 ' + h + ' without internal chest', p + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 5 equal adjustable shelves, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570, { no: { k: 'pan', p: { h, chest: false } } }));
   [[1970, 'LMC'], [2150, 'LTC']].forEach(([h, p]) => LC_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Larder ' + w + ' ' + h + ' ' + s + ' hand blank', p + w + (s === 'right' ? 'RB' : 'LB'), 'cat-tall', 'Larders', 'Corner larder, one door and a blank; the customer sets the door size. MTM option.', h, w, 570, { blank: true, no: { k: 'lc', p: { h, w, side: s, mtm: false } } }))));
   WALL_HEIGHTS.forEach(h => [['WR', 300, 'Wall Wine Rack'], ['WRX', 600, 'Wall X Wine Rack']].forEach(([t, w, nm]) => add(nm + ' ' + w + ' ' + h, WALL_PREFIX[h] + t + w, 'cat-wall', 'Wall' + h + 'H', nm + ', ' + h + ' High 300 Deep. Any width.', h, w, 300, { doors: false, no: { k: 'wwine', p: { h, w, type: t === 'WR' ? 'slot' : 'x' } } })));
@@ -14442,7 +14520,7 @@ function newOrderInventory() {
 let NO_ITEMS = null;
 function noItems() { if (!NO_ITEMS) { try { NO_ITEMS = newOrderInventory().items; } catch (e) { NO_ITEMS = null; return []; } } return NO_ITEMS; }
 const noItem = id => noItems().find(i => i.id === id) || null;
-function noState(k) { return ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[k] || (k && k.slice(0, 3) === 'dp:' ? DPK[k.slice(3)] : null); }
+function noState(k) { return ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[k] || (k && k.slice(0, 3) === 'dp:' ? DPK[k.slice(3)] : null); }
 /* the basket line for a planner unit: the row's settings, then the unit's own width, depth and hinge (a width or depth off the standard makes it MTM) */
 function noLine(it, u) {
   if (!it || !it.no) return null;
@@ -14471,7 +14549,7 @@ function noPlanToBasket(units) {
 /* Options for one placed unit: its own New Orders card opens over the planner with the unit's settings loaded. Every choice on the card
    (drawer heights, runners, Gola, bins, internal front, MTM size ...) works as usual; Save keeps them on the unit (u.no), Cancel drops them.
    The global card state is put back afterwards, so the New Orders pages are not changed. */
-const NO_CARDS = { base: () => baseCard(), sink: () => sinkCard(), dl: () => dlCard(), bin: () => binCard(), spo: () => spoCard(), bel: () => belCard(), wine: () => wineCard(), oven: () => ovenCard(), ff: () => ffCard(), ohl: () => ohlCard(), lc: () => lcCard(), pan: () => panCard(), spt: () => sptCard(), dlr: () => dlrCard(), lsh: () => lshCard(), wall: () => wallCard(false), wallg: () => wallCard(true), cwall: () => cwCard(), lwall: () => lwCard(), dwall: () => dwCard(), wwine: () => wwCard(), mwall: () => mwCard(), blwall: () => blCard(), dresser: () => drsCard(), brg: () => brgCard(), corner: () => cornerCard(), robe: () => robeCard() };
+const NO_CARDS = { base: () => baseCard(), sink: () => sinkCard(), dl: () => dlCard(), bin: () => binCard(), spo: () => spoCard(), bel: () => belCard(), wine: () => wineCard(), oven: () => ovenCard(), ff: () => ffCard(), ohl: () => ohlCard(), lc: () => lcCard(), pan: () => panCard(), spt: () => sptCard(), dlr: () => dlrCard(), lsh: () => lshCard(), lpl: () => lplCard(), wall: () => wallCard(false), wallg: () => wallCard(true), cwall: () => cwCard(), lwall: () => lwCard(), dwall: () => dwCard(), wwine: () => wwCard(), mwall: () => mwCard(), blwall: () => blCard(), dresser: () => drsCard(), brg: () => brgCard(), corner: () => cornerCard(), robe: () => robeCard() };
 function noEditOpen(it, u, done) {
   if (!it || !it.no) return;
   const k = it.no.k, st = noState(k), card = k.slice(0, 3) === 'dp:' ? () => dpCard(k.slice(3)) : NO_CARDS[k]; if (!st || !card) { toast('This cabinet has no options to set'); return; }
