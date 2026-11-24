@@ -10600,21 +10600,19 @@ function dlrArt(o) {
     const zA = D + (T * nn[0] - sd) / nn[1], xB = RH + (-sd - nn[1] * (LH - T - D)) / nn[0];
     q([[T, T], [RH - T, T], [RH - T, zA], [xB, LH - T], [T, LH - T]].map(([x, z]) => P(x, ys, z)), baseShade(col, 0.12));
   }
-  if (WK2) {                                                                                       // walk-in larder: a 150 wide wine rack from the back corner to the front, cubbies facing the door, shelves on both sides of it
-    const n = DLW_SHELVES, fz = D - 20, o2 = 75 * Math.SQRT2, lt = baseShade(col, 0.34);           // the rack takes |x - z| <= 106 (150 wide across the diagonal)
+  if (WK2) {                                                                                       // walk-in larder: the left hand shelves stop at a 150 wide wine rack running back to front; the right hand shelves run all the way across to it
+    const n = DLW_SHELVES, fz = D - 20, rw = 150, z0 = D, z1 = D + rw, lt = baseShade(col, 0.34);
     const ya = y0 + T, yb = y1 - T, rows = Math.max(1, Math.floor((yb - ya) / 150));
-    const A0 = [v + o2, v], A1 = [fz + o2, fz], B0 = [v, v + o2], B1 = [fz, fz + o2];                // the two rack sides, back to front
-    q([P(A0[0], ya, A0[1]), P(B0[0], ya, B0[1]), P(B0[0], yb, B0[1]), P(A0[0], yb, A0[1])], baseShade(col, -0.3));                  // back of the cubbies
-    for (let k2 = 0; k2 <= rows; k2++) { const yk = ya + k2 * (yb - ya) / rows; q([A0, A1, B1, B0].map(([x, z]) => P(x, yk, z)), baseShade(col, 0.2), 0.8); }   // cubby floors
-    [[A0, A1, 0.04], [B0, B1, 0.1]].forEach(([a, b, t]) => q([P(a[0], ya, a[1]), P(b[0], ya, b[1]), P(b[0], yb, b[1]), P(a[0], yb, a[1])], baseShade(col, t)));   // rack sides
+    q([P(v + T, ya, z0), P(v + T, ya, z1), P(v + T, yb, z1), P(v + T, yb, z0)], baseShade(col, -0.3));                                       // back of the cubbies
+    for (let k2 = 0; k2 <= rows; k2++) { const yk = ya + k2 * (yb - ya) / rows; q([P(v, yk, z0), P(fz, yk, z0), P(fz, yk, z1), P(v, yk, z1)], baseShade(col, 0.2), 0.8); }   // cubby floors
+    [z0, z1].forEach(z => q([P(v, ya, z), P(fz, ya, z), P(fz, yb, z), P(v, yb, z)], baseShade(col, z === z0 ? 0.02 : 0.1)));                  // rack sides
     for (let i = 1; i <= n; i++) {
       const ys = y0 + T + i * (H - 2 * T) / (n + 1);
-      q([[v + o2, v], [RH - T, v], [RH - T, fz], [fz + o2, fz]].map(([x, z]) => P(x, ys, z)), baseShade(col, 0.12));       // shelf, wing A side of the rack
-      q([[v, v + o2], [fz, fz + o2], [fz, LH - T], [v, LH - T]].map(([x, z]) => P(x, ys, z)), baseShade(col, 0.12));       // shelf, wing B side
+      q([[v, v], [RH - T, v], [RH - T, fz], [fz, fz], [fz, z0], [v, z0]].map(([x, z]) => P(x, ys, z)), baseShade(col, 0.12));          // right hand shelves: all the way across, up to the rack
+      q([[v, z1], [fz, z1], [fz, LH - T], [v, LH - T]].map(([x, z]) => P(x, ys, z)), baseShade(col, 0.12));                              // left hand shelves: from the rack to the gable
     }
-    const fx = (a, b, u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], ew = T / (2 * o2);
-    for (let k2 = 0; k2 <= rows; k2++) { const yk = ya + k2 * (yb - ya) / rows; q([P(A1[0], yk, A1[1]), P(B1[0], yk, B1[1]), P(B1[0], yk + T, B1[1]), P(A1[0], yk + T, A1[1])], lt, 0.8); }   // front edges of the dividers
-    [[A1, fx(A1, B1, ew)], [fx(B1, A1, ew), B1]].forEach(([a, b]) => q([P(a[0], ya, a[1]), P(b[0], ya, b[1]), P(b[0], yb, b[1]), P(a[0], yb, a[1])], lt, 0.8));   // front edges of the sides
+    for (let k2 = 0; k2 <= rows; k2++) { const yk = ya + k2 * (yb - ya) / rows; q([P(fz, yk, z0), P(fz, yk, z1 + T), P(fz, yk + T, z1 + T), P(fz, yk + T, z0)], lt, 0.8); }   // front edges of the cubby dividers
+    [z0, z1].forEach(z => q([P(fz, ya, z), P(fz, ya, z + T), P(fz, yb, z + T), P(fz, yb, z)], lt, 0.8));                                      // front edges of the rack sides
   }
   q([P(RH, y0, 0), P(RH, y0, D), P(RH, y1, D), P(RH, y1, 0)], baseShade(col, 0.08));  // gable on wall A's side
   q([P(0, y0, LH), P(D, y0, LH), P(D, y1, LH), P(0, y1, LH)], baseShade(col, 0.1));   // gable on wall B's side
@@ -12348,7 +12346,7 @@ function poUnit(u) {
       extra: [{ name: 'Base panel (wing 1)', l: RH - T, w: Dp, ef: RH - d, er: RH - T }, { name: 'Base panel (wing 2)', l: LH - d, w: Dp, ef: LH - d, er: LH - d },
         { name: 'Top panel (diagonal)', l: RH - T, w: LH - T, ef: ds, er: RH + LH - 2 * T },
         { name: 'Back (wall A)', l: H, w: RH - T }, { name: 'Back (wall B)', l: H, w: LH - T },
-        { name: 'Shelf (wing 1)', l: RH - 2 * T - rk - 1, w: Dp - 20, q: DLW_SHELVES, ef: RH - 2 * T - rk, er: 0 }, { name: 'Shelf (wing 2)', l: LH - d - 1, w: Dp - 20, q: DLW_SHELVES, ef: LH - d, er: 0 },
+        { name: 'Shelf (right hand, across to the rack)', l: RH - 2 * T - 1, w: Dp - 20, q: DLW_SHELVES, ef: RH - 2 * T, er: 0 }, { name: 'Shelf (left hand, rack to gable)', l: LH - d - rk - 1, w: Dp - 20, q: DLW_SHELVES, ef: LH - d - rk, er: 0 },
         { name: 'Wine rack side', l: IH, w: Dp, q: 2, ef: IH, er: 0 }, { name: 'Wine rack shelf', l: rk - 2 * T, w: Dp, q: cells - 1, ef: rk - 2 * T, er: 0 }], doors: [[door, H - 4]], hingesPerDoor: 5 });
     r.f.mp += 24; r.f.wd += 24; r.f.pegs += 8 * DLW_SHELVES; r.f.hinges = 5; return r;
   }
