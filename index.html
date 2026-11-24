@@ -2527,7 +2527,7 @@ body.rp-open .demo-bar{display:none!important}
     var cat = (it && it.cat) || '', code = String((it && it.code) || '').toUpperCase(),
       name = String((it && it.name) || '').toUpperCase();
     if (u && u.shape) return u.shape;              // set by hand in the planner
-    if (/DIAG/.test(name) || /DIAG/.test(code) || /^BDC/.test(code) || /^[ST]DW/.test(code) || /^DR\d*X/.test(code) || /^L[MT]D\d/.test(code)) return 'diag';
+    if (/DIAG/.test(name) || /DIAG/.test(code) || /^BDC/.test(code) || /^[ST]DW/.test(code) || /^DR\d*X/.test(code) || /^L[MT]D(\d|W)/.test(code)) return 'diag';
     if (/L.?SHAPE/.test(name) || /^BLC/.test(code)) return 'L';
     var isCorner = cat === 'cat-corner' || /CORNER/.test(name) || (u && u.kind === 'corner');
     if (!isCorner) return 'box';
@@ -4157,7 +4157,7 @@ body.rp-open .demo-bar{display:none!important}
     var cat = it.cat || '', code = String(it.code || '').toUpperCase(), nm = String(it.name || '').toUpperCase();
     if (u.shape) return u.shape === 'blind' ? 'box' : u.shape;
     // a diagonal or L-shaped unit keeps its shape whatever category it sits in
-    if (/DIAG/.test(nm) || /DIAG/.test(code) || /^BDC/.test(code) || /^[ST]DW/.test(code) || /^DR\d*X/.test(code) || /^L[MT]D\d/.test(code)) return 'diag';
+    if (/DIAG/.test(nm) || /DIAG/.test(code) || /^BDC/.test(code) || /^[ST]DW/.test(code) || /^DR\d*X/.test(code) || /^L[MT]D(\d|W)/.test(code)) return 'diag';
     if (/L.?SHAPE/.test(nm) || /^BLC/.test(code)) return 'L';
     if (!(cat === 'cat-corner' || /CORNER/.test(nm) || u.kind === 'corner')) return 'box';
     // at a normal carcass depth a corner unit is a blind corner, so it keeps
@@ -10574,7 +10574,8 @@ const dlrHinges = () => 5;                                                   // 
 const dlrClamp = () => { DLR.v = Math.min(100, Math.max(0, DLR.v)); };
 function dlrArt(o) {
   o = Object.assign({ doors: true, dims: false }, o);
-  const RH = DLR.rh, LH = DLR.lh, D = DLR.d, H = DLR.h, T = 18, v = DLR.v, y0 = DLR_LEG, y1 = y0 + H, col = ocHex(), s2 = Math.SQRT1_2;
+  const DS = o.S || DLR, WK2 = o.walk || null;                                                  // o.S: another larder's settings (the walk-in larder); o.walk: { side } for the walk-in layout
+  const RH = DS.rh, LH = DS.lh, D = DS.d, H = DS.h, T = 18, v = DS.v, y0 = DLR_LEG, y1 = y0 + H, col = ocHex(), s2 = Math.SQRT1_2;
   const R = (x, z) => [(x - z) * s2, (x + z) * s2];                                  // the plan turned 45 degrees so the diagonal faces the viewer
   const pts = [], out = [];
   const P = (x, y, z) => { const r = R(x, z), p = { x: r[0] - 0.32 * r[1], y: 0.3 * r[1] - y }; pts.push(p); return p; };
@@ -10583,31 +10584,47 @@ function dlrArt(o) {
   const ln = (a, b, c, sw) => out.push(`<line x1="${f1(a.x)}" y1="${f1(a.y)}" x2="${f1(b.x)}" y2="${f1(b.y)}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`);
   const plan = [[0, 0], [RH, 0], [RH, D], [D, LH], [0, LH]];                          // wall A along the back, wall B down the left, the diagonal across the front
   const eh = (ocEdge() || {}).hex || col, esw = ocEdgeType() === '0.8mm' ? 0.8 : 1.8;
-  const dg = dlrDiag(), u = [(D - RH) / dg, (LH - D) / dg], nn = [(LH - D) / dg, (RH - D) / dg];   // along the diagonal, and out of it
+  const dg = Math.hypot(DS.rh - DS.d, DS.lh - DS.d), u = [(D - RH) / dg, (LH - D) / dg], nn = [(LH - D) / dg, (RH - D) / dg];   // along the diagonal, and out of it
   const at = (s, y, o22) => P(RH + u[0] * s + nn[0] * o22, y, D + u[1] * s + nn[1] * o22);
   out.push(`<polygon points="${[[-30, -20], [RH + 30, -20], [RH + 30, D], [D, LH + 40], [-30, LH + 40]].map(([x, z]) => { const p = P(x, 0, z); return f1(p.x) + ',' + f1(p.y); }).join(' ')}" fill="#000" opacity="0.08"/>`);   // floor shadow
   [[60, 60], [RH / 2, 60], [RH - 60, 60], [60, LH - 60], [RH + u[0] * dg * 0.1 - nn[0] * 70, D + u[1] * dg * 0.1 - nn[1] * 70], [RH + u[0] * dg * 0.9 - nn[0] * 70, D + u[1] * dg * 0.9 - nn[1] * 70]]
     .forEach(([x, z]) => { const f = P(x, 12, z);                                      // the 6 legs, drawn like the other larders: a black stem on a wide round foot
       ln(P(x, y0, z), P(x, 14, z), '#1d1d1d', 20);
       out.push(`<ellipse cx="${f1(f.x)}" cy="${f1(f.y)}" rx="30" ry="15" fill="#0e0e0e"/><ellipse cx="${f1(f.x)}" cy="${f1(f.y - 9)}" rx="24" ry="10" fill="#2a2a2a"/>`); });
-  q(plan.map(([x, z]) => P(x, y0 + T, z)), baseShade(col, 0.04));                     // base panel, diagonal at the front
+  q((WK2 ? [[0, 0], [RH, 0], [RH, D], [D, D], [D, LH], [0, LH]] : plan).map(([x, z]) => P(x, y0 + T, z)), baseShade(col, 0.04));   // base panel: diagonal at the front, or an L shape on the walk-in larder
   q([P(0, y0 + T, v), P(RH, y0 + T, v), P(RH, y1 - T, v), P(0, y1 - T, v)], baseShade(col, -0.22));   // inside of the back wall A, set in by the void
   q([P(v, y0 + T, 0), P(v, y0 + T, LH), P(v, y1 - T, LH), P(v, y1 - T, 0)], baseShade(col, -0.1));    // inside of the back wall B
   const sd = 22;
-  for (let i = 1; i <= DLR_SHELVES; i++) {                                           // 5 diagonal shelves, set back from the diagonal by the door thickness
-    const ys = y0 + T + i * (H - 2 * T) / (DLR_SHELVES + 1);
+  for (let i = 1; i <= (WK2 ? 0 : DLR_SHELVES); i++) {                                           // 5 diagonal shelves, set back from the diagonal by the door thickness
+    const ys = y0 + T + i * (H - 2 * T) / ((WK2 ? 0 : DLR_SHELVES) + 1);
     const zA = D + (T * nn[0] - sd) / nn[1], xB = RH + (-sd - nn[1] * (LH - T - D)) / nn[0];
     q([[T, T], [RH - T, T], [RH - T, zA], [xB, LH - T], [T, LH - T]].map(([x, z]) => P(x, ys, z)), baseShade(col, 0.12));
+  }
+  if (WK2) {                                                                                       // walk-in larder: a 150 wide wine rack from the back corner to the front, cubbies facing the door, shelves on both sides of it
+    const n = DLW_SHELVES, fz = D - 20, o2 = 75 * Math.SQRT2, lt = baseShade(col, 0.34);           // the rack takes |x - z| <= 106 (150 wide across the diagonal)
+    const ya = y0 + T, yb = y1 - T, rows = Math.max(1, Math.floor((yb - ya) / 150));
+    const A0 = [v + o2, v], A1 = [fz + o2, fz], B0 = [v, v + o2], B1 = [fz, fz + o2];                // the two rack sides, back to front
+    q([P(A0[0], ya, A0[1]), P(B0[0], ya, B0[1]), P(B0[0], yb, B0[1]), P(A0[0], yb, A0[1])], baseShade(col, -0.3));                  // back of the cubbies
+    for (let k2 = 0; k2 <= rows; k2++) { const yk = ya + k2 * (yb - ya) / rows; q([A0, A1, B1, B0].map(([x, z]) => P(x, yk, z)), baseShade(col, 0.2), 0.8); }   // cubby floors
+    [[A0, A1, 0.04], [B0, B1, 0.1]].forEach(([a, b, t]) => q([P(a[0], ya, a[1]), P(b[0], ya, b[1]), P(b[0], yb, b[1]), P(a[0], yb, a[1])], baseShade(col, t)));   // rack sides
+    for (let i = 1; i <= n; i++) {
+      const ys = y0 + T + i * (H - 2 * T) / (n + 1);
+      q([[v + o2, v], [RH - T, v], [RH - T, fz], [fz + o2, fz]].map(([x, z]) => P(x, ys, z)), baseShade(col, 0.12));       // shelf, wing A side of the rack
+      q([[v, v + o2], [fz, fz + o2], [fz, LH - T], [v, LH - T]].map(([x, z]) => P(x, ys, z)), baseShade(col, 0.12));       // shelf, wing B side
+    }
+    const fx = (a, b, u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], ew = T / (2 * o2);
+    for (let k2 = 0; k2 <= rows; k2++) { const yk = ya + k2 * (yb - ya) / rows; q([P(A1[0], yk, A1[1]), P(B1[0], yk, B1[1]), P(B1[0], yk + T, B1[1]), P(A1[0], yk + T, A1[1])], lt, 0.8); }   // front edges of the dividers
+    [[A1, fx(A1, B1, ew)], [fx(B1, A1, ew), B1]].forEach(([a, b]) => q([P(a[0], ya, a[1]), P(b[0], ya, b[1]), P(b[0], yb, b[1]), P(a[0], yb, a[1])], lt, 0.8));   // front edges of the sides
   }
   q([P(RH, y0, 0), P(RH, y0, D), P(RH, y1, D), P(RH, y1, 0)], baseShade(col, 0.08));  // gable on wall A's side
   q([P(0, y0, LH), P(D, y0, LH), P(D, y1, LH), P(0, y1, LH)], baseShade(col, 0.1));   // gable on wall B's side
   if (o.doors) {
-    const dd = dlrDoor(), s1 = (dg - dd.w) / 2, s3 = s1 + dd.w, pr = 22;
+    const dd = dlrDoorOf(DS.rh, DS.lh, DS.d, DS.h), s1 = (dg - dd.w) / 2, s3 = s1 + dd.w, pr = 22;
     q([at(s1, y0 + 2.5, pr), at(s3, y0 + 2.5, pr), at(s3, y1 - 2.5, pr), at(s1, y1 - 2.5, pr)], baseShade(col, 0.24), 1.3);
     q([at(s1 + 55, y0 + 90, pr), at(s3 - 55, y0 + 90, pr), at(s3 - 55, y1 - 90, pr), at(s1 + 55, y1 - 90, pr)], baseShade(col, 0.08), 1);
-    const hs = DLR.hand === 'left' ? s1 + 45 : s3 - 45;                               // the handle is on the side away from the hinges
+    const hs = DS.hand === 'left' ? s1 + 45 : s3 - 45;                               // the handle is on the side away from the hinges
     ln(at(hs, y0 + H / 2 - 90, pr), at(hs, y0 + H / 2 + 90, pr), '#3a3631', 4);
-  } else {
+  } else if (!WK2) {                                                                               // (the walk-in larder's L-shaped base has no diagonal front edge)
     q([at(0, y0, 0), at(dg, y0, 0), at(dg, y0 + T, 0), at(0, y0 + T, 0)], baseShade(eh, 0.1), esw);   // the bare front edge of the base panel
   }
   q(plan.map(([x, z]) => P(x, y1, z)), baseShade(col, 0.28));                         // top, diagonal at the front
@@ -10627,6 +10644,62 @@ function dlrArt(o) {
   const xs = pts.map(p => p.x), ys = pts.map(p => p.y), bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...ys), by1 = Math.max(...ys), pad = Math.max(bx1 - bx0, by1 - by0) * 0.06;
   return `<svg viewBox="${(bx0 - pad).toFixed(0)} ${(by0 - pad).toFixed(0)} ${(bx1 - bx0 + 2 * pad).toFixed(0)} ${(by1 - by0 + 2 * pad).toFixed(0)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Diagonal larder" style="width:100%;height:100%">${out.join('')}</svg>`;
 }
+/* Kitchen > All Larders: Diagonal Walk-in Larder, 1155 x 1155, 1970 (LMDW) or 2150 (LTDW) high, 570 deep. L-shaped base, diagonal top, one diagonal door
+   (5 x 155 degree hinges), shelves on both wings and a 150 wide wine rack the full inside height, on the left hand or right hand wing.
+   Code: LMDW / LTDW + L or R for the wine rack side, e.g. LMDWR. */
+const DLW = { h: 1970, rh: 1155, lh: 1155, d: 570, v: 50, hand: 'left', side: 'right' };
+const DLW_SHELVES = 5;
+const dlwCode = () => (DLW.h === 2150 ? 'LTDW' : 'LMDW') + (DLW.hand === 'right' ? 'R' : 'L');      // L or R: the door hinge side
+const dlwDoor = () => dlrDoorOf(DLW.rh, DLW.lh, DLW.d, DLW.h);
+const dlwArt = o => dlrArt(Object.assign({ S: DLW, walk: { side: DLW.side } }, o));
+function dlwPick(sel) {
+  const btn = (act, val, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 4px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${val}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  const dd = dlwDoor();
+  return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(x => btn('dlwH', x, x + ' high', DLW.h === x)).join('')}</div>
+    <div class="muted">Door hinge:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('dlwHand', 'left', 'LH (left hinge)', DLW.hand === 'left')}${btn('dlwHand', 'right', 'RH (right hinge)', DLW.hand === 'right')}</div>
+    <div class="muted" style="font-size:13px;line-height:1.5">1155 x 1155, L-shaped base, diagonal top, a 150 wide wine rack the full inside height in the middle, ${DLW_SHELVES} shelves on each side of it. Door: <b>${dd.h} x ${dd.w} mm</b>, 5 x 155 degree hinges.</div>`;
+}
+function dlwCard() {
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="dlw" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', DLW.h)}${chip('RH', DLW.rh)}${chip('LH', DLW.lh)}${chip('D', DLW.d)}</div>
+    <div style="height:480px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${dlwArt({ doors: false })}</div>
+    <div class="row"><div><h3 style="margin:0">Diagonal Walk-in Larder</h3><span class="mono">${dlwCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="dlwMore">More Details ${ic('chevR', 14)}</button></div>
+    ${dlwPick(sel)}
+    ${bkRow('dlw')}
+  </article>`;
+}
+function dlwDetails() {
+  const dd = dlwDoor();
+  const row = (k, val) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${val}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`;
+  const sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Larders</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">
+      ${panel(dlwArt({ doors: false }), 520)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', dlwCode())}${row('Right hand width', DLW.rh + ' mm')}${row('Left hand width', DLW.lh + ' mm')}${row('Height (without legs)', DLW.h + ' mm')}${row('Height (with legs)', (DLW.h + 150) + ' mm')}${row('Depth', DLW.d + ' mm')}${row('Void', DLW.v + ' mm')}</div>
+    </div>
+    <div class="stack">
+      <h1 style="margin:0">DIAGONAL WALK-IN LARDER ${DLW.h}</h1>
+      <span class="mono">${dlwCode()}</span>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CABINET', 'Code: ' + dlwCode())}${row('BASE AND TOP', 'L-shaped base, diagonal top')}${row('WINE RACK', '150 wide, the full inside height, from the back corner to the front, shelves on both sides')}${row('SHELVES', 'Quantity: ' + DLW_SHELVES + ' x shelves on each wing (' + DLW_SHELVES * 2 + ' in all)')}${row('DOOR SIZE', dd.h + ' x ' + dd.w + ' mm, ' + DLW.hand + ' hinge')}${row('HINGES', 'Quantity: 5 x 155 degree hinges')}${row('LEGS', 'Quantity: ' + tallLegs(1155) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(1155) + ' x plinth clips')}</div>
+      ${dlwPick(sel)}
+      ${ocDetail(null)}
+      ${bkRow('dlw')}
+    </div>
+  </div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
+  <div style="max-width:620px">${panel(dlwArt({ doors: false, dims: true }), 640)}</div>`;
+}
+const dlwRefresh = () => { if (UI.orderCat === 'dlwdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#dlw'); if (el) el.outerHTML = dlwCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.dlwMore = () => { UI.orderCat = 'dlwdetails'; render(); window.scrollTo(0, 0); };
+A.dlwH = t => { DLW.h = +t.dataset.v; dlwRefresh(); };
+A.dlwSide = t => { DLW.side = t.dataset.v; dlwRefresh(); };
+A.dlwHand = t => { DLW.hand = t.dataset.v; dlwRefresh(); };
 function dlrPick(sel) {
   const btn = (act, val, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 4px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${val}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
   const dd = dlrDoor();
@@ -11721,6 +11794,37 @@ const ocPrice = it => { const c = orderColour(); return it ? (it[GROUP_KEY[c ? c
 const ocEdgeType = () => UI.orderEdgeType === '0.8mm' ? '0.8mm' : '2mm';
 const ocEdge = () => { const e = UI.orderEdge; return !e || e === 'match' ? null : ocList().find(c => c.id === e) || null; };
 const ocEdgeText = () => { const e = ocEdge(); return ocEdgeType() + ' edging, ' + (e ? e.name + ' · ' + e.code : 'matches the cabinet colour'); };
+/* ---------- Doors from the door companies ----------
+   The customer picks a door company, then a style, then a colour. Every cabinet then lists its doors and drawer fronts as sub-rows (1.1, 1.2 ...)
+   with their sizes. Styles, colours and prices are added per company in DOOR_RANGE (or DB.doorRange) as the user sends them. */
+const DOOR_COS = ['OS Doors', 'PWS', 'TKC', 'UForm', 'Trade Mouldings', 'Integral', 'BA Components'];
+const DOOR_RANGE = {};                                                                             // { 'OS Doors': { styles: [{ id, name, colours: [{ id, name, hex }] }] } }
+const doorRange = co => (DB.doorRange && DB.doorRange[co]) || DOOR_RANGE[co] || { styles: [] };
+const doorStyles = co => co ? doorRange(co).styles || [] : [];
+const doorStyleOf = (co, id) => doorStyles(co).find(s => s.id === id) || null;
+const doorColours = (co, sid) => { const s = doorStyleOf(co, sid); return (s && s.colours) || doorRange(co).colours || []; };
+const doorColOf = (co, sid, id) => doorColours(co, sid).find(c => c.id === id) || null;
+/* the doors chosen, as the text that goes on the order: company, style, colour (each 'to be confirmed' until the company's list is in) */
+const doorPick = d => !d || !d.co ? null : { co: d.co, style: (doorStyleOf(d.co, d.style) || {}).name || (d.styleTxt || 'style to be confirmed'), colour: (doorColOf(d.co, d.style, d.colour) || {}).name || (d.colourTxt || 'colour to be confirmed') };
+const doorText = p => p ? p.co + ' · ' + p.style + ' · ' + p.colour : '';
+/* a cabinet's doors and drawer fronts, the same size together: [{ kind, h, w, q }] */
+function doorRowsOf(l) {
+  if (!l || !l.doors) return [];
+  let r = null; try { r = poUnit(l); } catch (e) { r = null; } if (!r || !r.faces) return [];
+  const g = {}; r.faces.forEach(f => { const k = f.kind + '|' + f.l + '|' + f.w; (g[k] = g[k] || { kind: f.kind || 'Door', h: Math.round(f.l * 10) / 10, w: Math.round(f.w * 10) / 10, q: 0 }).q += f.q || 1; });
+  return Object.values(g).sort((a, b) => (a.kind === 'Door' ? 0 : 1) - (b.kind === 'Door' ? 0 : 1) || b.h - a.h);
+}
+/* the three door choices; k is the state they edit (the quote draft, or New Orders) */
+function doorPickers(st, chg) {
+  const co = st.co || '', sts = doorStyles(co), cols = doorColours(co, st.style);
+  const sel = (f, lbl, opts, cur, dis, ph) => `<label class="field" style="flex:1 1 200px"><span class="lbl">${lbl}</span><select class="select" data-chg="${chg}" data-f="${f}" ${dis ? 'disabled' : ''}>${ph ? `<option value="">${ph}</option>` : ''}${opts.map(([v, t]) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`;
+  return sel('co', 'Door company', DOOR_COS.map(x => [x, x]), co, false, 'No doors (cabinets only)')
+    + sel('style', 'Door style', sts.map(s => [s.id, s.name]), st.style || '', !co || !sts.length, !co ? 'Choose a door company first' : sts.length ? 'Select a door style' : 'Styles coming soon (to be confirmed)')
+    + sel('colour', 'Door colour', cols.map(c => [c.id, c.name]), st.colour || '', !co || !cols.length, !co ? 'Choose a door company first' : cols.length ? 'Select a door colour' : 'Colours coming soon (to be confirmed)');
+}
+const doorChoose = (st, f, v) => { st[f] = v || null; if (f === 'co') { st.style = null; st.colour = null; } if (f === 'style') st.colour = null; };
+CH.qDoor = t => { const d = UI.draft; if (!d) return; d.doors = d.doors || {}; doorChoose(d.doors, t.dataset.f, t.value); finishChanged('Doors updated'); };
+CH.ordDoor = t => { UI.orderDoors = UI.orderDoors || {}; doorChoose(UI.orderDoors, t.dataset.f, t.value); save(); const y = window.scrollY; render(); window.scrollTo(0, y); };
 function ocSelect() {
   const cur = orderColour(), l = ocList(), ed = ocEdge(), et = ocEdgeType();
   const opt = (c, sel) => `<option value="${c.id}" ${sel && c.id === sel.id ? 'selected' : ''}>${esc(c.name)} · ${esc(c.code)}</option>`;
@@ -11728,7 +11832,8 @@ function ocSelect() {
   const tick = t => `<button type="button" class="btn btn-secondary btn-sm" style="flex:none;white-space:nowrap;${et === t ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="orderEdgeType" data-v="${t}">${et === t ? '&#9745;' : '&#9744;'} ${t}</button>`;
   return `<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end">
     <label class="field" style="flex:1 1 260px;max-width:420px"><span class="lbl">Cabinet colour</span><select class="select" data-chg="orderColour" aria-label="Cabinet colour">${groups(cur)}</select></label>
-    <div class="field" style="flex:1 1 320px;max-width:520px"><span class="lbl">Edging</span><div class="row" style="gap:8px;flex-wrap:nowrap">${tick('2mm')}${tick('0.8mm')}<select class="select" style="flex:1;min-width:0" data-chg="orderEdge" aria-label="Edging colour"><option value="match" ${ed ? '' : 'selected'}>Match cabinet colour</option>${groups(ed)}</select></div></div></div>`;
+    <div class="field" style="flex:1 1 320px;max-width:520px"><span class="lbl">Edging</span><div class="row" style="gap:8px;flex-wrap:nowrap">${tick('2mm')}${tick('0.8mm')}<select class="select" style="flex:1;min-width:0" data-chg="orderEdge" aria-label="Edging colour"><option value="match" ${ed ? '' : 'selected'}>Match cabinet colour</option>${groups(ed)}</select></div></div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin-top:10px">${doorPickers(UI.orderDoors || {}, 'ordDoor')}</div>`;
 }
 function ocDetail(it) {
   const c = orderColour(); if (!c) return '';
@@ -11759,6 +11864,8 @@ function bkLine(key) {
   } else if (key === 'ff') {
     const fd = ffDoors();
     l = { name: 'Fridge Freezer Larder', code: ffCode(), w: FF.w, h: FF.h, d: FF.d, v: FF.v, opt: FF.split + ' split, ' + FF.hinge + ' door hinge, doors ' + fd.w + ' x ' + fd.b + ' and ' + fd.w + ' x ' + fd.t + ' mm, ' + FF_AP + ' mm appliance opening with 1 x fixed shelf above, full top, fixed back on the top section, removable back ' + FF_RB + ' mm high in the middle of the opening, 5 x appliance hinges' + (FF.gola !== 'none' ? ', ' + lgText(FF) : '') };
+  } else if (key === 'dlw') {
+    const dd = dlwDoor(); l = { name: 'Diagonal Walk-in Larder', code: dlwCode(), w: DLW.rh, h: DLW.h, d: DLW.d, v: DLW.v, opt: '1155 x 1155, L-shaped base, diagonal top, wine rack 150 wide full height in the middle, ' + DLW_SHELVES + ' shelves on each side, door ' + dd.h + ' x ' + dd.w + ' mm, ' + DLW.hand + ' hinge, 5 x 155 degree hinges, ' + tallLegs(1155) + ' x legs' };
   } else if (key === 'tlr') {
     l = { name: 'Larder Unit', code: tlrCode(), w: TLR.w, h: TLR.h, d: TLR.d, v: TLR.v, opt: (tlrPair() ? 'Pair of full height doors' : 'Full height door, ' + TLR.hinge + ' hinge') + ', ' + (TLR.shelves ? TLR_SHELVES + ' x adjustable shelves' : 'no shelves') + ', ' + tlrHinges() + ' x hinges, ' + tallLegs(TLR.w) + ' x legs' };
   } else if (key === 'lpl') {
@@ -11824,10 +11931,11 @@ function bkLine(key) {
     l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers, ' + s.run + ' mm' + (s.sys === 'Legrabox' && (s.hd || LG_RUN[s.run] == null) ? ' 70 kg' : '') + ' runners' + (S ? ', heights ' + s.hts.map(hmm).join(' / ') + ' mm (top to bottom)' : '') + (s.inner ? ', internal front' + (S ? ' ' + hmm(s.inH) + ' mm' : '') : '') + (S && s.glass ? ', ' + (s.sys === 'Legrabox' ? s.gtype + ' glass sides on the C drawers' : 'glass sides on the D drawers') : '') + (s.ct && ctFor(s.w, s.sys, s.run) ? ', ' + ctText(ctFor(s.w, s.sys, s.run)) : '') + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
   if (DRW_UNITS[key]) drwUSync(key);
-  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
+  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, dlw: DLW, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   if (DRW_UNITS[key]) { try { const r = poUnit(l); if (r && r.drw && r.drw.length) { const g = {}; r.drw.forEach(x => { const n = dpDrawerName(x); g[n] = (g[n] || 0) + 1; }); l.opt += ', ' + Object.entries(g).map(([n, c]) => c + ' x ' + n).join(', '); } if (r && r.ct) l.opt += ', ' + ctText(r.ct); } catch (e) { } }   // the drawer boxes the customer picked
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
+  { const dp = doorPick(UI.orderDoors); if (dp) l.doors = dp; }                                      // the doors chosen go with every cabinet
   Object.assign(l, { colourId: col ? col.id : null, colour: col ? col.name + ' · ' + col.code : 'No colour', group: '', pgrp: col ? ocGroup(col) : 1, edging: ocEdgeText() });
   return l;
 }
@@ -11848,7 +11956,7 @@ A.bkClear = () => confirmBox('Empty the basket?', 'Every item will be removed fr
 /* A basket line with a quantity of 5 becomes 5 separate units, numbered through the whole order. */
 function ordUnits(lines) {
   const out = []; let n = 0;
-  (lines || []).forEach(l => { let cu = null; try { cu = costUnit(l); } catch (e) { console.error(e); } for (let i = 0; i < (+l.qty || 1); i++) { n++; out.push({ n, name: l.name, code: l.code, w: l.w, h: l.h || null, d: l.d, v: l.v, opt: l.opt, colour: l.colour, group: l.group, pgrp: l.pgrp, edging: l.edging, edgeType: l.edgeType, edgeColour: l.edgeColour, spec: l.spec, price: cu ? cu.price : null, unpriced: cu ? cu.miss.length : 0 }); } });
+  (lines || []).forEach(l => { let cu = null; try { cu = costUnit(l); } catch (e) { console.error(e); } for (let i = 0; i < (+l.qty || 1); i++) { n++; out.push({ n, name: l.name, code: l.code, w: l.w, h: l.h || null, d: l.d, v: l.v, opt: l.opt, colour: l.colour, group: l.group, pgrp: l.pgrp, edging: l.edging, edgeType: l.edgeType, edgeColour: l.edgeColour, spec: l.spec, price: cu ? cu.price : null, unpriced: cu ? cu.miss.length : 0, doors: l.doors || null, doorRows: doorRowsOf(l) }); } });
   return out;
 }
 function ordSummary(units) {
@@ -11881,7 +11989,10 @@ function ordUnitsTable(units) {
     <td class="mono">${esc(u.code)}</td>
     <td class="tnum">${esc(ordSizeText(u))}</td>
     <td class="muted" style="font-size:12.5px;line-height:1.5;min-width:220px">${esc(u.opt || '')}</td>
-    <td class="num tnum strong">${u.price != null ? GBP(u.price) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+    <td class="num tnum strong">${u.price != null ? GBP(u.price) : '—'}</td></tr>${(u.doorRows || []).map((r, i) => `<tr style="background:var(--surface-2,#0000000a)">
+    <td class="mono" style="padding-left:18px">${u.n}.${i + 1}</td>
+    <td><div>${esc(r.kind)}${r.q > 1 ? ' x ' + r.q : ''}</div><div class="muted" style="font-size:12.5px">${esc(doorText(u.doors))}</div></td>
+    <td class="mono"></td><td class="tnum">${r.h} x ${r.w}</td><td class="muted" style="font-size:12.5px">Height x width, mm</td><td class="num muted">TBC</td></tr>`).join('')}`).join('')}</tbody></table></div>`;
 }
 /* the order summary: who, what and how many. Used on the review page, the confirmation and the Admin order page. */
 function ordSummaryCard(o, units, opts) {
@@ -11963,9 +12074,14 @@ function cOrderDone(id) {
 const ORD_FLOW = ['Submitted', 'Under Review', 'Approved', 'Completed'];
 function ordRow(o) { const c = ordCustomer(o); return `<tr class="click" data-act="go" data-to="a-order:${o.id}"><td class="mono strong">${esc(o.number)}</td><td><div class="strong">${esc(c.company)}</div><div class="muted" style="font-size:12.5px">${esc(o.reference || c.contact || '')}</div></td><td class="tnum">${esc(fmtDT(o.submitted))}</td><td class="num strong">${o.units.length}</td><td>${pill(o.status)}</td></tr>`; }
 function aOrderList() {
-  const list = DB.orders || [], fresh = list.filter(o => o.status === 'Submitted').length;
+  const all = DB.orders || [], fresh = all.filter(o => o.status === 'Submitted').length, per = 6, pages = Math.max(1, Math.ceil(all.length / per));      // 6 orders a page
+  UI.ordPage = Math.min(Math.max(1, UI.ordPage || 1), pages); const pg = UI.ordPage, list = all.slice((pg - 1) * per, pg * per);
+  const pbtn = (p, txt, dis, on) => `<button class="btn ${on ? 'btn-primary' : 'btn-secondary'} btn-sm" data-act="ordPage" data-p="${p}" ${dis ? 'disabled' : ''} style="min-width:36px">${txt}</button>`;
+  const pager = pages < 2 ? '' : `<div class="row" style="gap:6px;justify-content:space-between;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--line)"><span class="muted" style="font-size:13px">Orders ${(pg - 1) * per + 1}-${Math.min(pg * per, all.length)} of ${all.length}</span><div class="row" style="gap:6px;flex-wrap:wrap">${pbtn(pg - 1, 'Previous', pg === 1)}${Array.from({ length: pages }, (_, i) => pbtn(i + 1, i + 1, false, i + 1 === pg)).join('')}${pbtn(pg + 1, 'Next', pg === pages)}</div></div>`;
   return `<div class="page-head"><div><h1>Orders</h1><p>Every order submitted through New Orders · ${fresh} new</p></div><div class="actions"><button class="btn btn-primary" data-act="orders">${ic('plus', 16)} New order</button></div></div>
-  <section class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Order</th><th>Customer</th><th>Submitted</th><th class="num">Cabinets</th><th>Status</th></tr></thead><tbody>${list.map(ordRow).join('') || `<tr><td colspan="5"><div class="empty"><div class="ico">${ic('file', 22)}</div><h4>No orders yet</h4><p>Orders appear here as soon as one is submitted from New Orders.</p></div></td></tr>`}</tbody></table></div></section>`;
+  <section class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Order</th><th>Customer</th><th>Submitted</th><th class="num">Cabinets</th><th>Status</th></tr></thead><tbody>${list.map(ordRow).join('') || `<tr><td colspan="5"><div class="empty"><div class="ico">${ic('file', 22)}</div><h4>No orders yet</h4><p>Orders appear here as soon as one is submitted from New Orders.</p></div></td></tr>`}</tbody></table></div>${pager}</section>`;
+}
+A.ordPage = t => { UI.ordPage = +t.dataset.p || 1; render(); window.scrollTo(0, 0); 
 }
 function aOrder(id) {
   const o = (DB.orders || []).find(x => x.id === id);
@@ -11975,8 +12091,52 @@ function aOrder(id) {
     <div><h4 style="margin:0 0 6px">Timeline</h4>${o.timeline.slice().reverse().map(t => `<div class="muted" style="font-size:13px">${esc(fmtDT(t.at))} · ${esc(t.text)}${t.by ? ' · ' + esc(t.by) : ''}</div>`).join('')}</div>`;
   return `<button class="btn btn-ghost btn-sm" data-act="go" data-to="a-orderlist" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Orders</button>
   <div class="page-head"><div><h1>Order ${esc(o.number)}</h1><p>${esc(ordCustomer(o).company)} · ${o.units.length} cabinet${o.units.length === 1 ? '' : 's'}</p></div></div>
-  <div class="stack" style="gap:20px">${ordSummaryCard(o, o.units, { actions })}<section class="card"><div class="card-head"><h3>Cabinets</h3><span class="spacer"></span><span class="tag">${o.units.length}</span></div>${ordUnitsTable(o.units)}</section></div>`;
+  <div class="stack" style="gap:20px">${ordSummaryCard(o, o.units, { actions })}<section class="card"><div class="card-head"><h3>Cabinets</h3><span class="spacer"></span><span class="tag">${o.units.length}</span></div>${ordUnitsTable(o.units)}</section>${ordDoorsCard(o)}</div>`;
 }
+/* ---------- Door order: the doors of an order, by door company, for purchasing to send to the supplier ---------- */
+function ordDoorList(o) {
+  const by = {};
+  (o.units || []).forEach(u => (u.doorRows || []).forEach((r, i) => { const d = u.doors || {}; const co = d.co || 'Door company not chosen'; (by[co] = by[co] || []).push({ ref: u.n + '.' + (i + 1), cab: u.code, kind: r.kind, style: d.style || '', colour: d.colour || '', h: r.h, w: r.w, q: r.q }); }));
+  return Object.entries(by).map(([co, rows]) => ({ co, rows, total: rows.reduce((a, r) => a + r.q, 0) }));
+}
+function ordDoorsCard(o) {
+  const L = ordDoorList(o); if (!L.length) return '';
+  return `<section class="card"><div class="card-head"><h3>Doors to order</h3><span class="spacer"></span><button class="btn btn-primary btn-sm" data-act="doorPdf" data-id="${o.id}">${ic('download', 15)} Door order (PDF)</button><button class="btn btn-secondary btn-sm" data-act="doorCsv" data-id="${o.id}">${ic('download', 15)} Door order (CSV)</button></div>
+    ${L.map(g => `<div style="padding:0 16px 14px"><h4 style="margin:10px 0 6px">${esc(g.co)} <span class="tag">${g.total} piece${g.total === 1 ? '' : 's'}</span></h4><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Ref</th><th>Cabinet</th><th>Item</th><th>Style</th><th>Colour</th><th class="num">Height</th><th class="num">Width</th><th class="num">Qty</th></tr></thead><tbody>${g.rows.map(r => `<tr><td class="mono">${r.ref}</td><td class="mono">${esc(r.cab)}</td><td>${esc(r.kind)}</td><td>${esc(r.style)}</td><td>${esc(r.colour)}</td><td class="num tnum">${r.h}</td><td class="num tnum">${r.w}</td><td class="num tnum strong">${r.q}</td></tr>`).join('')}</tbody></table></div></div>`).join('')}
+  </section>`;
+}
+A.doorCsv = t => {
+  const o = (DB.orders || []).find(x => x.id === t.dataset.id); if (!o) return;
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const rows = [['Order', 'Reference', 'Door company', 'Ref', 'Cabinet', 'Item', 'Style', 'Colour', 'Height (mm)', 'Width (mm)', 'Qty']];
+  ordDoorList(o).forEach(g => g.rows.forEach(r => rows.push([o.number, o.reference || '', g.co, r.ref, r.cab, r.kind, r.style, r.colour, r.h, r.w, r.q])));
+  const blob = new Blob([rows.map(r => r.map(q).join(',')).join('\r\n')], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = o.number + ' doors.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+};
+/* one page set per door company, ready to send to that supplier */
+function buildDoorPdf(o) {
+  const { jsPDF } = window.jspdf, doc = new jsPDF({ unit: 'mm', format: 'a4' }), W = 210, M = 16, S = DB.settings, c = ordCustomer(o);
+  ordDoorList(o).forEach((g, gi) => {
+    if (gi) doc.addPage();
+    let y = pdfLogo(doc, W / 2, 10) + 7;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.text(pdfTxt(S.company || ''), W / 2, y, { align: 'center' }); y += 4.6;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text(pdfTxt([S.address, S.city, S.postcode].filter(Boolean).join(', ')), W / 2, y, { align: 'center' }); y += 11;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.text('Door Order', M, y); doc.setFontSize(12); doc.text(pdfTxt(g.co), W - M, y, { align: 'right' }); y += 8;
+    doc.setFontSize(9); [['Our order', o.number], ['Reference', o.reference || '-'], ['Customer', c.company], ['Date', fmtDate(now())], ['Pieces', String(g.total)]].forEach(([k, v]) => { doc.setFont('helvetica', 'bold'); doc.text(k + ':', M, y); doc.setFont('helvetica', 'normal'); doc.text(pdfTxt(v), M + 26, y); y += 4.8; });
+    y += 3;
+    doc.autoTable({ startY: y, margin: { left: M, right: M, bottom: 20 }, theme: 'grid', head: [['Ref', 'Cabinet', 'Item', 'Style', 'Colour', 'Height', 'Width', 'Qty']],
+      body: g.rows.map(r => [r.ref, r.cab, r.kind, r.style, r.colour, String(r.h), String(r.w), String(r.q)].map(pdfTxt)),
+      styles: { font: 'helvetica', fontSize: 8.6, cellPadding: 1.8 }, headStyles: { fillColor: [36, 52, 50], textColor: [246, 244, 239] }, columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 24 }, 5: { halign: 'right', cellWidth: 16 }, 6: { halign: 'right', cellWidth: 16 }, 7: { halign: 'right', cellWidth: 11, fontStyle: 'bold' } } });
+    doc.setFontSize(8); doc.text('Sizes are height x width in mm. Please quote our order number ' + o.number + ' on the delivery.', M, doc.lastAutoTable.finalY + 6);
+  });
+  return doc;
+}
+A.doorPdf = t => {
+  if (!window.jspdf || !window.jspdf.jsPDF || !window.jspdf.jsPDF.API.autoTable) { toast('The PDF tool is still loading. Try again in a moment.', { err: 1 }); return; }
+  const o = (DB.orders || []).find(x => x.id === t.dataset.id); if (!o) return;
+  if (!ordDoorList(o).length) { toast('This order has no doors'); return; }
+  try { buildDoorPdf(o).save(o.number + ' doors.pdf'); } catch (e) { console.error(e); toast('Could not make the door order PDF', { err: 1 }); }
+};
 A.ordStatus = t => {
   const o = (DB.orders || []).find(x => x.id === t.dataset.id), s = t.dataset.s; if (!o || o.status === s) return;
   const u = admin(); o.status = s; o.updated = now(); o.timeline.push({ at: now(), text: 'Status set to ' + s, by: u ? u.name : 'Staff' });
@@ -11986,7 +12146,7 @@ A.ordStatus = t => {
 A.ordCsv = t => {
   const o = (DB.orders || []).find(x => x.id === t.dataset.id); if (!o) return;
   const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const rows = [['Order', 'Unit', 'Code', 'Name', 'Width', 'Height', 'Depth', 'Void', 'Details', 'Colour', 'Edging']].concat(o.units.map(u => [o.number, u.n, u.code, u.name, u.w, u.h || '', u.d, u.v, u.opt, u.colour, u.edging]));
+  const rows = [['Order', 'Unit', 'Code', 'Name', 'Width', 'Height', 'Depth', 'Void', 'Details', 'Colour', 'Edging']].concat([].concat(...o.units.map(u => [[o.number, u.n, u.code, u.name, u.w, u.h || '', u.d, u.v, u.opt, u.colour, u.edging]].concat((u.doorRows || []).map((r, i) => [o.number, u.n + '.' + (i + 1), '', r.kind + ' x ' + r.q, r.w, r.h, '', '', doorText(u.doors), '', ''])))));
   const blob = new Blob([rows.map(r => r.map(q).join(',')).join('\r\n')], { type: 'text/csv' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = o.number + '.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 };
@@ -12048,7 +12208,7 @@ function pdfLogo(doc, cx, y) {
   doc.autoTable({
     startY: y, margin: { left: M, right: M, bottom: 22 }, theme: 'plain',
     head: [['Pos', 'Qty', 'Code', 'L/R', 'Description', 'W', 'H', 'D', 'Notes', 'Price']],
-    body: units.map(u => [String(u.n), '1', u.code, lr(u), desc(u), String(u.w), u.h ? String(u.h) : '', String(u.d), (/^(left|right)\b/i.test(u.opt || '') || /drawers/i.test(u.opt || '')) && lr(u) ? '' : (u.opt || ''), u.price != null ? GBP(u.price) : 'TBC'].map(pdfTxt)),
+    body: [].concat(...units.map(u => [[String(u.n), '1', u.code, lr(u), desc(u), String(u.w), u.h ? String(u.h) : '', String(u.d), (/^(left|right)\b/i.test(u.opt || '') || /drawers/i.test(u.opt || '')) && lr(u) ? '' : (u.opt || ''), u.price != null ? GBP(u.price) : 'TBC'].map(pdfTxt)].concat((u.doorRows || []).map((r, i) => [u.n + '.' + (i + 1), String(r.q), '', '', r.kind + ': ' + doorText(u.doors), String(r.w), String(r.h), '', 'Door size, height x width ' + r.h + ' x ' + r.w, 'TBC'].map(pdfTxt))))),
     styles: { font: 'helvetica', fontSize: 8.4, cellPadding: { top: 1.8, bottom: 1.8, left: 1, right: 1 }, textColor: [0, 0, 0], lineColor: [120, 120, 120], lineWidth: 0, valign: 'top', overflow: 'linebreak' },
     headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8.6, lineWidth: { bottom: .35 } },
     bodyStyles: { lineWidth: { bottom: .2 } },
@@ -12129,9 +12289,9 @@ function poCarcase(o) {
   }
   if (o.posts) { add('Centre post', o.postLen, 70, o.posts, 0, 0); f.mp += 2 * o.posts; f.wd += 2 * o.posts; }
   const faces = [];                                                                                                                      // doors and fronts: not in the cutting list, but the price calculator needs them
-  (o.doors || []).forEach(dd => faces.push({ l: dd[1], w: dd[0], q: 1 }));
-  (o.fronts || []).forEach(dd => faces.push({ l: dd[1], w: dd[0], q: 1 }));
-  (o.extra || []).forEach(p => { if (!/door|front/i.test(p.name)) add(p.name, p.l, p.w, p.q || 1, p.ef, p.er); else faces.push({ l: p.l, w: p.w, q: p.q || 1 }); });             // cabinets only: doors and drawer fronts are ordered separately (Doors), so they are not in the board, edging or cutting list
+  (o.doors || []).forEach(dd => faces.push({ l: dd[1], w: dd[0], q: 1, kind: 'Door' }));
+  (o.fronts || []).forEach(dd => faces.push({ l: dd[1], w: dd[0], q: 1, kind: 'Drawer front' }));
+  (o.extra || []).forEach(p => { if (!/door|front/i.test(p.name)) add(p.name, p.l, p.w, p.q || 1, p.ef, p.er); else faces.push({ l: p.l, w: p.w, q: p.q || 1, kind: /front/i.test(p.name) ? 'Drawer front' : p.name.replace(/\s*\(.*\)$/, '') }); });             // cabinets only: doors and drawer fronts are ordered separately (Doors), so they are not in the board, edging or cutting list
   (o.doors || []).forEach(dd => { f.hinges += o.hingesPerDoor == null ? 2 : o.hingesPerDoor; });                                      // the hinges still come with the cabinet
   (o.glassDoors || []).forEach(dd => { f.hinges += 2; });
   if (o.legs) { f.legs = o.legCount || legQty(o.w); f.clips = o.clipCount != null ? o.clipCount : clipQty(o.w); }
@@ -12181,6 +12341,16 @@ function poUnit(u) {
   if (k === 'oven') {
     const r = C({ top: 'none', back: false, shelves: 0, fixed: 1, fronts: s.drawer ? [[w - 4, 115]] : [], legs: true });      // the fixed shelf comes with or without the drawer
     if (s.drawer) { r.drw = antDr(1, 115, { h: 'N' }); r.f.runners[s.sys || 'Antaro'] = 1; } return r;
+  }
+  if (k === 'dlw') {                                                                                    // walk-in larder: L-shaped base, diagonal top, backs on both walls, shelves on both wings, 150 wide wine rack, one diagonal door
+    const RH = s.rh || 1155, LH = s.lh || 1155, dg = Math.hypot(RH - d, LH - d), door = dlrDoorOf(RH, LH, d, H).w, Dp = d - v - T - fe, ds = Math.round(dg * 10) / 10, rk = 150, IH = H - 2 * T, cells = Math.max(1, Math.floor(IH / 150));
+    const r = C({ top: 'none', bottom: false, back: false, legs: true, legCount: tallLegs(Math.max(RH, LH)), clipCount: tallClips(Math.max(RH, LH)), approx: true, note: 'Walk-in larder parts are an estimate',
+      extra: [{ name: 'Base panel (wing 1)', l: RH - T, w: Dp, ef: RH - d, er: RH - T }, { name: 'Base panel (wing 2)', l: LH - d, w: Dp, ef: LH - d, er: LH - d },
+        { name: 'Top panel (diagonal)', l: RH - T, w: LH - T, ef: ds, er: RH + LH - 2 * T },
+        { name: 'Back (wall A)', l: H, w: RH - T }, { name: 'Back (wall B)', l: H, w: LH - T },
+        { name: 'Shelf (wing 1)', l: RH - 2 * T - rk - 1, w: Dp - 20, q: DLW_SHELVES, ef: RH - 2 * T - rk, er: 0 }, { name: 'Shelf (wing 2)', l: LH - d - 1, w: Dp - 20, q: DLW_SHELVES, ef: LH - d, er: 0 },
+        { name: 'Wine rack side', l: IH, w: Dp, q: 2, ef: IH, er: 0 }, { name: 'Wine rack shelf', l: rk - 2 * T, w: Dp, q: cells - 1, ef: rk - 2 * T, er: 0 }], doors: [[door, H - 4]], hingesPerDoor: 5 });
+    r.f.mp += 24; r.f.wd += 24; r.f.pegs += 8 * DLW_SHELVES; r.f.hinges = 5; return r;
   }
   if (k === 'tlr') {                                                                                    // larder unit: full top, back, 5 shelves (or none), tall door(s), 5 hinges a door
     const pair = w > 600, r = C({ top: 'full', back: true, shelves: s.shelves === false ? 0 : 5, doors: doorSet(w, H, pair), hingesPerDoor: 5, legs: true });
@@ -12373,7 +12543,7 @@ function costUnit(l) {
   lines.push(['Board', (area / 1e6).toFixed(2) + ' m² (' + (colr ? colr.code + ' ' : '') + 'sheet ' + GBP(bp) + ', +' + c.waste + '% waste)', board], ['Edging', (e2 / 1000).toFixed(1) + ' m at ' + frontType + ' (' + GBP(pf) + ' per m) + ' + (e08 / 1000).toFixed(1) + ' m at 0.8mm (' + GBP(p08) + ' per m), +' + c.waste + '% waste', edge]);
   const f = r.f, hw = [];
   const hu = (price, name) => { if (price > 0) return price; miss.push(name + ' priced as a 107° hinge'); return c.hinge; };
-  const hingeEach = (COST_BLIND.includes(k) ? c.blindHinge : k === 'dlr' ? hu(c.hinge155, '155° hinge') : k === 'ff' ? hu(c.hingeAppl, 'Appliance hinge') : c.hinge) + c.hingePlate;
+  const hingeEach = (COST_BLIND.includes(k) ? c.blindHinge : (k === 'dlr' || k === 'dlw') ? hu(c.hinge155, '155° hinge') : k === 'ff' ? hu(c.hingeAppl, 'Appliance hinge') : c.hinge) + c.hingePlate;
   const add = (name, qty, each) => { if (qty > 0) hw.push([name, qty, qty * each]); };
   add('Hinges with plates', f.hinges, hingeEach);
   add('Metal pins with cams', f.mp, c.mpin + c.cam);
@@ -12484,6 +12654,7 @@ function cBasket() {
     `<div class="stack">${list.map((l, ix) => { const cu = costs[ix]; return `<article class="card card-pad"><div class="row" style="gap:12px;flex-wrap:wrap"><div style="min-width:0;flex:1"><b style="font-size:16px">${esc(l.name)}</b> <span class="mono">${esc(l.code)}</span>
       <div class="muted">${l.w}mm wide${l.h ? ' · ' + l.h + 'mm high' : ''} · ${l.d}mm deep · void ${l.v}mm · ${esc(l.opt)}</div><div class="muted">Colour: ${esc(l.colour)}${l.group ? ' (' + l.group + ')' : ''}</div>${l.edging ? `<div class="muted">Edging: ${esc(l.edging)}</div>` : ''}
       ${cu ? `<div style="margin-top:6px"><b class="tnum" style="font-size:17px">${GBP(cu.price)}</b> <span class="muted">each${l.qty > 1 ? ' · ' + GBP(cu.price * l.qty) + ' for ' + l.qty : ''}${cu.mtm ? ' · includes the MTM surcharge' : ''}</span></div>` : `<div style="margin-top:6px"><b>Price to be confirmed</b> <span class="muted">(cabinets with drawers are not priced yet)</span></div>`}
+      ${l.doors ? (() => { const dr = doorRowsOf(l); return dr.length ? `<div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--surface-2,#0000000a);font-size:13px"><b>Doors:</b> ${esc(doorText(l.doors))}<br>${dr.map((r, i) => `<span class="mono">${ix + 1}.${i + 1}</span> ${esc(r.kind)}${r.q > 1 ? ' x ' + r.q : ''}: ${r.h} x ${r.w} mm`).join('<br>')} <span class="muted">(door price to be confirmed)</span></div>` : ''; })() : ''}
       ${cu && cu.miss.length ? `<div class="muted" style="font-size:12.5px">Not fully priced: ${esc(cu.miss.join('; '))}</div>` : ''}
       ${cu && adm ? `<details style="margin-top:6px"><summary class="muted" style="cursor:pointer;font-size:12.5px">Cost breakdown${cu.approx ? ' (part sizes are an estimate)' : ''}</summary><table class="tbl" style="margin-top:6px"><tbody>${cu.lines.map(x => `<tr><td>${esc(x[0])}</td><td class="muted">${esc(x[1])}</td><td class="num tnum">${GBP(x[2])}</td></tr>`).join('')}<tr><td class="strong">Price</td><td></td><td class="num tnum strong">${GBP(cu.price)}</td></tr></tbody></table></details>` : ''}</div>
       <div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="-1" aria-label="Fewer">−</button><b style="min-width:28px;text-align:center">${l.qty}</b><button class="btn btn-secondary btn-sm" data-act="bkQty" data-id="${l.id}" data-d="1" aria-label="More">+</button>
@@ -12877,6 +13048,7 @@ function cOrders() {
   if (UI.orderCat === 'sptdetails') return sptDetails();
   if (UI.orderCat === 'lpldetails') return lplDetails();
   if (UI.orderCat === 'tlrdetails') return tlrDetails();
+  if (UI.orderCat === 'dlwdetails') return dlwDetails();
   if (UI.orderCat === 'dlrdetails') return dlrDetails();
   if (UI.orderCat === 'lshdetails') return lshDetails();
   if (UI.orderCat === 'walldetails') return wallDetails();
@@ -12907,7 +13079,7 @@ function cOrders() {
   if (UI.orderCat === 'larders') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Larders</h1><p>Choose a width, then the height and door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${tlrCard()}${ffCard()}${ohlCard()}${lcCard()}${panCard()}${sptCard()}${lplCard()}${dlrCard()}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${tlrCard()}${ffCard()}${ohlCard()}${lcCard()}${panCard()}${sptCard()}${lplCard()}${dlrCard()}${dlwCard()}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -12924,7 +13096,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', sptdetails: 'larders', lpldetails: 'larders', tlrdetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', wwinedetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', sptdetails: 'larders', lpldetails: 'larders', tlrdetails: 'larders', dlwdetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', wwinedetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
@@ -13001,7 +13173,7 @@ SUB.pw = f => { const d = Object.fromEntries(new FormData(f)); const c = me(); i
    ========================================================= */
 const STEPS = ['Build Quote', 'Review Quote', 'Submit'];
 const isLShape = it => !!it && (/^BLC/i.test(it.code || '') || /l.?shape/i.test(it.name || ''));
-const isDiagonal = it => !!it && (/^BDC/i.test(it.code || '') || /^L[MT]D\d/i.test(it.code || '') || /^[ST]DW/i.test(it.code || '') || /^DR\d*X/i.test(it.code || '') || /diagonal/i.test(it.name || ''));
+const isDiagonal = it => !!it && (/^BDC/i.test(it.code || '') || /^L[MT]D(\d|W)/i.test(it.code || '') || /^[ST]DW/i.test(it.code || '') || /^DR\d*X/i.test(it.code || '') || /diagonal/i.test(it.name || ''));
 const needsBlank = it => !!it && !isLShape(it) && !isDiagonal(it) && (it.blank === true || (it.blank === undefined && /corner/i.test(it.name || '')));
 const blankTxt = (l, it) => needsBlank(it) ? (l.blank == null || l.blank === '' ? 'Blank size needed' : 'Blank ' + l.blank + ' mm') : '';
 /* Tall appliance housings (oven at eye level) are split in two: a door above the appliance and a door or a drawer below it.
@@ -13084,8 +13256,7 @@ function summaryHTML() {
   return `<section class="card sum-card"><div class="row"><h3>Quote Summary</h3><span class="spacer"></span><span class="mono muted" style="font-size:12px">${d.number || provNumber()}</span></div>
     <div class="sum-finish">
       <div class="fr"><span>Cabinet</span>${cab ? miniSw(cab) + `<b>${esc(cab.name)}</b>` : '<b class="muted">Not chosen</b>'}</div>
-      <div class="fr"><span>Door style</span><b>${st ? esc(st.name) : '<span class="muted">None (no doors)</span>'}</b></div>
-      <div class="fr"><span>Door colour</span>${!st || st.none ? '<b class="muted">No doors</b>' : dc ? miniSw(dc) + `<b>${esc(dc.name)}</b>` : '<b class="muted">Not chosen</b>'}</div>
+      <div class="fr"><span>Doors</span><b>${d.doors && d.doors.co ? esc(doorText(doorPick(d.doors))) : '<span class="muted">None (cabinets only)</span>'}</b></div>
       <div class="fr"><span>Edging ${d.edgingType || '2mm'}</span>${(() => { const ed = edgeCol(d); return ed ? miniSw(ed) + `<b>${esc(ed.name)}${!d.edging || d.edging === 'match' ? ' <span class="muted">(matches)</span>' : ''}</b>` : '<b class="muted">Not chosen</b>'; })()}</div>
       <div class="fr"><span>Worktop</span>${(() => { const wt = worktopCol(d); return wt ? miniSw(wt) + `<b>${esc(wt.name)}</b>` : `<b class="muted">${d.worktop === 'none' ? 'None' : 'Not chosen'}</b>`; })()}</div>
       <div class="fr"><span>Room</span><b>${qRoom(d)}</b></div>
@@ -13101,9 +13272,12 @@ function drawSummary() { const el = $('#bSummary'); if (el) el.innerHTML = summa
 function stepNav(back, next, nextLabel) { return `<div class="row" style="margin-top:18px">${back ? `<button class="btn btn-secondary" data-act="bGo" data-n="${back}">${ic('arrowL', 16)} Back</button>` : ''}<span class="spacer"></span>${next ? `<button class="btn btn-primary" data-act="bGo" data-n="${next}">${nextLabel} ${ic('arrowR', 16)}</button>` : ''}</div>`; }
 
 /* step 1 */
+/* the earliest delivery date: 15 working days (Monday to Friday) after today, about 3 weeks */
+const DELIVERY_WORKING_DAYS = 15;
+function minDelivery() { const d = new Date(); d.setHours(12, 0, 0, 0); let n = 0; while (n < DELIVERY_WORKING_DAYS) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) n++; } return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function bStep1() {
   const d = UI.draft, c = me(), e = UI.errors;
-  const f = (k, label, type = 'text', span, ph = '', opt) => `<div class="field ${span || ''}"><label class="lbl" for="d-${k}">${label}${opt ? ' <span class="opt">optional</span>' : ''}</label><input class="input ${e[k] ? 'err' : ''}" id="d-${k}" type="${type}" data-in="df" data-k="${k}" value="${esc(d[k] || '')}" placeholder="${ph}" ${type === 'date' ? `min="${new Date().toISOString().slice(0, 10)}"` : ''}><span class="err-msg" data-err="${k}">${e[k] ? esc(e[k]) : ''}</span></div>`;
+  const f = (k, label, type = 'text', span, ph = '', opt) => `<div class="field ${span || ''}"><label class="lbl" for="d-${k}">${label}${opt ? ' <span class="opt">optional</span>' : ''}</label><input class="input ${e[k] ? 'err' : ''}" id="d-${k}" type="${type}" data-in="df" data-k="${k}" value="${esc(d[k] || '')}" placeholder="${ph}" ${type === 'date' ? `min="${minDelivery()}"` : ''}><span class="err-msg" data-err="${k}">${e[k] ? esc(e[k]) : ''}</span></div>`;
   return `<section class="card bpanel"><div class="bpanel-h"><div><h2>Customer & Delivery</h2><p>Your account details are loaded automatically.</p></div></div>
     <div class="cust-card"><span class="av">${initials(c.contact)}</span><div style="flex:1;min-width:180px"><b>${esc(c.name)}</b><div class="muted" style="font-size:13px">${esc(c.company)} · ${esc(c.email)}</div></div><div style="text-align:right"><span class="lockbadge">${ic('lock', 13, 2.2)}Your customer discount: ${c.discount}%</span><div class="hint" style="margin-top:4px">Set by your account manager</div></div></div>
     <div class="grid6">
@@ -13122,7 +13296,7 @@ function bStep1() {
 IN.df = t => { UI.draft[t.dataset.k] = t.value; if (UI.errors[t.dataset.k]) { delete UI.errors[t.dataset.k]; t.classList.remove('err'); const m = $(`[data-err="${t.dataset.k}"]`); if (m) m.textContent = ''; } save(); };
 function validateStep(n) {
   const d = UI.draft, e = {};
-  if (n === 1) { if (!d.ref.trim()) e.ref = 'Please enter a reference.'; if (!String(d.address || '').trim()) e.address = 'Please enter a delivery address.'; if (!d.delivery) e.delivery = 'Please choose a delivery date.'; if (d.email && !/^\S+@\S+\.\S+$/.test(d.email)) e.email = 'Enter a valid email address.'; if (!String(d.contact).trim()) e.contact = 'Please enter a contact name.'; }
+  if (n === 1) { if (!d.ref.trim()) e.ref = 'Please enter a reference.'; if (!String(d.address || '').trim()) e.address = 'Please enter a delivery address.'; if (!d.delivery) e.delivery = 'Please choose a delivery date.'; else if (d.delivery < minDelivery()) e.delivery = 'The earliest delivery date is ' + fmtDate(minDelivery()) + ' (15 working days from today).'; if (d.email && !/^\S+@\S+\.\S+$/.test(d.email)) e.email = 'Enter a valid email address.'; if (!String(d.contact).trim()) e.contact = 'Please enter a contact name.'; }
   if (n === 1) { if (!d.cabColour) e.cabColour = 'Please choose a cabinet colour.'; }
   if (n === 1) { if (!d.lines.length) e.lines = 'Add at least one item to continue.'; else { const bad = d.lines.filter(l => { const it = byId('items', l.itemId); return needsBlank(it) && (l.blank == null || l.blank === ''); }); if (bad.length) e.lines = 'Corner units need a blank size. Use the edit button on: ' + bad.map(l => (byId('items', l.itemId) || {}).name).join(', ') + '.'; const bad2 = d.lines.filter(l => needsSections(byId('items', l.itemId)) && !(+l.topDoor > 0)); if (!bad.length && bad2.length) e.lines = 'Appliance housings need a top door height. Use the edit button on: ' + bad2.map(l => (byId('items', l.itemId) || {}).name).join(', ') + '.'; const bad3 = d.lines.filter(l => { const it = byId('items', l.itemId); return needsSides(it) && !(+l.leftW > 0 && +l.rightW > 0 && (!needsSideDepths(it) || (+l.leftD > 0 && +l.rightD > 0))); }); if (!bad.length && !bad2.length && bad3.length) e.lines = 'Corner and made-to-specification units need both side sizes. Use the edit button on: ' + bad3.map(l => (byId('items', l.itemId) || {}).name).join(', ') + '.'; } }
   return e;
@@ -13237,13 +13411,11 @@ A.pickQRoom = t => { const d = UI.draft; d.room = t.dataset.v === 'Bedroom' ? 'B
 function finishSections() {
   const d = UI.draft, e = UI.errors, cab = cabCol(d.cabColour), st = byId('doorStyles', d.doorStyle);
   const sample = byId('items', 'it-004');
-  return `<section class="card bpanel"><div class="bpanel-h"><div><h2>Finish</h2><p>Cabinet colour sets the price group for every cabinet. Door fronts are sized to each cabinet and priced by style.</p></div></div>
+  return `<section class="card bpanel"><div class="bpanel-h"><div><h2>Finish</h2><p>Your cabinet colour prices every cabinet. Choose a door company, style and colour, and each cabinet lists its doors with their sizes.</p></div></div>
     <div class="field" style="margin-bottom:14px"><span class="lbl">Room</span><div class="row" style="gap:8px">${['Kitchen', 'Bedroom'].map(r => `<button type="button" class="btn btn-secondary" style="flex:1;${qRoom(d) === r ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="pickQRoom" data-v="${r}">${qRoom(d) === r ? '&#9745;' : '&#9744;'} ${r}</button>`).join('')}</div></div>
     <div class="fin-row finish-primary-row"><div class="field"><span class="lbl">Cabinet colour</span><div class="cbx" id="cbx-cab">${cbxInner('cab')}</div>
       ${e.cabColour ? `<span class="err-msg">${e.cabColour}</span>` : ''}</div>
-    <div class="field"><span class="lbl">Door style <span class="opt">optional</span></span><div class="cbx" id="cbx-style">${cbxInner('style')}</div><span class="hint">Door fronts are sized to each cabinet. Prices shown are for a 715 × 596 door.</span></div>
-    <div class="field"><span class="lbl">Door colour <span class="opt">optional</span></span><div class="cbx" id="cbx-door">${cbxInner('door')}</div>
-      <span class="hint">${!st ? 'Only needed when a door style is selected.' : st.none ? 'Not needed. Cabinet Only is selected, so no doors are added.' : 'Leave on “Match cabinet colour”, or choose a contrasting door colour.'}</span></div>
+    ${doorPickers(d.doors || {}, 'qDoor')}
   </div>
     ${cab ? `<div class="door-note">${ic('info', 16)}<span><b>${esc(cab.name)}</b> (${esc(cab.code)}) is your cabinet colour. Every cabinet is priced with this board.</span></div>` : ''}
     <div class="fin-row finish-options-row"><div class="field"><span class="lbl">Edging colour</span><div class="cbx" id="cbx-edge">${cbxInner('edge')}</div><span class="hint">Same colours as the cabinets. No extra charge.</span></div><div class="field"><label class="lbl" for="edging-type">Edging type</label><select class="select" id="edging-type" data-chg="edgingType"><option value="2mm" ${d.edgingType !== '0.8mm' ? 'selected' : ''}>2mm</option><option value="0.8mm" ${d.edgingType === '0.8mm' ? 'selected' : ''}>0.8mm</option></select></div>
@@ -13343,6 +13515,7 @@ A.toNewOrders = () => {
   if (inSheet(d.cabColour)) UI.orderColour = d.cabColour;
   UI.orderEdge = d.edging && d.edging !== 'match' && inSheet(d.edging) ? d.edging : 'match';
   UI.orderEdgeType = d.edgingType === '0.8mm' ? '0.8mm' : '2mm';
+  UI.orderDoors = d.doors && d.doors.co ? JSON.parse(JSON.stringify(d.doors)) : {};                  // the doors chosen go into New Orders with every cabinet
   const dr = drawerOf(d), sys = dr ? ({ Antaro: 'Antaro', Legra: 'Legrabox', Merivo: 'Merivo' })[dr.name] : null;
   if (sys) {                                                                                                            // the chosen drawer system on every drawer cabinet
     Object.values(DPK).forEach(s => { s.sys = sys; s.hts = null; }); [DL, OVEN, PAN].forEach(s => { s.sys = sys; s.uh = null; });
@@ -14572,6 +14745,7 @@ function newOrderInventory() {
   OHL_P.forEach(p => (p.dr ? ['Antaro', 'Legrabox', 'Merivo'] : [null]).forEach(s => add('600 ' + OHL_TEXT(p) + (s ? ' (' + s + ' drawers)' : ''), OHL_CODE(p, s), 'cat-appl', 'Larders', 'Oven housing larder. Gola option.', p.h, 600, 570, { no: { k: 'ohl', p: { cfg: p.id, h: p.h, sys: s || 'none', mtm: false, top: null } } })));
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => [['A', 'Antaro'], ['L', 'Legrabox'], ['M', 'Merivo']].forEach(([c, sys]) => add('Pantry Larder 1000 ' + h + ' ' + sys, p + c + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 2 shelves and 3 ' + sys + ' internal scalloped fronts, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570, { no: { k: 'pan', p: { h, sys, chest: true } } })));
   [[1970, 'LMSP'], [2150, 'LTSP']].forEach(([hh, p]) => [['A', 'Antaro'], ['L', 'Legra']].forEach(([c, sys]) => SPT_WIDTHS.forEach(w => add(w + ' ' + sys + ' Space Tower Larder ' + hh, p + c + w, 'cat-tall', 'Larders', w + ' ' + sys + ' Space Tower Larder ' + hh + ' High 570 Deep, 5 internal drawers with internal fronts.', hh, w, 570, { no: { k: 'spt', p: { h: hh, w, sys: c === 'L' ? 'Legrabox' : 'Antaro', uh: null } } }))));
+  [[1970, 'LMDW'], [2150, 'LTDW']].forEach(([hh, p]) => [['L', 'left'], ['R', 'right']].forEach(([c, sd]) => add('Diagonal Walk-in Larder ' + hh + ' ' + c + 'H hinge', p + c, 'cat-tall', 'Larders', '1155 x 1155 Diagonal Walk-in Larder ' + hh + ' High, 570 Deep, L-shape base inc wine rack and shelving.', hh, 1155, 1155, { no: { k: 'dlw', p: { h: hh, hand: sd } } })));
   [[1970, 'SL'], [2150, 'TL']].forEach(([hh, p]) => TLR_WIDTHS.forEach(w => add(w + ' Larder Unit ' + hh, p + w, 'cat-tall', 'Larders', w + ' Larder Unit, full height door' + (w > 600 ? 's' : '') + ', 5 adjustable shelves (or none), ' + hh + ' High 570 Deep.', hh, w, 570, { no: { k: 'tlr', p: { h: hh, w, shelves: true } } })));
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([hh, p]) => [300, 400, 500, 600].forEach(w => add(w + ' Larder With Pull-out ' + hh, p + w, 'cat-tall', 'Larders', w + ' Larder with Proline Anthracite soft close pull-out, ' + hh + ' High 570 Deep.', hh, w, 570, { doors: false, no: { k: 'lpl', p: { h: hh, w } } })));
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => add('Pantry Larder 1000 ' + h + ' without internal chest', p + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 5 equal adjustable shelves, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570, { no: { k: 'pan', p: { h, chest: false } } }));
@@ -14587,7 +14761,7 @@ function newOrderInventory() {
 let NO_ITEMS = null;
 function noItems() { if (!NO_ITEMS) { try { NO_ITEMS = newOrderInventory().items; } catch (e) { NO_ITEMS = null; return []; } } return NO_ITEMS; }
 const noItem = id => noItems().find(i => i.id === id) || null;
-function noState(k) { return ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[k] || (k && k.slice(0, 3) === 'dp:' ? DPK[k.slice(3)] : null); }
+function noState(k) { return ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, dlw: DLW, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[k] || (k && k.slice(0, 3) === 'dp:' ? DPK[k.slice(3)] : null); }
 /* the basket line for a planner unit: the row's settings, then the unit's own width, depth and hinge (a width or depth off the standard makes it MTM) */
 function noLine(it, u) {
   if (!it || !it.no) return null;
@@ -14616,7 +14790,7 @@ function noPlanToBasket(units) {
 /* Options for one placed unit: its own New Orders card opens over the planner with the unit's settings loaded. Every choice on the card
    (drawer heights, runners, Gola, bins, internal front, MTM size ...) works as usual; Save keeps them on the unit (u.no), Cancel drops them.
    The global card state is put back afterwards, so the New Orders pages are not changed. */
-const NO_CARDS = { base: () => baseCard(), sink: () => sinkCard(), dl: () => dlCard(), bin: () => binCard(), spo: () => spoCard(), bel: () => belCard(), wine: () => wineCard(), oven: () => ovenCard(), ff: () => ffCard(), ohl: () => ohlCard(), lc: () => lcCard(), pan: () => panCard(), spt: () => sptCard(), dlr: () => dlrCard(), lsh: () => lshCard(), lpl: () => lplCard(), tlr: () => tlrCard(), wall: () => wallCard(false), wallg: () => wallCard(true), cwall: () => cwCard(), lwall: () => lwCard(), dwall: () => dwCard(), wwine: () => wwCard(), mwall: () => mwCard(), blwall: () => blCard(), dresser: () => drsCard(), brg: () => brgCard(), corner: () => cornerCard(), robe: () => robeCard() };
+const NO_CARDS = { base: () => baseCard(), sink: () => sinkCard(), dl: () => dlCard(), bin: () => binCard(), spo: () => spoCard(), bel: () => belCard(), wine: () => wineCard(), oven: () => ovenCard(), ff: () => ffCard(), ohl: () => ohlCard(), lc: () => lcCard(), pan: () => panCard(), spt: () => sptCard(), dlr: () => dlrCard(), lsh: () => lshCard(), lpl: () => lplCard(), tlr: () => tlrCard(), dlw: () => dlwCard(), wall: () => wallCard(false), wallg: () => wallCard(true), cwall: () => cwCard(), lwall: () => lwCard(), dwall: () => dwCard(), wwine: () => wwCard(), mwall: () => mwCard(), blwall: () => blCard(), dresser: () => drsCard(), brg: () => brgCard(), corner: () => cornerCard(), robe: () => robeCard() };
 function noEditOpen(it, u, done) {
   if (!it || !it.no) return;
   const k = it.no.k, st = noState(k), card = k.slice(0, 3) === 'dp:' ? () => dpCard(k.slice(3)) : NO_CARDS[k]; if (!st || !card) { toast('This cabinet has no options to set'); return; }
