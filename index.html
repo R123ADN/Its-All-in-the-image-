@@ -10446,7 +10446,84 @@ A.sptDoors = t => { SPT.doors = t.dataset.v; sptRefresh(); };
 A.sptHinge = t => { SPT.hinge = t.dataset.v; sptRefresh(); };
 A.sptSys = t => { SPT.sys = t.dataset.v; SPT.uh = null; sptRefresh(); };
 CH.sptDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = SPT[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), SPT.d - 200); SPT[k] = v; sptRefresh(); };
-/* Kitchen > All Larders: Larder Unit, 1970 (SL) or 2150 (TL) high, 570 deep, 300 to 1200 wide. A full height door (a pair from 700) over
+/* Kitchen > All Larders: Broom Larder, 500 or 600 wide, 1970 (LM) or 2150 (LT) high, 570 deep. A full height door; inside, a fixed shelf under a top
+   aperture the customer sets, then below it a 200 wide space for a broom / iron board on one side and adjustable shelves on the other, with a divider.
+   Code: LM / LT + width + BRO + L or R (the side of the 200 space), e.g. LM500BROR = 200 space on the right, shelves on the left. */
+const BRO = { h: 1970, w: 500, d: 570, v: 50, top: 350, side: 'right', shelves: null, hinge: 'left' };
+const BRO_WIDTHS = [500, 600], BRO_APPT = 200;
+const broShelves = () => BRO.shelves != null ? BRO.shelves : BRO.h === 2150 ? 5 : 4;
+const broCode = () => (BRO.h === 2150 ? 'LT' : 'LM') + BRO.w + 'BRO' + (BRO.side === 'left' ? 'L' : 'R');
+const broClamp = () => { BRO.top = Math.min(800, Math.max(200, Math.round(+BRO.top || 350))); if (BRO.shelves != null) BRO.shelves = Math.min(8, Math.max(0, Math.round(BRO.shelves))); BRO.v = Math.min(100, Math.max(0, BRO.v)); };
+function broArt(o) {
+  o = Object.assign({ dims: false }, o); broClamp();
+  const w = BRO.w, D = BRO.d, H = BRO.h, T = 18, v = BRO.v, y0 = 150, y1 = y0 + H, col = ocHex(), out = [], pts = [];
+  const P = (x, y, z) => { const p = { x: x - 0.32 * z, y: 0.3 * z - y }; pts.push(p); return p; };
+  const f1 = n => n.toFixed(1), q = (a, fill, sw) => out.push(`<polygon points="${a.map(p => f1(p.x) + ',' + f1(p.y)).join(' ')}" fill="${fill}" stroke="${baseShade(col, -0.55)}" stroke-width="${sw || 1.2}" stroke-linejoin="round"/>`);
+  const ln = (a, b, c, sw) => out.push(`<line x1="${f1(a.x)}" y1="${f1(a.y)}" x2="${f1(b.x)}" y2="${f1(b.y)}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`);
+  const eh = (ocEdge() || {}).hex || col, zf = D, zb = v;
+  out.push(`<polygon points="${[[-30, -20], [w + 30, -20], [w + 30, D + 30], [-30, D + 30]].map(([x, z]) => { const p = P(x, 0, z); return f1(p.x) + ',' + f1(p.y); }).join(' ')}" fill="#000" opacity="0.08"/>`);
+  [[50, 50], [w - 50, 50], [50, D - 50], [w - 50, D - 50]].forEach(([x, z]) => { const ft = P(x, 12, z); ln(P(x, y0, z), P(x, 14, z), '#1d1d1d', 16); out.push(`<ellipse cx="${f1(ft.x)}" cy="${f1(ft.y)}" rx="24" ry="12" fill="#0e0e0e"/>`); });
+  q([P(T, y0 + T, zb), P(w - T, y0 + T, zb), P(w - T, y1 - T, zb), P(T, y1 - T, zb)], baseShade(col, -0.25));                       // back
+  q([P(T, y0, zb), P(T, y0, zf), P(T, y1, zf), P(T, y1, zb)], baseShade(col, -0.1));                                               // inside of the left gable
+  q([P(T, y0 + T, zb), P(w - T, y0 + T, zb), P(w - T, y0 + T, zf), P(T, y0 + T, zf)], baseShade(col, 0.06));                       // base panel
+  const ys = y1 - T - BRO.top, sl = BRO.side === 'right', xd = sl ? w - T - BRO_APPT - T : T + BRO_APPT;                              // the fixed shelf under the top aperture; the divider by the 200 space
+  const sx0 = sl ? T : xd + T, sx1 = sl ? xd : w - T, n = broShelves();
+  for (let i = 1; i <= n; i++) { const yy = y0 + T + i * (ys - T - y0 - T) / (n + 1); q([P(sx0, yy, zb), P(sx1, yy, zb), P(sx1, yy, zf - 20), P(sx0, yy, zf - 20)], baseShade(col, 0.12)); }
+  q([P(xd, y0 + T, zb), P(xd, y0 + T, zf), P(xd, ys - T, zf), P(xd, ys - T, zb)], baseShade(col, sl ? 0.1 : -0.06));                // divider
+  q([P(xd, y0 + T, zf), P(xd + T, y0 + T, zf), P(xd + T, ys - T, zf), P(xd, ys - T, zf)], baseShade(eh, 0.1), 1);                 // its front edge
+  q([P(T, ys - T, zb), P(w - T, ys - T, zb), P(w - T, ys, zf), P(T, ys, zf)].map((p, i) => p), baseShade(col, 0.16));             // fixed shelf
+  q([P(T, ys - T, zf), P(w - T, ys - T, zf), P(w - T, ys, zf), P(T, ys, zf)], baseShade(eh, 0.1), 1);
+  q([P(w - T, y0, zb), P(w, y0, zb), P(w, y1, zb), P(w - T, y1, zb)], baseShade(col, 0));
+  q([P(w, y0, 0), P(w, y0, zf), P(w, y1, zf), P(w, y1, 0)], baseShade(col, 0.08));                                                 // right gable outside
+  q([P(0, y1, 0), P(w, y1, 0), P(w, y1, zf), P(0, y1, zf)], baseShade(col, 0.28));                                                 // top
+  q([P(0, y0, zf), P(T, y0, zf), P(T, y1, zf), P(0, y1, zf)], baseShade(eh, 0.1), 1); q([P(w - T, y0, zf), P(w, y0, zf), P(w, y1, zf), P(w - T, y1, zf)], baseShade(eh, 0.1), 1);
+  if (o.dims) { const ink = '#3b4a52', dm = (a, b, dx, dy, t) => { const A = { x: a.x + dx, y: a.y + dy }, B = { x: b.x + dx, y: b.y + dy }; pts.push(A, B); ln(a, A, ink, 1.2); ln(b, B, ink, 1.2); ln(A, B, ink, 1.6); out.push(`<text x="${f1((A.x + B.x) / 2)}" y="${f1((A.y + B.y) / 2 - 10)}" font-size="34" fill="${ink}" stroke="#f4f4f2" stroke-width="7" paint-order="stroke" text-anchor="middle" font-family="sans-serif">${t}</text>`); };
+    dm(P(0, y1, zf), P(w, y1, zf), 0, -60, w + 'mm'); dm(P(w, y0, zf), P(w, y1, zf), 70, 0, H + 'mm'); dm(P(w, ys, zf), P(w, y1 - T, zf), 190, 0, 'Top ' + BRO.top); }
+  const xs = pts.map(p => p.x), yv = pts.map(p => p.y), bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...yv), by1 = Math.max(...yv), pad = Math.max(bx1 - bx0, by1 - by0) * 0.06;
+  return `<svg viewBox="${(bx0 - pad).toFixed(0)} ${(by0 - pad).toFixed(0)} ${(bx1 - bx0 + 2 * pad).toFixed(0)} ${(by1 - by0 + 2 * pad).toFixed(0)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Broom larder" style="width:100%;height:100%">${out.join('')}</svg>`;
+}
+function broPick(sel) {
+  const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
+  const num = (k, label, v, mn, mx) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="${mn}" max="${mx}" step="1" value="${v}" data-chg="broDim" data-k="${k}"></label>`;
+  return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(x => btn('broH', x, x + ' high', BRO.h === x)).join('')}</div>
+    <div class="muted">Width:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${BRO_WIDTHS.map(x => btn('broW', x, x, BRO.w === x)).join('')}</div>
+    <div class="muted">Shelves on:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('broSide', 'right', 'Left (200 space right)', BRO.side === 'right')}${btn('broSide', 'left', 'Right (200 space left)', BRO.side === 'left')}</div>
+    <div class="row" style="gap:10px">${num('top', 'Top aperture (mm)', BRO.top, 200, 800)}${num('shelves', 'No. of shelves', broShelves(), 0, 8)}</div>
+    <div class="muted">Door hinge:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('broHinge', 'left', 'Left hinge', BRO.hinge === 'left')}${btn('broHinge', 'right', 'Right hinge', BRO.hinge === 'right')}</div>`;
+}
+function broCard() {
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`, sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="bro" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', BRO.h)}${chip('W', BRO.w)}${chip('D', BRO.d)}${chip('Void', BRO.v)}</div>
+    <div style="height:480px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${broArt()}</div>
+    <div class="row"><div><h3 style="margin:0">Broom Larder</h3><span class="mono">${broCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="broMore">More Details ${ic('chevR', 14)}</button></div>
+    ${broPick(sel)}
+    ${bkRow('bro')}
+  </article>`;
+}
+function broDetails() {
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`, sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Larders</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">${panel(broArt(), 520)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', broCode())}${row('Width', BRO.w + ' mm')}${row('Height (without legs)', BRO.h + ' mm')}${row('Height (with legs)', (BRO.h + 150) + ' mm')}${row('Depth', BRO.d + ' mm')}${row('Void', BRO.v + ' mm')}</div></div>
+    <div class="stack">
+      <h1 style="margin:0">${BRO.w}MM BROOM LARDER ${BRO.h}</h1><span class="mono">${broCode()}</span>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('TOP APERTURE', BRO.top + ' mm, over 1 x fixed shelf')}${row('BROOM / IRON BOARD SPACE', BRO_APPT + ' mm wide on the ' + (BRO.side === 'right' ? 'right' : 'left') + ', with a divider')}${row('SHELVES', broShelves() + ' x adjustable shelves on the ' + (BRO.side === 'right' ? 'left' : 'right'))}${row('DOOR', 'Full height door, ' + BRO.hinge + ' hinge')}${row('HINGES', 'Quantity: 5 x hinges')}${row('LEGS', 'Quantity: ' + tallLegs(BRO.w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(BRO.w) + ' x plinth clips')}</div>
+      ${broPick(sel)}${ocDetail(null)}${bkRow('bro')}
+    </div></div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3><div style="max-width:620px">${panel(broArt({ dims: true }), 640)}</div>`;
+}
+const broRefresh = () => { if (UI.orderCat === 'brodetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#bro'); if (el) el.outerHTML = broCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.broMore = () => { UI.orderCat = 'brodetails'; render(); window.scrollTo(0, 0); };
+A.broH = t => { BRO.h = +t.dataset.v; broRefresh(); };
+A.broW = t => { BRO.w = +t.dataset.v; broRefresh(); };
+A.broSide = t => { BRO.side = t.dataset.v; broRefresh(); };
+A.broHinge = t => { BRO.hinge = t.dataset.v; broRefresh(); };
+CH.broDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) return; BRO[k] = v; broClamp(); broRefresh(); };/* Kitchen > All Larders: Larder Unit, 1970 (SL) or 2150 (TL) high, 570 deep, 300 to 1200 wide. A full height door (a pair from 700) over
    5 adjustable shelves, or no shelves. Code: SL / TL + width, e.g. SL600. Hinges: 5 on each tall door (10 on a pair). */
 const TLR = { h: 1970, w: 600, hinge: 'left', shelves: true, d: 570, v: 50 };
 const TLR_WIDTHS = [300, 350, 400, 450, 500, 550, 600, 700, 800, 900, 1000, 1100, 1200], TLR_SHELVES = 5;
@@ -11869,6 +11946,8 @@ function bkLine(key) {
     l = { name: 'Fridge Freezer Larder', code: ffCode(), w: FF.w, h: FF.h, d: FF.d, v: FF.v, opt: FF.split + ' split, ' + FF.hinge + ' door hinge, doors ' + fd.w + ' x ' + fd.b + ' and ' + fd.w + ' x ' + fd.t + ' mm, ' + FF_AP + ' mm appliance opening with 1 x fixed shelf above, full top, fixed back on the top section, removable back ' + FF_RB + ' mm high in the middle of the opening, 5 x appliance hinges' + (FF.gola !== 'none' ? ', ' + lgText(FF) : '') };
   } else if (key === 'dlw') {
     const dd = dlwDoor(); l = { name: 'Diagonal Walk-in Larder', code: dlwCode(), w: DLW.rh, h: DLW.h, d: DLW.d, v: DLW.v, opt: '1155 x 1155, L-shaped base, diagonal top, wine rack 150 wide full height, ' + DLW_SHELVES + ' shelves each side of the rack, ' + dlwDoorTxt() + (dlwPair() ? '' : ', ' + DLW.hand + ' hinge') + ', ' + dlwHinges() + ' x 95 degree +45 angled hinges, 8 x legs' };
+  } else if (key === 'bro') {
+    broClamp(); l = { name: 'Broom Larder', code: broCode(), w: BRO.w, h: BRO.h, d: BRO.d, v: BRO.v, opt: 'Full height door, ' + BRO.hinge + ' hinge, top aperture ' + BRO.top + ' mm over a fixed shelf, ' + BRO_APPT + ' mm broom / iron board space on the ' + BRO.side + ', ' + broShelves() + ' x shelves on the ' + (BRO.side === 'right' ? 'left' : 'right') + ', 5 x hinges, ' + tallLegs(BRO.w) + ' x legs' };
   } else if (key === 'tlr') {
     l = { name: 'Larder Unit', code: tlrCode(), w: TLR.w, h: TLR.h, d: TLR.d, v: TLR.v, opt: (tlrPair() ? 'Pair of full height doors' : 'Full height door, ' + TLR.hinge + ' hinge') + ', ' + (TLR.shelves ? TLR_SHELVES + ' x adjustable shelves' : 'no shelves') + ', ' + tlrHinges() + ' x hinges, ' + tallLegs(TLR.w) + ' x legs' };
   } else if (key === 'lpl') {
@@ -11934,7 +12013,7 @@ function bkLine(key) {
     l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers, ' + s.run + ' mm' + (s.sys === 'Legrabox' && (s.hd || LG_RUN[s.run] == null) ? ' 70 kg' : '') + ' runners' + (S ? ', heights ' + s.hts.map(hmm).join(' / ') + ' mm (top to bottom)' : '') + (s.inner ? ', internal front' + (S ? ' ' + hmm(s.inH) + ' mm' : '') : '') + (S && s.glass ? ', ' + (s.sys === 'Legrabox' ? s.gtype + ' glass sides on the C drawers' : 'glass sides on the D drawers') : '') + (s.ct && ctFor(s.w, s.sys, s.run) ? ', ' + ctText(ctFor(s.w, s.sys, s.run)) : '') + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
   if (DRW_UNITS[key]) drwUSync(key);
-  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, dlw: DLW, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
+  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, bro: BRO, dlw: DLW, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   if (DRW_UNITS[key]) { try { const r = poUnit(l); if (r && r.drw && r.drw.length) { const g = {}; r.drw.forEach(x => { const n = dpDrawerName(x); g[n] = (g[n] || 0) + 1; }); l.opt += ', ' + Object.entries(g).map(([n, c]) => c + ' x ' + n).join(', '); } if (r && r.ct) l.opt += ', ' + ctText(r.ct); } catch (e) { } }   // the drawer boxes the customer picked
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
@@ -12354,6 +12433,11 @@ function poUnit(u) {
         { name: 'Shelf (right hand, across to the rack)', l: RH - 2 * T - 1, w: Dp - 20, q: DLW_SHELVES, ef: RH - 2 * T, er: 0 }, { name: 'Shelf (left hand, rack to gable)', l: LH - d - rk - 1, w: Dp - 20, q: DLW_SHELVES, ef: LH - d - rk, er: 0 },
         { name: 'Wine rack side', l: IH, w: Dp, q: 2, ef: IH, er: 0 }, { name: 'Wine rack shelf', l: rk - 2 * T, w: Dp, q: cells - 1, ef: rk - 2 * T, er: 0 }], doors: door > 600 ? [[Math.round((door - 3) / 2 * 10) / 10, H - 4], [Math.round((door - 3) / 2 * 10) / 10, H - 4]] : [[door, H - 4]], hingesPerDoor: 5 });
     r.f.mp += 24; r.f.wd += 24; r.f.pegs += 8 * DLW_SHELVES; r.f.hinges = door > 600 ? 10 : 5; return r;      // a door over 600 is split into a pair, 5 hinges each
+  }
+  if (k === 'bro') {                                                                                    // broom larder: full top, back, fixed shelf under the top aperture, a divider by the 200 space, shelves beside it
+    const top = s.top || 350, n = s.shelves != null ? s.shelves : H === 2150 ? 5 : 4, Dp = d - v - T - fe, sw = w - 2 * T - BRO_APPT - T, dh = H - 2 * T - top - T;
+    const r = C({ top: 'full', back: true, shelves: 0, fixed: 1, doors: [[w - 4, H - 5]], hingesPerDoor: 5, legs: true, extra: [{ name: 'Divider', l: dh, w: Dp, q: 1, ef: dh, er: 0 }].concat(n ? [{ name: 'Shelf', l: poR(sw - 1), w: Dp - 20, q: n, ef: sw, er: 0 }] : []) });
+    r.f.hinges = 5; r.f.legs = tallLegs(w); r.f.clips = tallClips(w); r.f.pegs += 4 * n; r.f.mp += 4; r.f.wd += 4; return r;
   }
   if (k === 'tlr') {                                                                                    // larder unit: full top, back, 5 shelves (or none), tall door(s), 5 hinges a door
     const pair = w > 600, r = C({ top: 'full', back: true, shelves: s.shelves === false ? 0 : 5, doors: doorSet(w, H, pair), hingesPerDoor: 5, legs: true });
@@ -13052,6 +13136,7 @@ function cOrders() {
   if (UI.orderCat === 'sptdetails') return sptDetails();
   if (UI.orderCat === 'lpldetails') return lplDetails();
   if (UI.orderCat === 'tlrdetails') return tlrDetails();
+  if (UI.orderCat === 'brodetails') return broDetails();
   if (UI.orderCat === 'dlwdetails') return dlwDetails();
   if (UI.orderCat === 'dlrdetails') return dlrDetails();
   if (UI.orderCat === 'lshdetails') return lshDetails();
@@ -13083,7 +13168,7 @@ function cOrders() {
   if (UI.orderCat === 'larders') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Larders</h1><p>Choose a width, then the height and door hand.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${tlrCard()}${ffCard()}${ohlCard()}${lcCard()}${panCard()}${sptCard()}${lplCard()}${dlrCard()}${dlwCard()}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${tlrCard()}${broCard()}${ffCard()}${ohlCard()}${lcCard()}${panCard()}${sptCard()}${lplCard()}${dlrCard()}${dlwCard()}</div>`;
   if (UI.orderCat === 'kitchen') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Cabinets</button>
   <div class="page-head"><div><h1>Kitchen</h1><p>Choose a type of cabinet.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -13100,7 +13185,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', sptdetails: 'larders', lpldetails: 'larders', tlrdetails: 'larders', dlwdetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', wwinedetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', sptdetails: 'larders', lpldetails: 'larders', tlrdetails: 'larders', brodetails: 'larders', dlwdetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', wwinedetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
@@ -14750,6 +14835,7 @@ function newOrderInventory() {
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => [['A', 'Antaro'], ['L', 'Legrabox'], ['M', 'Merivo']].forEach(([c, sys]) => add('Pantry Larder 1000 ' + h + ' ' + sys, p + c + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 2 shelves and 3 ' + sys + ' internal scalloped fronts, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570, { no: { k: 'pan', p: { h, sys, chest: true } } })));
   [[1970, 'LMSP'], [2150, 'LTSP']].forEach(([hh, p]) => [['A', 'Antaro'], ['L', 'Legra']].forEach(([c, sys]) => SPT_WIDTHS.forEach(w => add(w + ' ' + sys + ' Space Tower Larder ' + hh, p + c + w, 'cat-tall', 'Larders', w + ' ' + sys + ' Space Tower Larder ' + hh + ' High 570 Deep, 5 internal drawers with internal fronts.', hh, w, 570, { no: { k: 'spt', p: { h: hh, w, sys: c === 'L' ? 'Legrabox' : 'Antaro', uh: null } } }))));
   [[1970, 'LMDW'], [2150, 'LTDW']].forEach(([hh, p]) => [['L', 'left'], ['R', 'right']].forEach(([c, sd]) => add('Diagonal Walk-in Larder ' + hh + ' ' + c + 'H hinge', p + c, 'cat-tall', 'Larders', '1155 x 1155 Diagonal Walk-in Larder ' + hh + ' High, 570 Deep, L-shape base inc wine rack and shelving.', hh, 1155, 1155, { no: { k: 'dlw', p: { h: hh, hand: sd } } })));
+  [[1970, 'LM'], [2150, 'LT']].forEach(([hh, p]) => BRO_WIDTHS.forEach(w => [['R', 'right'], ['L', 'left']].forEach(([c, sd]) => add(w + ' Broom Larder ' + hh + ' (200 space ' + sd + ')', p + w + 'BRO' + c, 'cat-tall', 'Larders', w + ' Broom / iron board larder ' + hh + ' High 570 Deep, 200 space on the ' + sd + ', shelves on the other side.', hh, w, 570, { no: { k: 'bro', p: { h: hh, w, side: sd, top: 350, shelves: null } } }))));
   [[1970, 'SL'], [2150, 'TL']].forEach(([hh, p]) => TLR_WIDTHS.forEach(w => add(w + ' Larder Unit ' + hh, p + w, 'cat-tall', 'Larders', w + ' Larder Unit, full height door' + (w > 600 ? 's' : '') + ', 5 adjustable shelves (or none), ' + hh + ' High 570 Deep.', hh, w, 570, { no: { k: 'tlr', p: { h: hh, w, shelves: true } } })));
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([hh, p]) => [300, 400, 500, 600].forEach(w => add(w + ' Larder With Pull-out ' + hh, p + w, 'cat-tall', 'Larders', w + ' Larder with Proline Anthracite soft close pull-out, ' + hh + ' High 570 Deep.', hh, w, 570, { doors: false, no: { k: 'lpl', p: { h: hh, w } } })));
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => add('Pantry Larder 1000 ' + h + ' without internal chest', p + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 5 equal adjustable shelves, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570, { no: { k: 'pan', p: { h, chest: false } } }));
@@ -14765,7 +14851,7 @@ function newOrderInventory() {
 let NO_ITEMS = null;
 function noItems() { if (!NO_ITEMS) { try { NO_ITEMS = newOrderInventory().items; } catch (e) { NO_ITEMS = null; return []; } } return NO_ITEMS; }
 const noItem = id => noItems().find(i => i.id === id) || null;
-function noState(k) { return ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, dlw: DLW, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[k] || (k && k.slice(0, 3) === 'dp:' ? DPK[k.slice(3)] : null); }
+function noState(k) { return ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, bro: BRO, dlw: DLW, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[k] || (k && k.slice(0, 3) === 'dp:' ? DPK[k.slice(3)] : null); }
 /* the basket line for a planner unit: the row's settings, then the unit's own width, depth and hinge (a width or depth off the standard makes it MTM) */
 function noLine(it, u) {
   if (!it || !it.no) return null;
@@ -14794,7 +14880,7 @@ function noPlanToBasket(units) {
 /* Options for one placed unit: its own New Orders card opens over the planner with the unit's settings loaded. Every choice on the card
    (drawer heights, runners, Gola, bins, internal front, MTM size ...) works as usual; Save keeps them on the unit (u.no), Cancel drops them.
    The global card state is put back afterwards, so the New Orders pages are not changed. */
-const NO_CARDS = { base: () => baseCard(), sink: () => sinkCard(), dl: () => dlCard(), bin: () => binCard(), spo: () => spoCard(), bel: () => belCard(), wine: () => wineCard(), oven: () => ovenCard(), ff: () => ffCard(), ohl: () => ohlCard(), lc: () => lcCard(), pan: () => panCard(), spt: () => sptCard(), dlr: () => dlrCard(), lsh: () => lshCard(), lpl: () => lplCard(), tlr: () => tlrCard(), dlw: () => dlwCard(), wall: () => wallCard(false), wallg: () => wallCard(true), cwall: () => cwCard(), lwall: () => lwCard(), dwall: () => dwCard(), wwine: () => wwCard(), mwall: () => mwCard(), blwall: () => blCard(), dresser: () => drsCard(), brg: () => brgCard(), corner: () => cornerCard(), robe: () => robeCard() };
+const NO_CARDS = { base: () => baseCard(), sink: () => sinkCard(), dl: () => dlCard(), bin: () => binCard(), spo: () => spoCard(), bel: () => belCard(), wine: () => wineCard(), oven: () => ovenCard(), ff: () => ffCard(), ohl: () => ohlCard(), lc: () => lcCard(), pan: () => panCard(), spt: () => sptCard(), dlr: () => dlrCard(), lsh: () => lshCard(), lpl: () => lplCard(), tlr: () => tlrCard(), bro: () => broCard(), dlw: () => dlwCard(), wall: () => wallCard(false), wallg: () => wallCard(true), cwall: () => cwCard(), lwall: () => lwCard(), dwall: () => dwCard(), wwine: () => wwCard(), mwall: () => mwCard(), blwall: () => blCard(), dresser: () => drsCard(), brg: () => brgCard(), corner: () => cornerCard(), robe: () => robeCard() };
 function noEditOpen(it, u, done) {
   if (!it || !it.no) return;
   const k = it.no.k, st = noState(k), card = k.slice(0, 3) === 'dp:' ? () => dpCard(k.slice(3)) : NO_CARDS[k]; if (!st || !card) { toast('This cabinet has no options to set'); return; }
