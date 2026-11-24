@@ -12261,7 +12261,8 @@ function costUnit(l) {
   const labour = c.labourRate * c.labourHours; lines.push(['Labour', c.labourHours + ' h at ' + GBP(c.labourRate), labour]);
   const sub = board + edge + hwTotal + labour, overhead = sub * c.overhead / 100, cost = sub + overhead;
   lines.push(['Overhead', c.overhead + '%', overhead]);
-  const markup = cost * c.markup / 100; lines.push(['Markup', c.markup + '%', markup]);
+  const noMk = r.binSet ? r.binSet.p * (1 + c.overhead / 100) : 0;                                   // pull-outs (bins, corner pull-outs) carry no markup (user, 24 Nov 2026)
+  const markup = (cost - noMk) * c.markup / 100; lines.push(['Markup', c.markup + '%' + (noMk ? ' (not on the pull-out)' : ''), markup]);
   let price = cost + markup;
   const mtm = /^MTM cabinet/.test(l.opt || '') || /-MTM$/.test(l.code || '') || k === 'mtm';        // the MTM Base itself is made to measure too
   if (mtm && c.mtmSur > 0) { const m = price * c.mtmSur / 100; lines.push(['MTM surcharge', c.mtmSur + '%', m]); price += m; }
