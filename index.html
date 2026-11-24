@@ -10224,7 +10224,8 @@ CH.ohlDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isF
    the same rule as the corner base: the blank is entered by the customer (it starts at 600) and the door is what is left, width - blank - 18.2. */
 const LC = { w: 1000, h: 1970, side: 'right', door: 500, d: 570, v: 50, gola: 'none', mtm: false };
 const LC_WIDTHS = [800, 900, 1000, 1100, 1200], LC_MIN_DOOR = 300;
-const lcDoorMax = () => Math.floor(LC.w - 18.2 - 50);                  // leaves at least a 50 mm blank
+const DOOR_MAX = 600;                                                  // the biggest door is a 600 size (made 596): over that a single door can't be used (user, 24 Nov 2026)
+const lcDoorMax = () => Math.min(DOOR_MAX, Math.floor(LC.w - 18.2 - 50));                  // leaves at least a 50 mm blank
 const lcDoor = () => Math.min(Math.max(Math.round(LC.door), LC_MIN_DOOR), lcDoorMax());
 const lcBlank = () => Math.round((LC.w - lcDoor() - 18.2) * 10) / 10;    // blank = cabinet width - door size - 18.2, worked out for the customer
 const lcBlankH = () => Math.round((LC.h - 36.4) * 10) / 10;               // the blank runs between the base and the top: cabinet height - 36.4
@@ -10450,10 +10451,14 @@ CH.sptDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isF
    aperture the customer sets, then below it a 200 wide space for a broom / iron board on one side and adjustable shelves on the other, with a divider.
    Code: LM / LT + width + BRO + L or R (the side of the 200 space), e.g. LM500BROR = 200 space on the right, shelves on the left. */
 const BRO = { h: 1970, w: 500, d: 570, v: 50, top: 350, side: 'right', shelves: null, hinge: 'left' };
-const BRO_WIDTHS = [500, 600], BRO_APPT = 200;
-const broShelves = () => BRO.shelves != null ? BRO.shelves : BRO.h === 2150 ? 5 : 4;
+const BRO_WIDTHS = [400, 500, 600, 700], BRO_APPT = 150, BRO_LOW = 650;          // 150 internal for the iron board; 650 internal under the shelves (hoover etc.) (user, 24 Nov 2026)
+const broShelves = () => 2;
+/* part sizes for the text (as the cutting list): T 18.2, front edge 2 */
+const broSizes = () => { const T = 18.2, Dp = Math.round((BRO.d - BRO.v - T - 2) * 10) / 10, r1 = n => Math.round(n * 10) / 10; return { fixed: r1(BRO.w - 2 * T) + ' x ' + Dp, divider: r1(BRO.h - 2 * T - BRO.top - T) + ' x ' + Dp, shelf: r1(BRO.w - 2 * T - BRO_APPT - T - 1) + ' x ' + r1(Dp - 20) }; };                                                // always 2 shelves
+/* the shelf heights, measured up from the top of the base panel: s1 = the first shelf (650 clear under it), s2 = the second, fs = underside of the fixed shelf */
+const broLayout = () => { const T = 18, inner = BRO.h - 2 * T, fs = inner - BRO.top - T, s1 = BRO_LOW, gap = (fs - (s1 + T) - T) / 2; return { s1, s2: s1 + T + gap, fs, gap: Math.round(gap), inner }; };
 const broCode = () => (BRO.h === 2150 ? 'LT' : 'LM') + BRO.w + 'BRO' + (BRO.side === 'left' ? 'L' : 'R');
-const broClamp = () => { BRO.top = Math.min(800, Math.max(200, Math.round(+BRO.top || 350))); if (BRO.shelves != null) BRO.shelves = Math.min(8, Math.max(0, Math.round(BRO.shelves))); BRO.v = Math.min(100, Math.max(0, BRO.v)); };
+const broClamp = () => { BRO.top = Math.min(800, BRO.h - 36 - 18 - BRO_LOW - 36 - 300, Math.max(200, Math.round(+BRO.top || 350))); if (BRO.shelves != null) BRO.shelves = Math.min(8, Math.max(0, Math.round(BRO.shelves))); BRO.v = Math.min(100, Math.max(0, BRO.v)); };
 function broArt(o) {
   o = Object.assign({ dims: false }, o); broClamp();
   const w = BRO.w, D = BRO.d, H = BRO.h, T = 18, v = BRO.v, y0 = 150, y1 = y0 + H, col = ocHex(), out = [], pts = [];
@@ -10468,7 +10473,7 @@ function broArt(o) {
   q([P(T, y0 + T, zb), P(w - T, y0 + T, zb), P(w - T, y0 + T, zf), P(T, y0 + T, zf)], baseShade(col, 0.06));                       // base panel
   const ys = y1 - T - BRO.top, sl = BRO.side === 'right', xd = sl ? w - T - BRO_APPT - T : T + BRO_APPT;                              // the fixed shelf under the top aperture; the divider by the 200 space
   const sx0 = sl ? T : xd + T, sx1 = sl ? xd : w - T, n = broShelves();
-  for (let i = 1; i <= n; i++) { const yy = y0 + T + i * (ys - T - y0 - T) / (n + 1); q([P(sx0, yy, zb), P(sx1, yy, zb), P(sx1, yy, zf - 20), P(sx0, yy, zf - 20)], baseShade(col, 0.12)); }
+  const lay = broLayout(); [lay.s1 + T, lay.s2 + T].forEach(t => { const yy = y0 + T + t; q([P(sx0, yy, zb), P(sx1, yy, zb), P(sx1, yy, zf - 20), P(sx0, yy, zf - 20)], baseShade(col, 0.12)); });   // the 2 shelves, 650 clear under the first
   q([P(xd, y0 + T, zb), P(xd, y0 + T, zf), P(xd, ys - T, zf), P(xd, ys - T, zb)], baseShade(col, sl ? 0.1 : -0.06));                // divider
   q([P(xd, y0 + T, zf), P(xd + T, y0 + T, zf), P(xd + T, ys - T, zf), P(xd, ys - T, zf)], baseShade(eh, 0.1), 1);                 // its front edge
   q([P(T, ys - T, zb), P(w - T, ys - T, zb), P(w - T, ys, zf), P(T, ys, zf)].map((p, i) => p), baseShade(col, 0.16));             // fixed shelf
@@ -10478,7 +10483,10 @@ function broArt(o) {
   q([P(0, y1, 0), P(w, y1, 0), P(w, y1, zf), P(0, y1, zf)], baseShade(col, 0.28));                                                 // top
   q([P(0, y0, zf), P(T, y0, zf), P(T, y1, zf), P(0, y1, zf)], baseShade(eh, 0.1), 1); q([P(w - T, y0, zf), P(w, y0, zf), P(w, y1, zf), P(w - T, y1, zf)], baseShade(eh, 0.1), 1);
   if (o.dims) { const ink = '#3b4a52', dm = (a, b, dx, dy, t) => { const A = { x: a.x + dx, y: a.y + dy }, B = { x: b.x + dx, y: b.y + dy }; pts.push(A, B); ln(a, A, ink, 1.2); ln(b, B, ink, 1.2); ln(A, B, ink, 1.6); out.push(`<text x="${f1((A.x + B.x) / 2)}" y="${f1((A.y + B.y) / 2 - 10)}" font-size="34" fill="${ink}" stroke="#f4f4f2" stroke-width="7" paint-order="stroke" text-anchor="middle" font-family="sans-serif">${t}</text>`); };
-    dm(P(0, y1, zf), P(w, y1, zf), 0, -60, w + 'mm'); dm(P(w, y0, zf), P(w, y1, zf), 70, 0, H + 'mm'); dm(P(w, ys, zf), P(w, y1 - T, zf), 190, 0, 'Top ' + BRO.top); }
+    dm(P(0, y1, zf), P(w, y1, zf), 0, -60, w + 'mm'); dm(P(w, y0, zf), P(w, y1, zf), 70, 0, H + 'mm');
+    const yb = y0 + T, ap = (a, b, t) => dm(P(w, yb + a, zf), P(w, yb + b, zf), 230, 0, t);                                       // the internal apertures, bottom to top
+    ap(0, lay.s1, String(BRO_LOW)); ap(lay.s1 + T, lay.s2, String(lay.gap)); ap(lay.s2 + T, lay.fs, String(lay.gap)); ap(lay.fs + T, lay.inner, 'Top ' + BRO.top);
+    const gx0 = sl ? xd + T : T, gx1 = sl ? w - T : xd; dm(P(gx0, y0, zf), P(gx1, y0, zf), 0, 90, BRO_APPT + ' iron board'); }
   const xs = pts.map(p => p.x), yv = pts.map(p => p.y), bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...yv), by1 = Math.max(...yv), pad = Math.max(bx1 - bx0, by1 - by0) * 0.06;
   return `<svg viewBox="${(bx0 - pad).toFixed(0)} ${(by0 - pad).toFixed(0)} ${(bx1 - bx0 + 2 * pad).toFixed(0)} ${(by1 - by0 + 2 * pad).toFixed(0)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Broom larder" style="width:100%;height:100%">${out.join('')}</svg>`;
 }
@@ -10486,10 +10494,10 @@ function broPick(sel) {
   const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`;
   const num = (k, label, v, mn, mx) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="${mn}" max="${mx}" step="1" value="${v}" data-chg="broDim" data-k="${k}"></label>`;
   return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(x => btn('broH', x, x + ' high', BRO.h === x)).join('')}</div>
-    <div class="muted">Width:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${BRO_WIDTHS.map(x => btn('broW', x, x, BRO.w === x)).join('')}</div>
-    <div class="muted">Shelves on:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('broSide', 'right', 'Left (200 space right)', BRO.side === 'right')}${btn('broSide', 'left', 'Right (200 space left)', BRO.side === 'left')}</div>
-    <div class="row" style="gap:10px">${num('top', 'Top aperture (mm)', BRO.top, 200, 800)}${num('shelves', 'No. of shelves', broShelves(), 0, 8)}</div>
-    <div class="muted">Door hinge:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('broHinge', 'left', 'Left hinge', BRO.hinge === 'left')}${btn('broHinge', 'right', 'Right hinge', BRO.hinge === 'right')}</div>`;
+    <div class="muted">Width:</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${BRO_WIDTHS.map(x => btn('broW', x, x, BRO.w === x)).join('')}</div>
+    <div class="muted">Shelves on:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('broSide', 'right', 'Left (iron board right)', BRO.side === 'right')}${btn('broSide', 'left', 'Right (iron board left)', BRO.side === 'left')}</div>
+    <div class="row" style="gap:10px">${num('top', 'Top aperture (mm)', BRO.top, 200, 800)}</div><div class="muted" style="font-size:13px;line-height:1.5">2 shelves, ${BRO_LOW} mm clear under them (hoover etc.), ${broLayout().gap} mm between. ${BRO_APPT} mm internal space for the iron board.</div>
+    ${BRO.w > 600 ? '<p class="muted" style="margin:0">Over 600 wide, so it takes a pair of doors.</p>' : `<div class="muted">Door hinge:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('broHinge', 'left', 'Left hinge', BRO.hinge === 'left')}${btn('broHinge', 'right', 'Right hinge', BRO.hinge === 'right')}</div>`}`;
 }
 function broCard() {
   const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`, sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
@@ -10512,7 +10520,7 @@ function broDetails() {
     <div class="stack">
       <h1 style="margin:0">${BRO.w}MM BROOM LARDER ${BRO.h}</h1><span class="mono">${broCode()}</span>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('TOP APERTURE', BRO.top + ' mm, over 1 x fixed shelf')}${row('BROOM / IRON BOARD SPACE', BRO_APPT + ' mm wide on the ' + (BRO.side === 'right' ? 'right' : 'left') + ', with a divider')}${row('SHELVES', broShelves() + ' x adjustable shelves on the ' + (BRO.side === 'right' ? 'left' : 'right'))}${row('DOOR', 'Full height door, ' + BRO.hinge + ' hinge')}${row('HINGES', 'Quantity: 5 x hinges')}${row('LEGS', 'Quantity: ' + tallLegs(BRO.w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(BRO.w) + ' x plinth clips')}</div>
+      <div>${row('TOP APERTURE', BRO.top + ' mm, over 1 x fixed shelf')}${row('APERTURES', 'Top ' + BRO.top + ' mm; ' + broLayout().gap + ' mm between the shelves; ' + BRO_LOW + ' mm under the shelves')}${row('IRON BOARD SPACE', BRO_APPT + ' mm internal, on the ' + (BRO.side === 'right' ? 'right' : 'left') + ', with a divider')}${row('FIXED SHELF', 'Quantity: 1 x full width fixed shelf under the top aperture, ' + broSizes().fixed + ' mm')}${row('DIVIDER', 'Quantity: 1 x divider, from the base up to the fixed shelf, ' + broSizes().divider + ' mm, keeping the ' + BRO_APPT + ' mm iron board space')}${row('SHELVES', 'Quantity: ' + broShelves() + ' x adjustable shelves on the ' + (BRO.side === 'right' ? 'left' : 'right') + ' (between the gable and the divider), ' + broSizes().shelf + ' mm')}${row('DOOR', BRO.w > 600 ? 'Pair of full height doors' : 'Full height door, ' + BRO.hinge + ' hinge')}${row('HINGES', 'Quantity: ' + (BRO.w > 600 ? 10 : 5) + ' x hinges')}${row('LEGS', 'Quantity: ' + tallLegs(BRO.w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(BRO.w) + ' x plinth clips')}</div>
       ${broPick(sel)}${ocDetail(null)}${bkRow('bro')}
     </div></div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3><div style="max-width:620px">${panel(broArt({ dims: true }), 640)}</div>`;
@@ -10647,7 +10655,10 @@ const dlrDiag = () => Math.hypot(DLR.rh - DLR.d, DLR.lh - DLR.d);
 const dlrDoorOf = (rh, lh, d, h) => ({ w: Math.round(Math.hypot(rh - 18.2 - d, lh - 18.2 - d) - 4), h: h - 4 });   // door width = ((wall width - 18.2 - gable depth) x 1.4142) - 4, door height = cabinet height - 4
 const dlrDoor = () => dlrDoorOf(DLR.rh, DLR.lh, DLR.d, DLR.h);
 const dlrCode = () => (DLR.h === 2150 ? 'LTD' : 'LMD') + DLR.rh + 'X' + DLR.lh;
-const dlrHinges = () => 5;                                                   // 5 hinges, 155 degree
+const dlrPair = () => dlrDoor().w > 600;                                       // a door over 600 wide is split into a pair (user, 24 Nov 2026)
+const dlrDoorW = () => dlrPair() ? Math.round((dlrDoor().w - 3) / 2 * 10) / 10 : dlrDoor().w;
+const dlrDoorTxt = () => (dlrPair() ? '2 doors ' : '1 door ') + dlrDoor().h + ' x ' + dlrDoorW() + ' mm';
+const dlrHinges = () => dlrPair() ? 10 : 5;                                                   // 5 hinges, 155 degree
 const dlrClamp = () => { DLR.v = Math.min(100, Math.max(0, DLR.v)); };
 function dlrArt(o) {
   o = Object.assign({ doors: true, dims: false }, o);
@@ -10679,8 +10690,8 @@ function dlrArt(o) {
     q([[T, T], [RH - T, T], [RH - T, zA], [xB, LH - T], [T, LH - T]].map(([x, z]) => P(x, ys, z)), baseShade(col, 0.12));
   }
   if (WK2) {                                                                                       // walk-in larder: the left hand shelves stop at a 150 wide wine rack running back to front; the right hand shelves run all the way across to it
-    const n = DLW_SHELVES, fz = D - 20, rw = 150, z0 = D, z1 = D + rw, lt = baseShade(col, 0.34);
-    const ya = y0 + T, yb = y1 - T, rows = Math.max(1, Math.floor((yb - ya) / 150));
+    const n = DLW_SHELVES, fz = D - 20, rw = 150 + 2 * T, z0 = D, z1 = D + rw, lt = baseShade(col, 0.34);
+    const ya = y0 + T, rows = Math.max(1, Math.floor((H - 2 * T + T) / (150 + T))), yb = ya + rows * (150 + T) - T;   // 150 x 150 inside each cubby
     q([P(v + T, ya, z0), P(v + T, ya, z1), P(v + T, yb, z1), P(v + T, yb, z0)], baseShade(col, -0.3));                                       // back of the cubbies
     for (let k2 = 0; k2 <= rows; k2++) { const yk = ya + k2 * (yb - ya) / rows; q([P(v, yk, z0), P(fz, yk, z0), P(fz, yk, z1), P(v, yk, z1)], baseShade(col, 0.2), 0.8); }   // cubby floors
     [z0, z1].forEach(z => q([P(v, ya, z), P(fz, ya, z), P(fz, yb, z), P(v, yb, z)], baseShade(col, z === z0 ? 0.02 : 0.1)));                  // rack sides
@@ -10695,11 +10706,13 @@ function dlrArt(o) {
   q([P(RH, y0, 0), P(RH, y0, D), P(RH, y1, D), P(RH, y1, 0)], baseShade(col, 0.08));  // gable on wall A's side
   q([P(0, y0, LH), P(D, y0, LH), P(D, y1, LH), P(0, y1, LH)], baseShade(col, 0.1));   // gable on wall B's side
   if (o.doors) {
-    const dd = dlrDoorOf(DS.rh, DS.lh, DS.d, DS.h), s1 = (dg - dd.w) / 2, s3 = s1 + dd.w, pr = 22;
-    q([at(s1, y0 + 2.5, pr), at(s3, y0 + 2.5, pr), at(s3, y1 - 2.5, pr), at(s1, y1 - 2.5, pr)], baseShade(col, 0.24), 1.3);
-    q([at(s1 + 55, y0 + 90, pr), at(s3 - 55, y0 + 90, pr), at(s3 - 55, y1 - 90, pr), at(s1 + 55, y1 - 90, pr)], baseShade(col, 0.08), 1);
-    const hs = DS.hand === 'left' ? s1 + 45 : s3 - 45;                               // the handle is on the side away from the hinges
-    ln(at(hs, y0 + H / 2 - 90, pr), at(hs, y0 + H / 2 + 90, pr), '#3a3631', 4);
+    const dd = dlrDoorOf(DS.rh, DS.lh, DS.d, DS.h), s1 = (dg - dd.w) / 2, s3 = s1 + dd.w, pr = 22, pair = dd.w > 600, half = (dd.w - 3) / 2;   // over 600: a pair of doors
+    (pair ? [[s1, s1 + half, 'r'], [s3 - half, s3, 'l']] : [[s1, s3, DS.hand === 'left' ? 'l' : 'r']]).forEach(([a, b, hd]) => {
+      q([at(a, y0 + 2.5, pr), at(b, y0 + 2.5, pr), at(b, y1 - 2.5, pr), at(a, y1 - 2.5, pr)], baseShade(col, 0.24), 1.3);
+      q([at(a + 55, y0 + 90, pr), at(b - 55, y0 + 90, pr), at(b - 55, y1 - 90, pr), at(a + 55, y1 - 90, pr)], baseShade(col, 0.08), 1);
+      const hs = hd === 'l' ? a + 45 : b - 45;                                         // the handle is on the side away from the hinges
+      ln(at(hs, y0 + H / 2 - 90, pr), at(hs, y0 + H / 2 + 90, pr), '#3a3631', 4);
+    });
   } else if (!WK2) {                                                                               // (the walk-in larder's L-shaped base has no diagonal front edge)
     q([at(0, y0, 0), at(dg, y0, 0), at(dg, y0 + T, 0), at(0, y0 + T, 0)], baseShade(eh, 0.1), esw);   // the bare front edge of the base panel
   }
@@ -10786,7 +10799,7 @@ function dlrPick(sel) {
   return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[1970, 2150].map(h => btn('dlrH', h, h + ' high', DLR.h === h)).join('')}</div>
     <div class="row" style="gap:10px"><label class="field" style="flex:1"><span class="lbl">Right hand width (mm)</span><input class="input" type="number" min="${DLR_MIN}" max="${DLR_MAX}" step="1" value="${DLR.rh}" data-chg="dlrDim" data-k="rh"></label><label class="field" style="flex:1"><span class="lbl">Left hand width (mm)</span><input class="input" type="number" min="${DLR_MIN}" max="${DLR_MAX}" step="1" value="${DLR.lh}" data-chg="dlrDim" data-k="lh"></label></div>
     <div class="muted">Hinge:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${btn('dlrHand', 'left', 'Left hinge', DLR.hand === 'left')}${btn('dlrHand', 'right', 'Right hinge', DLR.hand === 'right')}</div>
-    <div class="muted" style="font-size:13px;line-height:1.5">Diagonal: <b>${Math.round(dlrDiag())} mm</b>. Door size: <b>${dd.h} x ${dd.w} mm</b> ((wall width - 18.2 - depth) x 1.4142 - 4 wide, height - 4).</div>`;
+    <div class="muted" style="font-size:13px;line-height:1.5">Diagonal: <b>${Math.round(dlrDiag())} mm</b>. Door size: <b>${dlrDoorTxt()}</b>${dlrPair() ? ' (over 600, so split into a pair)' : ''} ((wall width - 18.2 - depth) x 1.4142 - 4 wide, height - 4).</div>`;
 }
 function dlrCard() {
   const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`;
@@ -10819,7 +10832,7 @@ function dlrDetails() {
       <span class="mono">${dlrCode()}</span>
       <p class="muted" style="margin:0">Diagonal larder, ${DLR.rh} right hand width and ${DLR.lh} left hand width, ${DLR.h}mm high and ${DLR.d}mm deep, with a diagonal top, base and ${DLR_SHELVES} diagonal shelves.</p>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + dlrCode())}${row('DOOR SIZE', dd.h + ' x ' + dd.w + ' mm, ' + DLR.hand + ' hinge ((wall width - 18.2 - depth) x 1.4142 - 4 wide, height - 4)')}${row('DIAGONAL TOP AND BASE', 'Quantity: 1 x diagonal top, 1 x diagonal base')}${row('SHELVES', 'Quantity: ' + DLR_SHELVES + ' x diagonal shelves')}${row('HINGES', 'Quantity: ' + dlrHinges() + ' x 155 degree hinges')}${row('LEGS', 'Quantity: ' + tallLegs(Math.max(DLR.rh, DLR.lh)) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(Math.max(DLR.rh, DLR.lh)) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + dlrCode())}${row('DOOR SIZE', dlrDoorTxt() + (dlrPair() ? ' (over 600, split into a pair)' : ', ' + DLR.hand + ' hinge') + ' ((wall width - 18.2 - depth) x 1.4142 - 4 wide, height - 4)')}${row('DIAGONAL TOP AND BASE', 'Quantity: 1 x diagonal top, 1 x diagonal base')}${row('SHELVES', 'Quantity: ' + DLR_SHELVES + ' x diagonal shelves')}${row('HINGES', 'Quantity: ' + dlrHinges() + ' x 155 degree hinges')}${row('LEGS', 'Quantity: ' + tallLegs(Math.max(DLR.rh, DLR.lh)) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + tallClips(Math.max(DLR.rh, DLR.lh)) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${dlrPick(sel)}
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', DLR.d)}${num('v', 'Void (mm)', DLR.v)}</div>
@@ -11100,7 +11113,7 @@ Object.keys(wallOps).forEach(k => {
 const CW = { h: 720, w: 600, side: 'right', door: 300, d: 300, v: 20, mtm: false };
 const CW_WIDTHS = [600, 700, 800, 900, 1000, 1100, 1200];
 const CW_MIN_DOOR = 250;
-const cwDoorMax = () => Math.floor(CW.w - CORNER_T - 50);                                // leaves at least a 50mm blank
+const cwDoorMax = () => Math.min(DOOR_MAX, Math.floor(CW.w - CORNER_T - 50));                                // leaves at least a 50mm blank
 const cwDoor = () => Math.min(Math.max(CW.door, CW_MIN_DOOR), cwDoorMax());
 const cwBlank = () => Math.round((CW.w - cwDoor() - CORNER_T) * 10) / 10;
 const cwBlankH = () => Math.round((CW.h - 2 * CORNER_T) * 10) / 10;                     // the blank stands between the top and bottom panels
@@ -11727,7 +11740,7 @@ const SWIFT = [[400, 'I560-200', 241.82], [450, 'I560-225', 241.82], [500, 'I560
 const swiftFor = (door, side) => { const s = SWIFT.find(x => x.door === Math.round(door)); return s ? Object.assign({}, s, { code: s.code + (side === 'left' ? 'L' : 'R'), name: 'Proline Anthracite Swift 2.0 ' + s.door + 'mm (' + s.code + (side === 'left' ? 'L' : 'R') + ')' }) : null; };
 const CORNER_T = 18.2;                                            // the internal blank panel
 const CORNER_MIN_DOOR = 300;                                      // the door can't be narrower than this
-const cornerDoorMax = () => Math.floor(CORNER.w - CORNER_T - 50);   // leaves at least a 50mm blank
+const cornerDoorMax = () => Math.min(DOOR_MAX, Math.floor(CORNER.w - CORNER_T - 50));   // leaves at least a 50mm blank
 const cornerDoor = () => Math.min(Math.max(CORNER.door, CORNER_MIN_DOOR), cornerDoorMax());
 const cornerBlank = () => Math.round((CORNER.w - cornerDoor() - CORNER_T) * 10) / 10;   // blank = cabinet width - door size - 18.2
 const cornerCode = () => 'BCHL' + CORNER.w + (CORNER.side === 'right' ? 'RB' : 'LB') + mtmTag('corner');
@@ -11947,7 +11960,7 @@ function bkLine(key) {
   } else if (key === 'dlw') {
     const dd = dlwDoor(); l = { name: 'Diagonal Walk-in Larder', code: dlwCode(), w: DLW.rh, h: DLW.h, d: DLW.d, v: DLW.v, opt: '1155 x 1155, L-shaped base, diagonal top, wine rack 150 wide full height, ' + DLW_SHELVES + ' shelves each side of the rack, ' + dlwDoorTxt() + (dlwPair() ? '' : ', ' + DLW.hand + ' hinge') + ', ' + dlwHinges() + ' x 95 degree +45 angled hinges, 8 x legs' };
   } else if (key === 'bro') {
-    broClamp(); l = { name: 'Broom Larder', code: broCode(), w: BRO.w, h: BRO.h, d: BRO.d, v: BRO.v, opt: 'Full height door, ' + BRO.hinge + ' hinge, top aperture ' + BRO.top + ' mm over a fixed shelf, ' + BRO_APPT + ' mm broom / iron board space on the ' + BRO.side + ', ' + broShelves() + ' x shelves on the ' + (BRO.side === 'right' ? 'left' : 'right') + ', 5 x hinges, ' + tallLegs(BRO.w) + ' x legs' };
+    broClamp(); l = { name: 'Broom Larder', code: broCode(), w: BRO.w, h: BRO.h, d: BRO.d, v: BRO.v, opt: (BRO.w > 600 ? 'Pair of full height doors' : 'Full height door, ' + BRO.hinge + ' hinge') + ', top aperture ' + BRO.top + ' mm over a full width fixed shelf, 1 x divider, ' + BRO_APPT + ' mm iron board space on the ' + BRO.side + ', 2 x shelves with ' + BRO_LOW + ' mm clear under them on the ' + (BRO.side === 'right' ? 'left' : 'right') + ', ' + (BRO.w > 600 ? 10 : 5) + ' x hinges, ' + tallLegs(BRO.w) + ' x legs' };
   } else if (key === 'tlr') {
     l = { name: 'Larder Unit', code: tlrCode(), w: TLR.w, h: TLR.h, d: TLR.d, v: TLR.v, opt: (tlrPair() ? 'Pair of full height doors' : 'Full height door, ' + TLR.hinge + ' hinge') + ', ' + (TLR.shelves ? TLR_SHELVES + ' x adjustable shelves' : 'no shelves') + ', ' + tlrHinges() + ' x hinges, ' + tallLegs(TLR.w) + ' x legs' };
   } else if (key === 'lpl') {
@@ -11958,7 +11971,7 @@ function bkLine(key) {
     l = { name: 'Pantry Larder', code: panCode(), w: PAN_W, h: PAN.h, d: PAN.d, v: PAN.v, opt: panDoorTxt() + ', no centre post, ' + (PAN.chest ? 'internal chest of 3 x ' + PAN.sys + ' drawers with scalloped fronts and a ' + PAN_FILL + ' mm filler each side, 1 x fixed internal top on top of the drawers, 3 x equal adjustable shelves above' : 'no internal chest, 5 x equal adjustable shelves') + ', ' + panHinges() + ' x hinges' };
   } else if (key === 'dlr') {
     dlrClamp();
-    l = { name: 'Diagonal Larder', code: dlrCode(), w: DLR.rh, h: DLR.h, d: DLR.d, v: DLR.v, opt: 'Right hand width ' + DLR.rh + ' mm, left hand width ' + DLR.lh + ' mm, diagonal ' + Math.round(dlrDiag()) + ' mm, diagonal top and base, ' + DLR_SHELVES + ' x diagonal shelves, ' + DLR.hand + ' hinge, door ' + dlrDoor().h + ' x ' + dlrDoor().w + ' mm, ' + dlrHinges() + ' x 155 degree hinges, ' + tallLegs(Math.max(DLR.rh, DLR.lh)) + ' x legs' };
+    l = { name: 'Diagonal Larder', code: dlrCode(), w: DLR.rh, h: DLR.h, d: DLR.d, v: DLR.v, opt: 'Right hand width ' + DLR.rh + ' mm, left hand width ' + DLR.lh + ' mm, diagonal ' + Math.round(dlrDiag()) + ' mm, diagonal top and base, ' + DLR_SHELVES + ' x diagonal shelves, ' + (dlrPair() ? '' : DLR.hand + ' hinge, ') + dlrDoorTxt() + ', ' + dlrHinges() + ' x 155 degree hinges, ' + tallLegs(Math.max(DLR.rh, DLR.lh)) + ' x legs' };
   } else if (key === 'lc') {
     l = { name: 'Corner Larder', code: lcCode(), w: LC.w, h: LC.h, d: LC.d, v: LC.v, opt: (LC.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + lcBlankTxt() + ', door ' + lcDoor() + ' x ' + (LC.h - 5) + ' mm, 5 x shelves, ' + lcHinges() + ' x blank corner hinges, ' + tallLegs(LC.w) + ' x legs' + (LC.gola !== 'none' ? ', ' + lgText(LC) : '') };
   } else if (key === 'ohl') {
@@ -12425,19 +12438,19 @@ function poUnit(u) {
     if (s.drawer) { r.drw = antDr(1, 115, { h: 'N' }); r.f.runners[s.sys || 'Antaro'] = 1; } return r;
   }
   if (k === 'dlw') {                                                                                    // walk-in larder: L-shaped base, diagonal top, backs on both walls, shelves on both wings, 150 wide wine rack, one diagonal door
-    const RH = s.rh || 1155, LH = s.lh || 1155, dg = Math.hypot(RH - d, LH - d), door = dlrDoorOf(RH, LH, d, H).w, Dp = d - v - T - fe, ds = Math.round(dg * 10) / 10, rk = 150, IH = H - 2 * T, cells = Math.max(1, Math.floor(IH / 150));
+    const RH = s.rh || 1155, LH = s.lh || 1155, dg = Math.hypot(RH - d, LH - d), door = dlrDoorOf(RH, LH, d, H).w, Dp = d - v - T - fe, ds = Math.round(dg * 10) / 10, rk = 150 + 2 * T, IH = H - 2 * T, cells = Math.max(1, Math.floor((IH + T) / (150 + T)));      // wine rack: 150 x 150 inside each cubby
     const r = C({ top: 'none', bottom: false, back: false, legs: true, legCount: 8, clipCount: tallClips(Math.max(RH, LH)), approx: true, note: 'Walk-in larder parts are an estimate',
       extra: [{ name: 'Base panel (wing 1)', l: RH - T, w: Dp, ef: RH - d, er: RH - T }, { name: 'Base panel (wing 2)', l: LH - d, w: Dp, ef: LH - d, er: LH - d },
         { name: 'Top panel (diagonal)', l: RH - T, w: LH - T, ef: ds, er: RH + LH - 2 * T },
         { name: 'Back (wall A)', l: H, w: RH - T }, { name: 'Back (wall B)', l: H, w: LH - T },
         { name: 'Shelf (right hand, across to the rack)', l: RH - 2 * T - 1, w: Dp - 20, q: DLW_SHELVES, ef: RH - 2 * T, er: 0 }, { name: 'Shelf (left hand, rack to gable)', l: LH - d - rk - 1, w: Dp - 20, q: DLW_SHELVES, ef: LH - d - rk, er: 0 },
-        { name: 'Wine rack side', l: IH, w: Dp, q: 2, ef: IH, er: 0 }, { name: 'Wine rack shelf', l: rk - 2 * T, w: Dp, q: cells - 1, ef: rk - 2 * T, er: 0 }], doors: door > 600 ? [[Math.round((door - 3) / 2 * 10) / 10, H - 4], [Math.round((door - 3) / 2 * 10) / 10, H - 4]] : [[door, H - 4]], hingesPerDoor: 5 });
+        { name: 'Wine rack side', l: IH, w: Dp, q: 2, ef: IH, er: 0 }, { name: 'Wine rack divider (150 x 150 cubbies)', l: 150, w: Dp, q: cells, ef: 150, er: 0 }], doors: door > 600 ? [[Math.round((door - 3) / 2 * 10) / 10, H - 4], [Math.round((door - 3) / 2 * 10) / 10, H - 4]] : [[door, H - 4]], hingesPerDoor: 5 });
     r.f.mp += 24; r.f.wd += 24; r.f.pegs += 8 * DLW_SHELVES; r.f.hinges = door > 600 ? 10 : 5; return r;      // a door over 600 is split into a pair, 5 hinges each
   }
   if (k === 'bro') {                                                                                    // broom larder: full top, back, fixed shelf under the top aperture, a divider by the 200 space, shelves beside it
-    const top = s.top || 350, n = s.shelves != null ? s.shelves : H === 2150 ? 5 : 4, Dp = d - v - T - fe, sw = w - 2 * T - BRO_APPT - T, dh = H - 2 * T - top - T;
-    const r = C({ top: 'full', back: true, shelves: 0, fixed: 1, doors: [[w - 4, H - 5]], hingesPerDoor: 5, legs: true, extra: [{ name: 'Divider', l: dh, w: Dp, q: 1, ef: dh, er: 0 }].concat(n ? [{ name: 'Shelf', l: poR(sw - 1), w: Dp - 20, q: n, ef: sw, er: 0 }] : []) });
-    r.f.hinges = 5; r.f.legs = tallLegs(w); r.f.clips = tallClips(w); r.f.pegs += 4 * n; r.f.mp += 4; r.f.wd += 4; return r;
+    const top = s.top || 350, n = 2, Dp = d - v - T - fe, sw = w - 2 * T - BRO_APPT - T, dh = H - 2 * T - top - T;
+    const r = C({ top: 'full', back: true, shelves: 0, fixed: 1, doors: doorSet(w, H, w > 600), hingesPerDoor: 5, legs: true, extra: [{ name: 'Divider', l: dh, w: Dp, q: 1, ef: dh, er: 0 }].concat(n ? [{ name: 'Shelf', l: poR(sw - 1), w: Dp - 20, q: n, ef: sw, er: 0 }] : []) });
+    r.f.hinges = w > 600 ? 10 : 5; r.f.legs = tallLegs(w); r.f.clips = tallClips(w); r.f.pegs += 4 * n; r.f.mp += 4; r.f.wd += 4; return r;
   }
   if (k === 'tlr') {                                                                                    // larder unit: full top, back, 5 shelves (or none), tall door(s), 5 hinges a door
     const pair = w > 600, r = C({ top: 'full', back: true, shelves: s.shelves === false ? 0 : 5, doors: doorSet(w, H, pair), hingesPerDoor: 5, legs: true });
@@ -12469,11 +12482,12 @@ function poUnit(u) {
     const r = C({ top: 'none', bottom: false, back: false, legs: true, legCount: tallLegs(Math.max(RH, LH)), clipCount: tallClips(Math.max(RH, LH)), approx: true, note: 'Diagonal larder parts are an estimate (diagonal panels are listed by their bounding size)',
       extra: [{ name: 'Base panel (diagonal)', l: RH - T, w: LH - T, ef: ds, er: RH + LH - 2 * T }, { name: 'Top panel (diagonal)', l: RH - T, w: LH - T, ef: ds, er: RH + LH - 2 * T },
         { name: 'Back (wall A)', l: H, w: RH - T }, { name: 'Back (wall B)', l: H, w: LH - T },
-        { name: 'Shelf (diagonal)', l: RH - 2 * T - 1, w: LH - 2 * T - 1, q: 5, ef: ds, er: 0 }], doors: [[door, H - 4]], hingesPerDoor: 5 });
+        { name: 'Shelf (diagonal)', l: RH - 2 * T - 1, w: LH - 2 * T - 1, q: 5, ef: ds, er: 0 }], doors: door > 600 ? [[Math.round((door - 3) / 2 * 10) / 10, H - 4], [Math.round((door - 3) / 2 * 10) / 10, H - 4]] : [[door, H - 4]], hingesPerDoor: 5 });
+    r.f.hinges = door > 600 ? 10 : 5;                                                                   // over 600: a pair, 5 hinges each
     r.f.mp += 16; r.f.wd += 16; r.f.pegs += 20; return r;
   }
   if (k === 'lc') {                                                                                     // corner larder: one door, a blank panel carrying its hinges, 5 shelves, full top and back
-    const door = Math.min(Math.max(Math.round(s.door || 500), 300), Math.floor(w - 18.2 - 50)), bl = Math.round((w - door - 18.2) * 10) / 10;
+    const door = Math.min(Math.max(Math.round(s.door || 500), 300), Math.floor(w - 18.2 - 50), DOOR_MAX), bl = Math.round((w - door - 18.2) * 10) / 10;
     return lgPo(C({ top: 'full', back: true, shelves: 5, doors: [[door - 4, H - 5]], hingesPerDoor: 5, legs: true, legCount: tallLegs(w), clipCount: tallClips(w), extra: [{ name: 'Blank panel', l: H - 2 * T, w: bl, q: 1, ef: H - 2 * T, er: 0 }] }), s);
   }
   if (k === 'ohl') {                                                                                    // top door, oven opening between two fixed shelves, then a bottom door or drawers; no back
@@ -12490,7 +12504,7 @@ function poUnit(u) {
   }      // the 5 appliance hinges come with the cabinet
   if (k === 'mtm') return C({ top: s.top === 'full' ? 'full' : 'rail', back: true, backH: s.back === 'custom' ? Math.min(s.backH || 400, H - 36) : H, shelves: s.shelves || 0, posts: w > 600 ? 2 : 0, postLen: H - T - 160, legs: true });
   if (k === 'corner') {
-    const door = Math.min(Math.max(s.door || 500, 300), Math.floor(w - T - 50)), blank = poR(w - door - T);
+    const door = Math.min(Math.max(s.door || 500, 300), Math.floor(w - T - 50), DOOR_MAX), blank = poR(w - door - T);
     const r = C({ top: 'rail', back: true, shelves: s.carousel ? 0 : 1, doors: [[door - 4, H - 5]], legs: true, extra: [{ name: 'Blank panel', l: H - 2 * T, w: blank, q: 1, ef: H - 2 * T, er: 0 }] });
     if (s.carousel) { const sw = swiftFor(door, s.side); if (sw) r.binSet = { name: sw.name, p: sw.p }; else sup(r, 'car', 'Corner pull-out (Swift 2.0 for a ' + door + ' door is not made)'); } return r;
   }
@@ -12516,7 +12530,7 @@ function poUnit(u) {
     return wallBase({ shelves: sh, glassShelves: g, doors: g ? [] : dd, glassDoors: g ? dd : [], posts: w > 700 ? 1 : 0, postLen: H - 2 * T });
   }
   if (k === 'cwall') {
-    const door = Math.min(Math.max(s.door || 300, 250), Math.floor(w - T - 50)), blank = poR(w - door - T);
+    const door = Math.min(Math.max(s.door || 300, 250), Math.floor(w - T - 50), DOOR_MAX), blank = poR(w - door - T);
     return wallBase({ shelves: WALL_SHELVES[s.h || H], doors: [[door - 4, H - 5]], extra: [{ name: 'Blank panel', l: H - 2 * T, w: blank, q: 1, ef: H - 2 * T, er: 0 }] });
   }
   if (k === 'lwall') {
