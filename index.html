@@ -9990,6 +9990,83 @@ function wineDetails() {
 const wineRefresh = () => { if (UI.orderCat === 'winedetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#wn'); if (el) el.outerHTML = wineCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 A.wineMore = () => { UI.orderCat = 'winedetails'; render(); window.scrollTo(0, 0); };
 A.wineOpt = t => { WINE.opt = +t.dataset.i; wineRefresh(); };
+/* Kitchen > All Bases: Curved End Base (user, 25 Nov 2026). 300 wide, 300 or 560 deep, 720 high.
+   One straight gable, a back, a quarter-round front (radius 300) from the front of the gable round to the open side; on the 560 deep
+   unit a short straight end panel (260) runs from the curve to the wall. Curved base, curved top and 1 curved shelf.
+   Open, or hinged with a curved door (from the door company), hung on the straight gable. 4 legs, 2 plinth clips, 3.5 h labour (user, 25 Nov 2026). Flush back, no void. */
+const CRV = { d: 300, door: 'open', hand: 'left' };                                // hand: the side the curve is on (left = curve on the left, gable on the right)
+const CRV_W = 300, CRV_R = 300, CRV_T = 18;
+const crvCode = () => 'BCRV' + (CRV.d === 560 ? '3056' : '3030') + (CRV.door === 'hinged' ? 'D' : 'O') + (CRV.hand === 'right' ? 'R' : 'L');
+const crvArc = () => Math.round(Math.PI / 2 * CRV_R);                             // the curved front edge, 471 mm
+const crvText = () => '300 x ' + CRV.d + ', curve on the ' + CRV.hand + ', curved top, curved base and 1 curved shelf' + (CRV.d === 560 ? ', 260 straight end panel' : '') + ', ' + (CRV.door === 'hinged' ? 'curved door (R300) hinged on the straight gable, 2 hinges' : 'open (no door)');
+function crvArt(o) {
+  o = Object.assign({ dims: false, fronts: true }, o);
+  const S = o.aw ? AW : CRV, line = !!o.aw && AW.shape !== 'curved', w = CRV_W, D = S.d, H = o.aw ? AW.h : BASE_H, T = CRV_T, y0 = o.aw ? 0 : 150, y1 = y0 + H, col = ocHex(), eh = (ocEdge() || {}).hex || col, out = [], pts = [], R = o.aw ? 300 : CRV_R, zc = D - R;   // o.aw: the 300 x 300 angle wall unit (straight diagonal front, no legs)
+  const sg = S.hand === 'right' ? 1 : -1;                                          // drawn with the gable on the left, then mirrored for a curve on the left (as the user's picture)
+  const P = (x, y, z) => { const p = { x: sg * (x - 0.32 * z), y: 0.3 * z - y }; pts.push(p); return p; };
+  const f1 = n => n.toFixed(1), q = (a, fill, sw) => out.push(`<polygon points="${a.map(p => f1(p.x) + ',' + f1(p.y)).join(' ')}" fill="${fill}" stroke="${baseShade(col, -0.55)}" stroke-width="${sw || 1.2}" stroke-linejoin="round"/>`);
+  const ln = (a, b, c, sw) => out.push(`<line x1="${f1(a.x)}" y1="${f1(a.y)}" x2="${f1(b.x)}" y2="${f1(b.y)}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`);
+  const arc = (y, inset) => { const r = R - (inset || 0) * (line ? Math.SQRT2 : 1), a = []; for (let i = 0; i <= 18; i++) { const t = i / 18 * Math.PI / 2; a.push(line ? [r * i / 18, zc + r * (1 - i / 18)] : [r * Math.sin(t), zc + r * Math.cos(t)]); } return a.map(([x, z]) => P(Math.max(x, T), y, z)); };   // from the gable front round to the open side
+  const outline = (y, inset) => { const s = inset || 0; return [P(T, y, T), P(w - s, y, T)].concat(zc > T ? [P(w - s, y, zc)] : []).concat(arc(y, s).reverse()); };
+  const slab = (y, th, inset, shade) => { q(outline(y, inset), baseShade(col, shade)); const top = arc(y, inset), bot = arc(y - th, inset); q(top.concat(bot.reverse()), baseShade(eh, 0.1), 1); };
+  out.push(`<polygon points="${[[-30, -20], [w + 30, -20], [w + 30, D + 30], [-30, D + 30]].map(([x, z]) => { const p = P(x, 0, z); return f1(p.x) + ',' + f1(p.y); }).join(' ')}" fill="#000" opacity="0.08"/>`);
+  if (!o.aw) [[50, 50], [w - 60, 50], [50, D - 50], [w - 60, D - 50]].map(([x, z]) => [x, Math.min(z, zc + Math.sqrt(Math.max(0, R * R - x * x)) - 40)]).forEach(([x, z]) => { const ft = P(x, 12, z); ln(P(x, y0, z), P(x, 14, z), '#1d1d1d', 16); out.push(`<ellipse cx="${f1(ft.x)}" cy="${f1(ft.y)}" rx="24" ry="12" fill="#0e0e0e"/>`); });
+  q([P(0, y0, 0), P(w, y0, 0), P(w, y1, 0), P(0, y1, 0)], baseShade(col, -0.25));                                                // back
+  q([P(T, y0, 0), P(T, y0, D), P(T, y1, D), P(T, y1, 0)], baseShade(col, -0.08));                                                  // gable inner face
+  slab(y0 + T, T, 0, 0.06);                                                                                                         // curved base
+  { const n = o.aw ? (WALL_SHELVES[H] || 1) : 1; for (let i = 1; i <= n; i++) slab(y0 + Math.round(H * i / (n + 1)), T, 20, 0.16); }                // shelves (sit back 20)
+  slab(y1, T, 0, 0.28);                                                                                                             // curved top
+  q([P(0, y0, D), P(T, y0, D), P(T, y1, D), P(0, y1, D)], baseShade(eh, 0.1), 1);                                                 // gable front edge
+  if (zc > T) { q([P(w, y0, T), P(w, y0, zc), P(w, y1, zc), P(w, y1, T)], baseShade(col, 0.08)); q([P(w - T, y0, zc), P(w, y0, zc), P(w, y1, zc), P(w - T, y1, zc)], baseShade(eh, 0.1), 1); }   // straight end panel (560 deep)
+  else q([P(w, y0, 0), P(w, y0, T), P(w, y1, T), P(w, y1, 0)], baseShade(eh, 0.1), 1);                                            // back edge on the open side
+  if (o.fronts && S.door === 'hinged') {                                                                                         // the curved door, closed
+    const a = arc(y0 + 2, -4), b = arc(y1 - 2, -4); q(a.concat(b.slice().reverse()), baseShade(col, 0.22), 1.3);
+    const hx = arc(o.aw ? y0 + 60 : y0 + H - 60, -4)[16], hy = arc(o.aw ? y0 + 200 : y0 + H - 200, -4)[16]; ln(hx, hy, '#3a3631', 4);                               // handle by the free edge
+  }
+  if (o.dims) { const ink = '#3b4a52', dm = (a, b, dx, dy, t) => { const A = { x: a.x + dx, y: a.y + dy }, B = { x: b.x + dx, y: b.y + dy }; pts.push(A, B); ln(a, A, ink, 1.2); ln(b, B, ink, 1.2); ln(A, B, ink, 1.6); out.push(`<text x="${f1((A.x + B.x) / 2)}" y="${f1((A.y + B.y) / 2 - 10)}" font-size="34" fill="${ink}" stroke="#f4f4f2" stroke-width="7" paint-order="stroke" text-anchor="middle" font-family="sans-serif">${t}</text>`); };
+    dm(P(0, y1, 0), P(w, y1, 0), 0, -60, w + 'mm'); dm(P(0, y1, 0), P(0, y1, D), -60 * sg, -20, D + 'mm'); dm(P(0, y0, D), P(0, y1, D), -70 * sg, 0, H + 'mm'); }
+  const xs = pts.map(p => p.x), yv = pts.map(p => p.y), bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...yv), by1 = Math.max(...yv), pad = Math.max(bx1 - bx0, by1 - by0) * 0.06;
+  return `<svg viewBox="${(bx0 - pad).toFixed(0)} ${(by0 - pad).toFixed(0)} ${(bx1 - bx0 + 2 * pad).toFixed(0)} ${(by1 - by0 + 2 * pad).toFixed(0)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${o.aw ? 'Angle wall unit' : 'Curved end base'}" style="width:100%;height:100%">${out.join('')}</svg>`;
+}
+function crvPick(sel) {
+  const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`, g2 = s => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${s}</div>`;
+  return `<div class="muted">Size:</div>${g2(btn('crvD', 300, '300 x 300', CRV.d === 300) + btn('crvD', 560, '300 x 560', CRV.d === 560))}
+    <div class="muted">Front:</div>${g2(btn('crvDoor', 'open', 'Open', CRV.door !== 'hinged') + btn('crvDoor', 'hinged', 'Hinged (curved door)', CRV.door === 'hinged'))}
+    <div class="muted">Curve side:</div>${g2(btn('crvHand', 'left', 'Curve on the left', CRV.hand !== 'right') + btn('crvHand', 'right', 'Curve on the right', CRV.hand === 'right'))}
+    <div class="muted" style="font-size:13px;line-height:1.5">${esc(crvText())}.</div>`;
+}
+function crvCard() {
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`, sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="crv" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', BASE_H)}${chip('W', CRV_W)}${chip('D', CRV.d)}</div>
+    <div style="height:300px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${crvArt()}</div>
+    <div class="row"><div><h3 style="margin:0">Curved End Base</h3><span class="mono">${crvCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="crvMore">More Details ${ic('chevR', 14)}</button></div>
+    ${crvPick(sel)}
+    ${bkRow('crv')}
+  </article>`;
+}
+function crvDetails() {
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`, sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Bases</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">${panel(crvArt({ fronts: false }), 380)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', crvCode())}${row('Width', CRV_W + ' mm')}${row('Height (with legs)', (BASE_H + 150) + ' mm')}${row('Height (without legs)', BASE_H + ' mm')}${row('Depth', CRV.d + ' mm')}${row('Leg height', '150 mm')}</div></div>
+    <div class="stack">
+      <h1 style="margin:0">300MM CURVED END BASE</h1><span class="mono">${crvCode()}</span>
+      <p class="muted" style="margin:0">300 x ${CRV.d} Curved End Base ${BASE_H} High.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('CURVE', 'Radius ' + CRV_R + ' on the ' + CRV.hand + ', curved edge ' + crvArc() + ' mm')}${row('TOP', 'Curved full top')}${row('BASE', 'Curved base panel')}${row('SHELF', '1 x curved shelf')}${CRV.d === 560 ? row('END PANEL', '260 straight panel between the curve and the wall') : ''}${row('BACK', 'Full back')}${row('FRONT', CRV.door === 'hinged' ? 'Curved door (R300), hinged on the straight gable, 2 x hinges' : 'Open, no door')}${row('LEGS', 'Quantity: ' + legQty(CRV_W) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(CRV_W) + ' x plinth clips')}</div>
+      ${crvPick(sel)}${ocDetail(null)}${bkRow('crv')}
+    </div></div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3><div style="max-width:620px">${panel(crvArt({ fronts: false, dims: true }), 420)}</div>`;
+}
+const crvRefresh = () => { if (UI.orderCat === 'crvdetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#crv'); if (el) el.outerHTML = crvCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.crvMore = () => { UI.orderCat = 'crvdetails'; render(); window.scrollTo(0, 0); };
+A.crvD = t => { CRV.d = +t.dataset.v; crvRefresh(); };
+A.crvDoor = t => { CRV.door = t.dataset.v; crvRefresh(); };
+A.crvHand = t => { CRV.hand = t.dataset.v; crvRefresh(); };
 /* Kitchen > All Bases: Built Under Oven Housing, 600 wide. Open oven space on top, with or
    without a drawer underneath (Antaro, Legrabox or Merivo). Codes: 600_BUOH, 600_BUOHA, 600_BUOHL. */
 const OVEN = { drawer: false, sys: 'Antaro', w: 600, d: 570, v: 50 };
@@ -10794,6 +10871,12 @@ function dlrArt(o) {
   }
   q([P(RH, y0, 0), P(RH, y0, D), P(RH, y1, D), P(RH, y1, 0)], baseShade(col, 0.08));  // gable on wall A's side
   q([P(0, y0, LH), P(D, y0, LH), P(D, y1, LH), P(0, y1, LH)], baseShade(col, 0.1));   // gable on wall B's side
+  q([P(RH - T, y0, D), P(RH, y0, D), P(RH, y1, D), P(RH - T, y1, D)], baseShade(eh, 0.1), esw);   // front edges of the two gables, in the chosen edging
+  q([P(D, y0, LH - T), P(D, y0, LH), P(D, y1, LH), P(D, y1, LH - T)], baseShade(eh, 0.1), esw);
+  if (WK2) {                                                                                       // walk-in larder: the front edges of its L-shaped base
+    q([P(D, y0, D), P(RH - T, y0, D), P(RH - T, y0 + T, D), P(D, y0 + T, D)], baseShade(eh, 0.1), esw);
+    q([P(D, y0, D), P(D, y0, LH - T), P(D, y0 + T, LH - T), P(D, y0 + T, D)], baseShade(eh, 0.1), esw);
+  }
   if (o.doors) {
     const dd = dlrDoorOf(DS.rh, DS.lh, DS.d, DS.h), s1 = (dg - dd.w) / 2, s3 = s1 + dd.w, pr = 22, pair = dd.w > 600, half = (dd.w - 3) / 2;   // over 600: a pair of doors
     (pair ? [[s1, s1 + half, 'r'], [s3 - half, s3, 'l']] : [[s1, s3, DS.hand === 'left' ? 'l' : 'r']]).forEach(([a, b, hd]) => {
@@ -11514,6 +11597,59 @@ A.wwMore = () => { UI.orderCat = 'wwinedetails'; render(); window.scrollTo(0, 0)
 A.wwType = t => { WWINE.type = t.dataset.v; if (WWINE.type === 'x' && WWINE.w < 400) WWINE.w = 600; wwRefresh(); };
 A.wwH = t => { WWINE.h = +t.dataset.v; wwRefresh(); };
 CH.wwDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = WWINE[k]; WWINE[k] = v; wwClamp(); wwRefresh(); };
+/* Kitchen > All Wall Units: Angle Wall Unit 300 x 300 (user, 25 Nov 2026). 575 / 720 / 900 high. One straight gable, a flush back (no void),
+   a 45 degree straight front from the front of the gable to the back corner on the open side: triangular top, bottom and shelves.
+   No wall hangers, 3.5 h labour. Open, or hinged with an angled door (from the door company) hung on the gable. Shelves as the usual wall unit of that height. */
+const AW = { h: 720, d: 300, door: 'open', hand: 'left', shape: 'angle' };           // shape: 'angle' (45 degree straight front) or 'curved' (R300 quarter round, as the curved end base)                          // hand: the side the angle is on (left = angle on the left, gable on the right)
+const awCurved = () => AW.shape === 'curved';
+const awDiag = () => awCurved() ? Math.round(Math.PI / 2 * 300) : Math.round(300 * Math.SQRT2);   // the front edge: 471 curved, 424 angled
+const awDoorW = () => awCurved() ? awDiag() : awDiag() - 28;                                               // angled door width (my reading: clears the gable and the back corner)
+const awCode = () => WALL_PREFIX[AW.h] + (awCurved() ? 'CRV300' : 'AW300') + (AW.door === 'hinged' ? 'D' : 'O') + (AW.hand === 'right' ? 'R' : 'L');
+const awShelves = () => WALL_SHELVES[AW.h] || 1;
+const awShp = () => awCurved() ? 'curved' : 'triangular';
+const awText = () => '300 x 300, ' + AW.h + ' high, ' + (awCurved() ? 'curved (R300)' : 'angled') + ' front on the ' + AW.hand + ', ' + awShp() + ' top, bottom and ' + awShelves() + ' shelf' + (awShelves() > 1 ? 's' : '') + ', flush back (no void), no wall hangers, ' + (AW.door === 'hinged' ? (awCurved() ? 'curved door ' : 'angled door ') + (AW.h - 5) + ' x ' + awDoorW() + ' hinged on the gable, 2 hinges' : 'open (no door)');
+const awArt = o => crvArt(Object.assign({ aw: true }, o));
+function awPick(sel) {
+  const btn = (act, v, text, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;${sel(on)}" data-act="${act}" data-v="${v}">${on ? '&#9745;' : '&#9744;'} ${text}</button>`, g2 = s => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${s}</div>`;
+  return `<div class="muted">Height:</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${WALL_HEIGHTS.map(h => btn('awH', h, h + ' high', AW.h === h)).join('')}</div>
+    <div class="muted">Top shape:</div>${g2(btn('awShape', 'angle', 'Angle top', !awCurved()) + btn('awShape', 'curved', 'Curved top', awCurved()))}
+    <div class="muted">Front:</div>${g2(btn('awDoor', 'open', 'Open', AW.door !== 'hinged') + btn('awDoor', 'hinged', awCurved() ? 'Hinged (curved door)' : 'Hinged (angled door)', AW.door === 'hinged'))}
+    <div class="muted">Angle side:</div>${g2(btn('awHand', 'left', 'Angle on the left', AW.hand !== 'right') + btn('awHand', 'right', 'Angle on the right', AW.hand === 'right'))}
+    <div class="muted" style="font-size:13px;line-height:1.5">${esc(awText())}.</div>`;
+}
+function awCard() {
+  const chip = (k, v) => `<span style="flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:var(--surface-2,#2a2f2d);font-weight:700">${k} ${v}</span>`, sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<article class="card card-pad stack" id="aw" style="max-width:420px">
+    <div class="row" style="gap:8px">${chip('H', AW.h)}${chip('W', 300)}${chip('D', AW.d)}${chip('Void', 0)}</div>
+    <div style="height:260px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${awArt()}</div>
+    <div class="row"><div><h3 style="margin:0">${awCurved() ? 'Curved' : 'Angle'} Wall Unit</h3><span class="mono">${awCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="awMore">More Details ${ic('chevR', 14)}</button></div>
+    ${awPick(sel)}
+    ${bkRow('awall')}
+  </article>`;
+}
+function awDetails() {
+  const row = (k, v) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line,#ffffff14)"><b style="flex:0 0 210px">${k}</b><span class="muted">${v}</span></div>`;
+  const panel = (svg, hgt) => `<div style="height:${hgt}px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg}</div>`, sel = on => on ? 'border-bottom:3px solid var(--ink)' : '';
+  return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} All Wall Units</button>
+  <div class="two-col" style="align-items:start">
+    <div class="stack">${panel(awArt({ fronts: false }), 360)}
+      <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
+      <div>${row('Cabinet code', awCode())}${row('Width', '300 mm')}${row('Height', AW.h + ' mm')}${row('Depth', AW.d + ' mm')}${row('Void', '0 mm (flush back)')}</div></div>
+    <div class="stack">
+      <h1 style="margin:0">300MM ${awCurved() ? 'CURVED' : 'ANGLE'} WALL UNIT, ${AW.h} HIGH</h1><span class="mono">${awCode()}</span>
+      <p class="muted" style="margin:0">300 x 300 ${awCurved() ? 'Curved' : 'Angle'} Wall Unit ${AW.h} High.</p>
+      <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
+      <div>${row('FRONT SHAPE', (awCurved() ? 'Curved (R300)' : '45 degree angle') + ' on the ' + AW.hand + ', front edge ' + awDiag() + ' mm')}${row('TOP AND BOTTOM', (awCurved() ? 'Curved' : 'Triangular') + ' full top and bottom')}${row('SHELVES', awShelves() + ' x ' + awShp() + ' shelf' + (awShelves() > 1 ? 's' : ''))}${row('BACK', 'Flush back, no void')}${row('FRONT', AW.door === 'hinged' ? (awCurved() ? 'Curved door R300 ' : 'Angled door ') + (AW.h - 5) + ' x ' + awDoorW() + ', hinged on the gable, 2 x hinges' : 'Open, no door')}${row('WALL HANGERS', 'None')}</div>
+      ${awPick(sel)}${ocDetail(null)}${bkRow('awall')}
+    </div></div>
+  <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3><div style="max-width:620px">${panel(awArt({ fronts: false, dims: true }), 420)}</div>`;
+}
+const awRefresh = () => { if (UI.orderCat === 'awalldetails') { const y = window.scrollY; render(); window.scrollTo(0, y); return; } const el = $('#aw'); if (el) el.outerHTML = awCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
+A.awMore = () => { UI.orderCat = 'awalldetails'; render(); window.scrollTo(0, 0); };
+A.awH = t => { AW.h = +t.dataset.v; awRefresh(); };
+A.awDoor = t => { AW.door = t.dataset.v; awRefresh(); };
+A.awHand = t => { AW.hand = t.dataset.v; awRefresh(); };
+A.awShape = t => { AW.shape = t.dataset.v; awRefresh(); };
 /* Kitchen > All Wall Units: Microwave Wall Unit. 600 wide, 720 or 900 high, 300 or 330 deep, one fixed shelf above the microwave,
    no back behind the microwave, and a filler (575), a top hung door (720) or a door (900) above it. Codes: WM600MICRO / WT600MICRO, and WM600MICRO33 / WT600MICRO33 for the 330 deep. Void 20. The clear opening for
    the microwave (the floor to the underside of the shelf) can be changed. */
@@ -11819,7 +11955,7 @@ A.brgMore = () => { UI.orderCat = 'brgdetails'; render(); window.scrollTo(0, 0);
 A.brgW = t => { BRG.w = +t.dataset.w; brgRefresh(); };
 A.brgType = t => { BRG.d = +t.dataset.v; brgRefresh(); };
 CH.brgVoid = t => { let v = Math.round(+t.value); if (!isFinite(v)) v = BRG.v; BRG.v = v; brgClamp(); brgRefresh(); };
-const wallCards = () => wallCard(false) + wallCard(true) + cwCard() + lwCard() + dwCard() + wwCard() + mwCard() + blCard() + drsCard() + brgCard();
+const wallCards = () => wallCard(false) + wallCard(true) + cwCard() + lwCard() + dwCard() + awCard() + wwCard() + mwCard() + blCard() + drsCard() + brgCard();
 /* Kitchen > All Bases: Corner Base Unit, 800 to 1500 wide. One door, plus a fixed blank panel
    on the right or the left whose width the customer can change. Code is BCHL + width + RB or LB. */
 const CORNER = { w: 1000, side: 'right', door: 500, d: 570, v: 50, carousel: false, mtm: false };
@@ -12079,6 +12215,8 @@ function bkLine(key) {
   } else if (key === 'mwall') {
     mwClamp();
     l = { name: 'Microwave Wall Unit', code: mwCode(), w: 600, h: MW.h, d: MW.d, v: MW.v, opt: 'Microwave opening ' + MW.open + ' mm high with no back behind it, 1 x fixed shelf, ' + mwFrontText().toLowerCase() + ' ' + mwFrontSize() + (mwKind() === 'tophung' ? ', 2 x hinges, 2 x gas stays' : mwKind() === 'door' ? ', ' + MW.hand + ' hinge, 2 x hinges' : '') + (mwHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
+  } else if (key === 'awall') {
+    l = { name: (awCurved() ? 'Curved' : 'Angle') + ' Wall Unit', code: awCode(), w: 300, h: AW.h, d: AW.d, v: 0, opt: awText() };
   } else if (key === 'wwine') {
     wwClamp();
     l = { name: 'Wall ' + (wwX() ? 'X ' : '') + 'Wine Rack', code: wwCode(), w: WWINE.w, h: WWINE.h, d: WWINE.d, v: WWINE.v, opt: wwRackTxt() + ', full top and bottom' + (wwHangers() ? ', 2 x hangers, 2 x wall plates, 2 x cover caps' : ', no wall hangers (void under 20)') };
@@ -12095,6 +12233,8 @@ function bkLine(key) {
     l = { name: 'Corner Base Unit', code: cornerCode(), w: CORNER.w, d: CORNER.d, v: CORNER.v, opt: (CORNER.side === 'right' ? 'Right' : 'Left') + ' hand blank ' + cornerBlank() + ' mm, door ' + cornerDoor() + ' mm, 2 blank corner hinges' + (CORNER.carousel ? ', corner pull-out ' + ((swiftFor(cornerDoor(), CORNER.side) || {}).name || 'Proline Swift 2.0 (door size not made)') : '') };
   } else if (key === 'mtm') {
     l = { name: 'Made to Measure Base Unit', code: MTM_CODE, w: MTM.w, h: MTM.h, d: MTM.d, v: MTM.back === 'fixed' ? 0 : MTM.v, opt: MTM.h + ' high, ' + MTM.shelves + ' shelf' + (MTM.shelves === 1 ? '' : 's') + ', ' + (MTM.top === 'full' ? 'full top' : 'top rail') + ', ' + mtmBackText().toLowerCase() };
+  } else if (key === 'crv') {
+    l = { name: 'Curved End Base', code: crvCode(), w: CRV_W, d: CRV.d, v: 0, opt: crvText() };
   } else if (key === 'wine') {
     const o = wineOpt();
     l = { name: 'Base ' + (o.x ? 'X ' : '') + 'Wine Rack', code: o.code, w: o.w, d: WINE.d, v: WINE.v, opt: o.label };
@@ -12117,8 +12257,8 @@ function bkLine(key) {
     l = { name: tp.name, code: dpCode(tp, s.w), w: s.w, d: s.d, v: s.v, opt: s.sys + ' drawers, ' + s.run + ' mm' + (s.sys === 'Legrabox' && (s.hd || LG_RUN[s.run] == null) ? ' 70 kg' : '') + ' runners' + (S ? ', heights ' + s.hts.map(hmm).join(' / ') + ' mm (top to bottom)' : '') + (s.inner ? ', internal front' + (S ? ' ' + hmm(s.inH) + ' mm' : '') : '') + (S && s.glass ? ', ' + (s.sys === 'Legrabox' ? s.gtype + ' glass sides on the C drawers' : 'glass sides on the D drawers') : '') + (s.ct && ctFor(s.w, s.sys, s.run) ? ', ' + ctText(ctFor(s.w, s.sys, s.run)) : '') + (tp.gola ? ', ' + dpGolaText(tp) : '') };
   }
   if (DRW_UNITS[key]) drwUSync(key);
-  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, ldy: LDY, bro: BRO, dlw: DLW, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
-  if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
+  { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, crv: CRV, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, ldy: LDY, bro: BRO, dlw: DLW, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, awall: AW, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
+  if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'crv', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   if (DRW_UNITS[key]) { try { const r = poUnit(l); if (r && r.drw && r.drw.length) { const g = {}; r.drw.forEach(x => { const n = dpDrawerName(x); g[n] = (g[n] || 0) + 1; }); l.opt += ', ' + Object.entries(g).map(([n, c]) => c + ' x ' + n).join(', '); } if (r && r.ct) l.opt += ', ' + ctText(r.ct); } catch (e) { } }   // the drawer boxes the customer picked
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
   { const dp = doorPick(UI.orderDoors); if (dp) l.doors = dp; }                                      // the doors chosen go with every cabinet
@@ -12523,6 +12663,14 @@ function poUnit(u) {
   if (k === 'spo' && s.pull === false) return C({ top: 'rail', back: true, shelves: 0, doors: [[w - 4, H - 5]], legs: true });      // without the pull-out: a plain door cabinet, priced as the cabinet
   if (k === 'spo') return sup(C({ top: 'rail', back: true, shelves: 0, doors: [[w - 6, H - 6]], hingesPerDoor: 0, legs: true }), 'spo', 'Slim pull-out set');
   if (k === 'bel') { const pair = w > 600 || s.doors === 'double'; return C({ top: 'full', back: true, shelves: 1, doors: doorSet(w, H, pair), posts: pair ? 2 : 0, postLen: H - 2 * T, legs: true }); }
+  if (k === 'crv') {                                                                                    // curved end base: 1 straight gable, back, curved top / base / shelf (R300), a 260 end panel on the 560 deep, open or a curved door
+    const dd = s.d || d, R = 300, zc = dd - R, hinged = s.door === 'hinged', arcL = Math.round(Math.PI / 2 * R), IH = H - 2 * T, fe2 = arcL + Math.max(0, zc - T);
+    const extra = [{ name: 'Back', l: H, w: w - T, q: 1 }, { name: 'Curved base panel', l: dd - T, w: w - T, q: 1, ef: fe2, er: 0 }, { name: 'Curved top', l: dd - T, w: w - T, q: 1, ef: fe2, er: 0 }, { name: 'Curved shelf', l: dd - T - 20, w: w - T - 20, q: 1, ef: fe2, er: 0 }];
+    if (zc > T) extra.push({ name: 'End panel (straight side)', l: IH, w: zc - T, q: 1, ef: IH, er: 0 });
+    if (hinged) extra.push({ name: 'Curved door R300', l: H - 5, w: arcL, q: 1 });
+    const r = C({ d: dd, v: 0, top: 'none', bottom: false, back: false, shelves: 0, legs: true, extra });
+    r.parts.forEach(p => { if (p.name === 'Gable') p.q = 1; }); r.f.hinges = hinged ? 2 : 0; r.f.pegs += 4; r.f.mp += 8; r.f.wd += 8; return r;
+  }
   if (k === 'wine') return C({ top: 'rail', back: true, shelves: 2, legs: true, approx: true, note: 'Wine rack parts are an estimate (2 shelves)' });
   if (k === 'oven') {
     const r = C({ top: 'none', back: false, shelves: 0, fixed: 1, fronts: s.drawer ? [[w - 4, 115]] : [], legs: true });      // the fixed shelf comes with or without the drawer
@@ -12640,6 +12788,13 @@ function poUnit(u) {
         { name: 'Back (wing 1)', l: H, w: rh - T }, { name: 'Back (wing 2)', l: H, w: lh - d }, { name: 'Shelf (wing 1)', l: rh - T - 1, w: Dp - 20, ef: rh - T, er: rh - T }, { name: 'Shelf (wing 2)', l: lh - d - 1, w: Dp - 20, ef: lh - d, er: lh - d }], doors: [[di, H - 5], [dl, H - 5]], hingesPerDoor: 2 });
     r.f.mp += 16; r.f.wd += 16; r.f.pegs += 8; return r;
   }
+  if (k === 'awall') {                                                                                  // angle wall 300 x 300: 1 gable, flush back (no void), triangular top / bottom / shelves, no hangers, open or an angled door
+    const n = WALL_SHELVES[H] || 1, hinged = s.door === 'hinged', cv = s.shape === 'curved', dg = cv ? Math.round(Math.PI / 2 * 300) : Math.round(300 * Math.SQRT2), lg = w - T, tri = { l: lg, w: d - T, q: 1, ef: dg, er: 0 }, sh = cv ? 'Curved' : 'Triangular';   // curved: R300 quarter round, like the curved end base
+    const extra = [{ name: 'Back', l: H, w: w - T, q: 1 }, Object.assign({ name: sh + ' top' }, tri), Object.assign({ name: sh + ' bottom' }, tri), { name: sh + ' shelf', l: lg - 20, w: d - T - 20, q: n, ef: cv ? dg : dg - 28, er: 0 }];
+    if (hinged) extra.push(cv ? { name: 'Curved door R300', l: H - 5, w: dg, q: 1 } : { name: 'Angled door', l: H - 5, w: dg - 28, q: 1 });
+    const r = C({ v: 0, top: 'none', bottom: false, back: false, shelves: 0, hang: false, extra });
+    r.parts.forEach(p => { if (p.name === 'Gable') p.q = 1; }); r.f.hinges = hinged ? 2 : 0; r.f.pegs += 3 * n; r.f.mp += 8; r.f.wd += 8; return r;
+  }
   if (k === 'wwine') {                                                                                 // wall wine rack: full top and bottom, back, shelves between the rows, uprights between the columns, X panels on the X type
     const x = s.type === 'x', cols = x ? Math.max(1, Math.round(w / 500)) : Math.max(1, Math.round(w / 150)), rows = x ? Math.max(1, Math.round((H - 36) / 342)) : Math.max(2, Math.round((H - 36) / 137));
     const Dp = d - v - T - fe, cellW = (w - 2 * T - (cols - 1) * T) / cols, cellH = (H - 2 * T - (rows - 1) * T) / rows, xLen = Math.round(Math.hypot(cellW, cellH));
@@ -12725,7 +12880,7 @@ function poBuild(order) {
 const COST_META = [
   ['General', [['labourRate', 'Labour rate (£ per hour)', 12.71], ['labourHours', 'Labour hours per cabinet', 2], ['overhead', 'Overhead (% on materials and labour)', 5], ['markup', 'Markup (% on the cost)', 54], ['mtmSur', 'MTM surcharge (% on the price, 0 = none)', 0], ['waste', 'Board and edging waste (%)', 10], ['sheetL', 'Board sheet length (mm)', 2800], ['sheetW', 'Board sheet width (mm)', 2070], ['doorsOn', 'Include doors and fronts in the price (1 = yes, 0 = cabinets only)', 0]]],
   ['Board and edging', [['board1', 'MFC sheet price used only if a colour has no price on the board sheet (£)', 48.10], ['board2', 'Spare MFC sheet price (not used now, £)', 64.00], ['edge1', '2mm edging per metre, standard (£)', 0.31], ['edge2', '2mm edging per metre, dearer colours (£)', 0.40], ['edge08_1', '0.8mm edging per metre, standard (£)', 0.31], ['edge08_2', '0.8mm edging per metre, dearer colours (£)', 0.40], ['dboard', 'Drawer bottom and back board, 16mm pre-edged sheet (£)', 33.60], ['dboardL', 'Drawer board sheet length (mm)', 2650], ['dboardW', 'Drawer board sheet width (mm)', 650]]],
-  ['Hardware', [['legTop', 'Leg top section 637.81.302 (each)', 0.20], ['legFoot', 'Leg 150mm foot shaft 637.81.375 (each)', 0.38], ['clip', 'Plinth clip 637.81.340 (each)', 0.02], ['peg', 'Shelf support 2-pin F0022546 (each)', 0.05], ['dowel100', 'Wooden dowel 8 x 35mm J66-417 (per box of 100)', 0.72], ['cam', '18mm cam J601-509 (each)', 0.03], ['mpin', '34mm metal pin J601-517 (each)', 0.04], ['hanger', 'Traser cabinet hanger I41-0400 (per pair)', 1.72], ['plate', 'Wall plate I40-184 (each)', 0.08], ['hinge', '107 degree hinge 75BB1550 (each)', 1.63], ['hingePlate', 'Hinge mounting plate 174H7100E (each)', 0.57], ['blindHinge', '9 x 9 blind corner hinge SYH060 (each)', 0.81], ['hinge155', 'Blum 155 CLIP top BLUMOTION hinge 71B7550, diagonal larder (each)', 4.53], ['hk', 'Blum AVENTOS HK top lift mechanism 22K2700, PF 1730-5200 (each set)', 36.79], ['hinge95', 'Blum 95 CLIP top BLUMOTION +45 angled hinge 79B9458, walk-in larder only (each)', 3.44], ['labourDlw', 'Labour hours, Diagonal Walk-in Larder (wine rack made separately)', 3.5], ['euroScrew', 'Euro screw for the runners (each)', 0.01], ['euroPerRunner', 'Euro screws per runner (a drawer has 2 runners)', 4], ['glassM2', 'Glass shelf (per square metre)', 100.50], ['glassPeg', 'Glass shelf peg (each, 0 = not priced yet)', 0]]],
+  ['Hardware', [['legTop', 'Leg top section 637.81.302 (each)', 0.20], ['legFoot', 'Leg 150mm foot shaft 637.81.375 (each)', 0.38], ['clip', 'Plinth clip 637.81.340 (each)', 0.02], ['peg', 'Shelf support 2-pin F0022546 (each)', 0.05], ['dowel100', 'Wooden dowel 8 x 35mm J66-417 (per box of 100)', 0.72], ['cam', '18mm cam J601-509 (each)', 0.03], ['mpin', '34mm metal pin J601-517 (each)', 0.04], ['hanger', 'Traser cabinet hanger I41-0400 (per pair)', 1.72], ['plate', 'Wall plate I40-184 (each)', 0.08], ['hinge', '107 degree hinge 75BB1550 (each)', 1.63], ['hingePlate', 'Hinge mounting plate 174H7100E (each)', 0.57], ['blindHinge', '9 x 9 blind corner hinge SYH060 (each)', 0.81], ['hinge155', 'Blum 155 CLIP top BLUMOTION hinge 71B7550, diagonal larder (each)', 4.53], ['hk', 'Blum AVENTOS HK top lift mechanism 22K2700, PF 1730-5200 (each set)', 36.79], ['hinge95', 'Blum 95 CLIP top BLUMOTION +45 angled hinge 79B9458, walk-in larder only (each)', 3.44], ['labourDlw', 'Labour hours, Diagonal Walk-in Larder (wine rack made separately)', 3.5], ['labourCrv', 'Labour hours, Curved End Base', 3.5], ['labourAw', 'Labour hours, Angle Wall Unit', 3.5], ['euroScrew', 'Euro screw for the runners (each)', 0.01], ['euroPerRunner', 'Euro screws per runner (a drawer has 2 runners)', 4], ['glassM2', 'Glass shelf (per square metre)', 100.50], ['glassPeg', 'Glass shelf peg (each, 0 = not priced yet)', 0]]],
   ['Still to be priced (blank = not priced)', [['hingeAppl', 'Appliance hinge (each)', 0], ['cap', 'Cover cap (each)', 0], ['gas', 'Gas stay (each)', 0], ['runAntaro', 'Antaro runners and sides, per drawer', 0], ['runLegrabox', 'Legrabox runners and sides, per drawer', 0], ['runMerivo', 'Merivo runners and sides, per drawer', 0]]]
 ];
 const costCfg = () => { const c = {}, s = DB.settings.cost || {}; COST_META.forEach(([, l]) => l.forEach(([k, , d]) => { c[k] = s[k] != null && s[k] !== '' && isFinite(+s[k]) ? +s[k] : d; })); return c; };
@@ -12771,7 +12926,7 @@ function costUnit(l) {
   if (f.glassPegs) { add('Glass shelf pegs', f.glassPegs, c.glassPeg); if (!c.glassPeg) miss.push('Glass shelf pegs not priced yet'); }
   const hwTotal = hw.reduce((a, x) => a + x[2], 0);
   hw.forEach(x => lines.push([x[0], 'x ' + x[1], x[2]]));
-  const lh = k === 'dlw' ? c.labourDlw : c.labourHours;                                             // the walk-in larder takes longer: its wine rack is made separately
+  const lh = k === 'dlw' ? c.labourDlw : k === 'crv' ? (c.labourCrv > 0 ? c.labourCrv : 3.5) : k === 'awall' ? (c.labourAw > 0 ? c.labourAw : 3.5) : c.labourHours;                                             // the walk-in larder takes longer: its wine rack is made separately
   const labour = c.labourRate * lh; lines.push(['Labour', lh + ' h at ' + GBP(c.labourRate), labour]);
   const sub = board + edge + hwTotal + labour, overhead = sub * c.overhead / 100, cost = sub + overhead;
   lines.push(['Overhead', c.overhead + '%', overhead]);
@@ -13242,6 +13397,7 @@ function cOrders() {
   if (UI.orderCat === 'spodetails') return spoDetails();
   if (UI.orderCat === 'beldetails') return belDetails();
   if (UI.orderCat === 'winedetails') return wineDetails();
+  if (UI.orderCat === 'crvdetails') return crvDetails();
   if (UI.orderCat === 'mtmdetails') return mtmDetails();
   if (UI.orderCat === 'cornerdetails') return cornerDetails();
   if (UI.orderCat === 'ovendetails') return ovenDetails();
@@ -13262,6 +13418,7 @@ function cOrders() {
   if (UI.orderCat === 'lwalldetails') return lwDetails();
   if (UI.orderCat === 'dwalldetails') return dwDetails();
   if (UI.orderCat === 'wwinedetails') return wwDetails();
+  if (UI.orderCat === 'awalldetails') return awDetails();
   if (UI.orderCat === 'mwalldetails') return mwDetails();
   if (UI.orderCat === 'blwalldetails') return blDetails();
   if (UI.orderCat === 'brgdetails') return brgDetails();
@@ -13277,7 +13434,7 @@ function cOrders() {
   if (UI.orderCat === 'bases') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Bases</h1><p>Choose a width, then the door hand or drawer type.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${dlCard()}${binCard()}${spoCard()}${mtmCard()}${belCard()}${wineCard()}${ovenCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}${cornerCard()}${lshCard()}</div>`;
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start">${baseCard()}${sinkCard()}${dlCard()}${binCard()}${spoCard()}${mtmCard()}${belCard()}${wineCard()}${crvCard()}${ovenCard()}${DP_TYPES.map(t => dpCard(t.id)).join('')}${cornerCard()}${lshCard()}</div>`;
   if (UI.orderCat === 'walls') return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Kitchen</button>
   <div class="page-head"><div><h1>All Wall Units</h1><p>Choose a width, then the door hand and options.</p></div></div>
   <div style="margin-bottom:16px">${ocSelect()}</div>
@@ -13302,7 +13459,7 @@ A.orderType = t => {
   if (o.id === 'cabinets') { UI.orderCat = 'cabinets'; render(); window.scrollTo(0, 0); return; }
   toast(o.name + ' ordering is coming soon');
 };
-A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', sptdetails: 'larders', lpldetails: 'larders', tlrdetails: 'larders', ldydetails: 'larders', brodetails: 'larders', dlwdetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', wwinedetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
+A.orderBack = () => { UI.orderCat = ({ drawerdetails: 'bases', basedetails: 'bases', bases: 'kitchen', kitchen: 'cabinets', walls: 'kitchen', larders: 'kitchen', ffdetails: 'larders', ohldetails: 'larders', lcdetails: 'larders', pandetails: 'larders', sptdetails: 'larders', lpldetails: 'larders', tlrdetails: 'larders', ldydetails: 'larders', brodetails: 'larders', dlwdetails: 'larders', dlrdetails: 'larders',walldetails: 'walls', cwalldetails: 'walls', lwalldetails: 'walls', dwalldetails: 'walls', wwinedetails: 'walls', awalldetails: 'walls', mwalldetails: 'walls', blwalldetails: 'walls', brgdetails: 'walls', drsdetails: 'walls', sinkdetails: 'bases', dldetails: 'bases', bindetails: 'bases', spodetails: 'bases', beldetails: 'bases', winedetails: 'bases', crvdetails: 'bases', mtmdetails: 'bases', cornerdetails: 'bases', ovendetails: 'bases', lshdetails: 'bases', robedetails: 'robes', robes: 'bedroom', bedroom: 'cabinets' })[UI.orderCat] || null; render(); window.scrollTo(0, 0); };
 A.kitchenOpt = t => { UI.orderCat = t.dataset.id; render(); window.scrollTo(0, 0); };
 const baseRefresh = () => { const el = $('#bc'); if (el) el.outerHTML = baseCard(); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
 const dpRefresh = id => { const el = $('#dp-' + id); if (el) el.outerHTML = dpCard(id); else { const y = window.scrollY; render(); window.scrollTo(0, y); } };
@@ -14934,6 +15091,7 @@ function newOrderInventory() {
   SPO_WIDTHS.forEach(w => add('Highline Slim Pull-out Unit ' + w, 'BHL' + w + 'SPO', 'cat-base', 'Base', 'Slim pull-out.', BASE_H, w, 570, { no: { k: 'spo', p: { w } } }));
   Object.keys(BEL_HEIGHTS).forEach(w => BEL_HEIGHTS[w].forEach(h => add('Belfast Sink Base Unit ' + w, belCode(+w, h), 'cat-base', 'Base', 'Belfast sink base, full top, 1 shelf.', h, +w, 560, { no: { k: 'bel', p: { w: +w, h } } })));
   WINE_OPTS.forEach((o, i) => add('Base ' + (o.x ? 'X ' : '') + 'Wine Rack ' + o.w, o.code, 'cat-base', 'Base', o.label, BASE_H, o.w, 570, { doors: false, no: { k: 'wine', p: { opt: i } } }));
+  [300, 560].forEach(dd => [['open', 'O'], ['hinged', 'D']].forEach(([door, dc]) => [['left', 'L'], ['right', 'R']].forEach(([hand, hc]) => add('Curved End Base 300 x ' + dd + (door === 'hinged' ? ' with curved door' : ' open') + ', curve ' + hand, 'BCRV' + (dd === 560 ? '3056' : '3030') + dc + hc, 'cat-base', 'Base', '300 x ' + dd + ' Curved End Base ' + BASE_H + ' High, curved top and 1 curved shelf, ' + (door === 'hinged' ? 'curved door' : 'open') + ', curve on the ' + hand + '.', BASE_H, 300, dd, { doors: door === 'hinged', no: { k: 'crv', p: { d: dd, door, hand } } }))));
   [['', 'No drawer'], ['A', 'Antaro drawer'], ['L', 'Legrabox drawer'], ['M', 'Merivo drawer']].forEach(([s, t]) => add('Built Under Oven Housing, ' + t, '600_BUOH' + s, 'cat-appl', 'Larders', 'Open oven space on top' + (s ? ', drawer underneath' : '') + '.', BASE_H, 600, 570, { doors: false, no: { k: 'oven', p: s ? { drawer: true, sys: SYS[s] } : { drawer: false } } }));
   DP_TYPES.forEach(t => DP_WIDTHS.forEach(w => add(t.name + ' ' + w, dpCode(t, w), 'cat-drawer', 'DrawPack', 'Drawer pack. Antaro, Legrabox or Merivo.' + (t.gola ? ' Gola.' : ''), BASE_H, w, 570, { doors: false, no: { k: 'dp:' + t.id, p: { w, mtm: false } } })));
   CORNER_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Base Unit ' + w + ' ' + s + ' hand blank', 'BCHL' + w + (s === 'right' ? 'RB' : 'LB'), 'cat-corner', 'CornerBase', 'One door and a blank panel; the customer sets the door size. Optional corner carousel.', BASE_H, w, 570, { blank: true, no: { k: 'corner', p: { w, side: s, mtm: false } } })));
@@ -14959,6 +15117,7 @@ function newOrderInventory() {
   [[1970, 'LMP'], [2150, 'LTP']].forEach(([h, p]) => add('Pantry Larder 1000 ' + h + ' without internal chest', p + '1000', 'cat-tall', 'Larders', '1000 Pantry Larder with 5 equal adjustable shelves, ' + h + ' High 570 Deep. Split or full height doors.', h, 1000, 570, { no: { k: 'pan', p: { h, chest: false } } }));
   [[1970, 'LMC'], [2150, 'LTC']].forEach(([h, p]) => LC_WIDTHS.forEach(w => ['right', 'left'].forEach(s => add('Corner Larder ' + w + ' ' + h + ' ' + s + ' hand blank', p + w + (s === 'right' ? 'RB' : 'LB'), 'cat-tall', 'Larders', 'Corner larder, one door and a blank; the customer sets the door size. MTM option.', h, w, 570, { blank: true, no: { k: 'lc', p: { h, w, side: s, mtm: false } } }))));
   WALL_HEIGHTS.forEach(h => [['WR', 300, 'Wall Wine Rack'], ['WRX', 600, 'Wall X Wine Rack']].forEach(([t, w, nm]) => add(nm + ' ' + w + ' ' + h, WALL_PREFIX[h] + t + w, 'cat-wall', 'Wall' + h + 'H', nm + ', ' + h + ' High 300 Deep. Any width.', h, w, 300, { doors: false, no: { k: 'wwine', p: { h, w, type: t === 'WR' ? 'slot' : 'x' } } })));
+  [['angle', 'AW300', 'Angle', 'angled door'], ['curved', 'CRV300', 'Curved', 'curved door']].forEach(([shape, cc, nm, dn]) => WALL_HEIGHTS.forEach(h => [['open', 'O'], ['hinged', 'D']].forEach(([door, dc]) => [['left', 'L'], ['right', 'R']].forEach(([hand, hc]) => add(nm + ' Wall Unit 300 x 300 ' + h + (door === 'hinged' ? ' with ' + dn : ' open') + ', ' + hand, WALL_PREFIX[h] + cc + dc + hc, 'cat-wall', 'Wall' + h + 'H', '300 x 300 ' + nm + ' Wall Unit ' + h + ' High, ' + shape + ' top, flush back (no void), no wall hangers, ' + (door === 'hinged' ? dn : 'open') + ', ' + shape + ' on the ' + hand + '.', h, 300, 300, { doors: door === 'hinged', no: { k: 'awall', p: { h, door, hand, shape } } })))));
   [[1970, 'LMD'], [2150, 'LTD']].forEach(([h, p]) => [DLR_START].forEach(rw => [DLR_START].forEach(lw => add('Diagonal Larder ' + rw + ' x ' + lw + ' ' + h, p + rw + 'X' + lw, 'cat-tall', 'Larders', 'Diagonal larder, right hand width ' + rw + ' and left hand width ' + lw + ', ' + h + ' High 570 Deep, diagonal top, base and 5 diagonal shelves, one door on the diagonal.', h, rw, 570, { no: { k: 'dlr', p: { h } } }))));
   const rooms = DB.rooms.filter(r => ['Kitchen', 'Bedroom'].includes(r.name));
   const usedCats = new Set(rows.map(r => r.cat)), cats = DB.categories.filter(c => usedCats.has(c.id));
@@ -14969,7 +15128,7 @@ function newOrderInventory() {
 let NO_ITEMS = null;
 function noItems() { if (!NO_ITEMS) { try { NO_ITEMS = newOrderInventory().items; } catch (e) { NO_ITEMS = null; return []; } } return NO_ITEMS; }
 const noItem = id => noItems().find(i => i.id === id) || null;
-function noState(k) { return ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, ldy: LDY, bro: BRO, dlw: DLW, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, wall: WALLS.w, wallg: WALLS.g })[k] || (k && k.slice(0, 3) === 'dp:' ? DPK[k.slice(3)] : null); }
+function noState(k) { return ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, crv: CRV, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, ldy: LDY, bro: BRO, dlw: DLW, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, awall: AW, wall: WALLS.w, wallg: WALLS.g })[k] || (k && k.slice(0, 3) === 'dp:' ? DPK[k.slice(3)] : null); }
 /* the basket line for a planner unit: the row's settings, then the unit's own width, depth and hinge (a width or depth off the standard makes it MTM) */
 function noLine(it, u) {
   if (!it || !it.no) return null;
@@ -14998,7 +15157,7 @@ function noPlanToBasket(units) {
 /* Options for one placed unit: its own New Orders card opens over the planner with the unit's settings loaded. Every choice on the card
    (drawer heights, runners, Gola, bins, internal front, MTM size ...) works as usual; Save keeps them on the unit (u.no), Cancel drops them.
    The global card state is put back afterwards, so the New Orders pages are not changed. */
-const NO_CARDS = { base: () => baseCard(), sink: () => sinkCard(), dl: () => dlCard(), bin: () => binCard(), spo: () => spoCard(), bel: () => belCard(), wine: () => wineCard(), oven: () => ovenCard(), ff: () => ffCard(), ohl: () => ohlCard(), lc: () => lcCard(), pan: () => panCard(), spt: () => sptCard(), dlr: () => dlrCard(), lsh: () => lshCard(), lpl: () => lplCard(), tlr: () => tlrCard(), ldy: () => ldyCard(), bro: () => broCard(), dlw: () => dlwCard(), wall: () => wallCard(false), wallg: () => wallCard(true), cwall: () => cwCard(), lwall: () => lwCard(), dwall: () => dwCard(), wwine: () => wwCard(), mwall: () => mwCard(), blwall: () => blCard(), dresser: () => drsCard(), brg: () => brgCard(), corner: () => cornerCard(), robe: () => robeCard() };
+const NO_CARDS = { base: () => baseCard(), sink: () => sinkCard(), dl: () => dlCard(), bin: () => binCard(), spo: () => spoCard(), bel: () => belCard(), wine: () => wineCard(), crv: () => crvCard(), oven: () => ovenCard(), ff: () => ffCard(), ohl: () => ohlCard(), lc: () => lcCard(), pan: () => panCard(), spt: () => sptCard(), dlr: () => dlrCard(), lsh: () => lshCard(), lpl: () => lplCard(), tlr: () => tlrCard(), ldy: () => ldyCard(), bro: () => broCard(), dlw: () => dlwCard(), wall: () => wallCard(false), wallg: () => wallCard(true), cwall: () => cwCard(), lwall: () => lwCard(), dwall: () => dwCard(), wwine: () => wwCard(), awall: () => awCard(), mwall: () => mwCard(), blwall: () => blCard(), dresser: () => drsCard(), brg: () => brgCard(), corner: () => cornerCard(), robe: () => robeCard() };
 function noEditOpen(it, u, done) {
   if (!it || !it.no) return;
   const k = it.no.k, st = noState(k), card = k.slice(0, 3) === 'dp:' ? () => dpCard(k.slice(3)) : NO_CARDS[k]; if (!st || !card) { toast('This cabinet has no options to set'); return; }
