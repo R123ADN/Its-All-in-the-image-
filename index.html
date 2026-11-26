@@ -9177,7 +9177,7 @@ const baseShade = (hex, t) => {
    the opening edge, and the back panel set in by the void. */
 function baseArt(w, d, h, hinge, vd, opts) {
   const o = Object.assign({ doors: true, dims: false }, opts), T = 18, LEG = opts && opts.noLegs ? 0 : 150, y0 = LEG, y1 = LEG + h, single = (w <= 600 && !o.pair) || !!o.blank;
-  const FL = single && hinge === 'right' && (o.doors || o.ffDoors || o.ffOpen) ? -1 : 1, TH = 108 * Math.PI / 180, col = o.col || ocHex();
+  const FL = single && hinge === 'right' && (o.doors || o.ffDoors || o.ffOpen) ? -1 : 1, TH = 108 * Math.PI / 180, col = o.col || ocHex(), FC = ART_SKIN ? ART_SKIN.hex : col;   // FC: the door / front colour (the chosen door colour in the More Details "with your doors" picture)
   // edging: the front edges of the panels take the edging colour, and a 2mm edge is drawn heavier than a 0.8mm one
   const eh = o.edgeCol || ((ocEdge() || {}).hex) || col, esw = ocEdgeType() === '0.8mm' ? 0.8 : 1.8;
   const pts = [], out = [];
@@ -9281,8 +9281,8 @@ function baseArt(w, d, h, hinge, vd, opts) {
           if (bd.ah) antTop(x1, x2, yf, z0, z1, bd.ah);                                                         // D drawers: gallery rail or glass sides
           return;
         }
-        q([P(xa, ya, z), P(xb, ya, z), P(xb, yz, z), P(xa, yz, z)], baseShade(col, 0.24), 1.3);
-        q([P(xa + 45, ya + 45, z), P(xb - 45, ya + 45, z), P(xb - 45, yz - 45, z), P(xa + 45, yz - 45, z)], baseShade(col, 0.08), 1);       // shaker panel
+        q([P(xa, ya, z), P(xb, ya, z), P(xb, yz, z), P(xa, yz, z)], baseShade(FC, 0.24), 1.3);
+        q([P(xa + 45, ya + 45, z), P(xb - 45, ya + 45, z), P(xb - 45, yz - 45, z), P(xa + 45, yz - 45, z)], baseShade(FC, 0.08), 1);       // shaker panel
         ln(P((xa + xb) / 2 - 70, yz - 22, z), P((xa + xb) / 2 + 70, yz - 22, z), '#3a3631', 4);                          // handle along the top of the drawer
       });
     }
@@ -9290,7 +9290,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     const m = o.mwFront, yb = m.yb, yt = y1 - 2.5, xa = 2, xb = w - 2, z = d;
     q([P(xa, yb + 2.5, z), P(xb, yb + 2.5, z), P(xb, yt, z), P(xa, yt, z)], baseShade(col, m.kind === 'filler' ? 0.18 : 0.24), 1.3);
     if (m.kind !== 'filler') {
-      q([P(xa + 55, yb + 2.5 + 55, z), P(xb - 55, yb + 2.5 + 55, z), P(xb - 55, yt - 55, z), P(xa + 55, yt - 55, z)], baseShade(col, 0.08), 1);
+      q([P(xa + 55, yb + 2.5 + 55, z), P(xb - 55, yb + 2.5 + 55, z), P(xb - 55, yt - 55, z), P(xa + 55, yt - 55, z)], baseShade(FC, 0.08), 1);
       if (m.kind === 'tophung') ln(P(w / 2 - 70, yb + 2.5 + 28, z), P(w / 2 + 70, yb + 2.5 + 28, z), '#3a3631', 4);          // top hung: hinged along the top, the handle sits low on the door
       else { const hx = m.side === 'right' ? xa + 40 : xb - 40; ln(P(hx, yb + 2.5 + 40, z), P(hx, yb + 2.5 + 160, z), '#3a3631', 4); }
     }
@@ -9412,9 +9412,9 @@ function baseArt(w, d, h, hinge, vd, opts) {
         return;
       }
       faces.forEach(([fa, fb]) => {
-        q([P(fa, j.ybot, zf), P(fb, j.ybot, zf), P(fb, j.ytop, zf), P(fa, j.ytop, zf)], baseShade(col, 0.24), 1.3);
+        q([P(fa, j.ybot, zf), P(fb, j.ybot, zf), P(fb, j.ytop, zf), P(fa, j.ytop, zf)], baseShade(FC, 0.24), 1.3);
         if (j.pull > 0) q([P(fa, j.ytop, zf - T), P(fb, j.ytop, zf - T), P(fb, j.ytop, zf), P(fa, j.ytop, zf)], baseShade(eh, 0.32), esw);
-        if (j.ytop - j.ybot > 130 && fb - fa > 260) q([P(fa + 52, j.ybot + 35, zf), P(fb - 52, j.ybot + 35, zf), P(fb - 52, j.ytop - 35, zf), P(fa + 52, j.ytop - 35, zf)], baseShade(col, 0.08), 1);   // shaker panel
+        if (j.ytop - j.ybot > 130 && fb - fa > 260) q([P(fa + 52, j.ybot + 35, zf), P(fb - 52, j.ybot + 35, zf), P(fb - 52, j.ytop - 35, zf), P(fa + 52, j.ytop - 35, zf)], baseShade(FC, 0.08), 1);   // shaker panel
         const hm = (fa + fb) / 2, hw = (fb - fa) * 0.12;
         if (dr.scallop) {                                                                                                  // a scalloped front: a curved scoop cut into the top edge, centred, as in the Cabinet Vision picture
           const sw = Math.min(170, (fb - fa) * 0.18), sd = Math.min(42, (j.ytop - j.ybot) * 0.3), N = 14, edge = [];
@@ -9429,11 +9429,12 @@ function baseArt(w, d, h, hinge, vd, opts) {
     [[T, T + f.w], [w - T - f.w, w - T]].forEach(([xa, xb]) => q([P(xa, y0 + T, d), P(xb, y0 + T, d), P(xb, y0 + f.h, d), P(xa, y0 + f.h, d)], baseShade(col, 0.16), 1.2));
   }
   const door = (hx, sgn, dw, ang, ylo, yhi) => {
-    const c = Math.cos(ang || TH), s = Math.sin(ang || TH), cl = o.blank && o.blank.inside ? 2.5 : 3, yb = ylo != null ? ylo : (o.doorFrom != null ? o.doorFrom : y0) + cl, yt = yhi != null ? yhi : y1 - cl - (o.gola ? GOLA_CUT.h : 0) - (o.drawers && o.drawers.h && !o.drawers.bottom ? o.drawers.h + 4 : 0);   // a Gola door stops below the notch; a drawerline unit keeps its drawer above the door
+    const c = ART_SKIN ? 1 : Math.cos(ang || TH), s = ART_SKIN ? 0 : Math.sin(ang || TH), cl = o.blank && o.blank.inside ? 2.5 : 3, yb = ylo != null ? ylo : (o.doorFrom != null ? o.doorFrom : y0) + cl, yt = yhi != null ? yhi : y1 - cl - (o.gola ? GOLA_CUT.h : 0) - (o.drawers && o.drawers.h && !o.drawers.bottom ? o.drawers.h + 4 : 0);   // a Gola door stops below the notch; a drawerline unit keeps its drawer above the door
     const at = (t, y) => P(hx + sgn * dw * c * t, y, d + dw * s * t);
     const m = Math.min(0.2, 55 / dw);
+    if (ART_SKIN && !o.glass) { skinPaint(q, ln, (x, y) => at(x / dw, yb + y), dw, yt - yb, ART_SKIN, !o.gola && !o.golaWall); return; }   // More Details "with your doors": closed, in the door style and colour
     if (o.glass) {                                                                                                          // a framed glass door on standard hinges: the cabinet-colour frame round a clear glass panel
-      const fc = baseShade(col, 0.24), yl = yb + 75, yh = yt - 75;
+      const fc = baseShade(FC, 0.24), yl = yb + 75, yh = yt - 75;
       q([at(0, yb), at(1, yb), at(1, yl), at(0, yl)], fc, 1.3);                                                             // bottom rail
       q([at(0, yh), at(1, yh), at(1, yt), at(0, yt)], fc, 1.3);                                                             // top rail
       q([at(0, yl), at(m, yl), at(m, yh), at(0, yh)], fc, 1.3);                                                             // hinge stile
@@ -9443,8 +9444,8 @@ function baseArt(w, d, h, hinge, vd, opts) {
       if (!o.golaWall) ln(at(1 - m / 2, gm - gh), at(1 - m / 2, gm + gh), '#3a3631', 4);
       return;
     }
-    q([at(0, yb), at(1, yb), at(1, yt), at(0, yt)], baseShade(col, 0.24), 1.3);
-    q([at(m, yb + 75), at(1 - m, yb + 75), at(1 - m, yt - 75), at(m, yt - 75)], baseShade(col, 0.08), 1);          // shaker panel
+    q([at(0, yb), at(1, yb), at(1, yt), at(0, yt)], baseShade(FC, 0.24), 1.3);
+    q([at(m, yb + 75), at(1 - m, yb + 75), at(1 - m, yt - 75), at(m, yt - 75)], baseShade(FC, 0.08), 1);          // shaker panel
     const ymid = (yb + yt) / 2, hh = Math.min(100, (yt - yb) * 0.15);
     if (!o.gola && !o.golaWall) ln(at(1 - m / 2, ymid - hh), at(1 - m / 2, ymid + hh), '#3a3631', 4);                                         // handle in the middle of the opening-edge stile, halfway up the door
   };
@@ -9503,14 +9504,14 @@ function baseArt(w, d, h, hinge, vd, opts) {
       q([P(x1, yb, zb), P(x1, yb, zf - 25), P(x1, yb + rim, zf - 25), P(x1, yb + rim, zb)], '#3c4044', 1);                                        // side rail
       q([P(x2, yb, zb), P(x2, yb, zf - 25), P(x2, yb + rim, zf - 25), P(x2, yb + rim, zb)], '#5a5f64', 1); }
     if (o.doors) { const yb = y0 + 3, yt = y1 - 3, m = 55;
-      q([P(3, yb, zf), P(w - 3, yb, zf), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(col, 0.24), 1.3);
-      q([P(3 + m, yb + 75, zf), P(w - 3 - m, yb + 75, zf), P(w - 3 - m, yt - 75, zf), P(3 + m, yt - 75, zf)], baseShade(col, 0.08), 1);
+      q([P(3, yb, zf), P(w - 3, yb, zf), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(FC, 0.24), 1.3);
+      q([P(3 + m, yb + 75, zf), P(w - 3 - m, yb + 75, zf), P(w - 3 - m, yt - 75, zf), P(3 + m, yt - 75, zf)], baseShade(FC, 0.08), 1);
       q([P(3, yt, zf - T), P(w - 3, yt, zf - T), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(eh, 0.32), esw); }
   }
   else if (o.doors && o.bins) {        // a bin unit's door is fixed to the pull-out frame and slides out with the bins
     const zf = d + BIN_PULL, yb = y0 + 3, yt = y1 - 3, m = 55;
-    q([P(3, yb, zf), P(w - 3, yb, zf), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(col, 0.24), 1.3);                    // door face
-    q([P(3 + m, yb + 75, zf), P(w - 3 - m, yb + 75, zf), P(w - 3 - m, yt - 75, zf), P(3 + m, yt - 75, zf)], baseShade(col, 0.08), 1);   // shaker panel
+    q([P(3, yb, zf), P(w - 3, yb, zf), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(FC, 0.24), 1.3);                    // door face
+    q([P(3 + m, yb + 75, zf), P(w - 3 - m, yb + 75, zf), P(w - 3 - m, yt - 75, zf), P(3 + m, yt - 75, zf)], baseShade(FC, 0.08), 1);   // shaker panel
     q([P(3, yt, zf - T), P(w - 3, yt, zf - T), P(w - 3, yt, zf), P(3, yt, zf)], baseShade(eh, 0.32), esw);                  // top edge
   } else if (o.doors && o.splitDoors) {          // a pair, each side split in two: the lower door, then the upper door, with a 5 mm gap between
     const sd = o.splitDoors, ya = y0 + 2.5, yb1 = ya + sd.bot, yt0 = yb1 + 5, yt1 = y1 - 2.5;
@@ -9520,16 +9521,16 @@ function baseArt(w, d, h, hinge, vd, opts) {
     const f = o.ffOpen, dw = w - 4, c = Math.cos(TH), s = Math.sin(TH), at = (t, y) => P(dw * c * t, y, d + dw * s * t), m = Math.min(0.2, 55 / dw);
     const yb0 = y0 + 2.5, yb1 = yb0 + (f.b || 0), yt0 = yb1 + 5, yt1 = y1 - 2.5;
     (f.panels ? f.panels.map(([a, b2, k]) => [y0 + a, y0 + b2, k]) : [[yb0, yb1, 'b'], [yt0, yt1, 't']]).forEach(([ya, yz, k]) => {
-      q([at(0, ya), at(1, ya), at(1, yz), at(0, yz)], baseShade(col, 0.24), 1.3);
-      q([at(m, ya + 75), at(1 - m, ya + 75), at(1 - m, yz - 75), at(m, yz - 75)], baseShade(col, 0.08), 1);
+      q([at(0, ya), at(1, ya), at(1, yz), at(0, yz)], baseShade(FC, 0.24), 1.3);
+      q([at(m, ya + 75), at(1 - m, ya + 75), at(1 - m, yz - 75), at(m, yz - 75)], baseShade(FC, 0.08), 1);
       const hy = k === 'b' ? yz - 160 : ya + 40; ln(at(1 - m / 2, hy), at(1 - m / 2, hy + 120), '#3a3631', 4);
     });
   }
   if (o.ffDoors) {                // fridge freezer larder: two closed doors, the lower one over the freezer, 5mm gap between them, 2.5mm top and bottom
     const f = o.ffDoors, xa = 2, xb = w - 2, z = d, yb0 = y0 + 2.5, yb1 = yb0 + f.b, yt0 = yb1 + 5, yt1 = y1 - 2.5;
     [[yb0, yb1, 'b'], [yt0, yt1, 't']].forEach(([ya, yz, k]) => {
-      q([P(xa, ya, z), P(xb, ya, z), P(xb, yz, z), P(xa, yz, z)], baseShade(col, 0.24), 1.3);
-      q([P(xa + 55, ya + 55, z), P(xb - 55, ya + 55, z), P(xb - 55, yz - 55, z), P(xa + 55, yz - 55, z)], baseShade(col, 0.08), 1);       // shaker panel
+      q([P(xa, ya, z), P(xb, ya, z), P(xb, yz, z), P(xa, yz, z)], baseShade(FC, 0.24), 1.3);
+      q([P(xa + 55, ya + 55, z), P(xb - 55, ya + 55, z), P(xb - 55, yz - 55, z), P(xa + 55, yz - 55, z)], baseShade(FC, 0.08), 1);       // shaker panel
       const hy = k === 'b' ? yz - 160 : ya + 40; ln(P(xb - 40, hy, z), P(xb - 40, hy + 120, z), '#3a3631', 4);                          // handle on the opening edge, near the gap between the doors
     });
   }
@@ -10020,7 +10021,7 @@ function crvArt(o) {
   if (zc > T) { q([P(w, y0, T), P(w, y0, zc), P(w, y1, zc), P(w, y1, T)], baseShade(col, 0.08)); q([P(w - T, y0, zc), P(w, y0, zc), P(w, y1, zc), P(w - T, y1, zc)], baseShade(eh, 0.1), 1); }   // straight end panel (560 deep)
   else q([P(w, y0, 0), P(w, y0, T), P(w, y1, T), P(w, y1, 0)], baseShade(eh, 0.1), 1);                                            // back edge on the open side
   if (o.fronts && S.door === 'hinged') {                                                                                         // the curved door, closed
-    const a = arc(y0 + 2, -4), b = arc(y1 - 2, -4); q(a.concat(b.slice().reverse()), baseShade(col, 0.22), 1.3);
+    const a = arc(y0 + 2, -4), b = arc(y1 - 2, -4); q(a.concat(b.slice().reverse()), baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.22), 1.3);
     const hx = arc(o.aw ? y0 + 60 : y0 + H - 60, -4)[16], hy = arc(o.aw ? y0 + 200 : y0 + H - 200, -4)[16]; ln(hx, hy, '#3a3631', 4);                               // handle by the free edge
   }
   if (o.dims) { const ink = '#3b4a52', dm = (a, b, dx, dy, t) => { const A = { x: a.x + dx, y: a.y + dy }, B = { x: b.x + dx, y: b.y + dy }; pts.push(A, B); ln(a, A, ink, 1.2); ln(b, B, ink, 1.2); ln(A, B, ink, 1.6); out.push(`<text x="${f1((A.x + B.x) / 2)}" y="${f1((A.y + B.y) / 2 - 10)}" font-size="34" fill="${ink}" stroke="#f4f4f2" stroke-width="7" paint-order="stroke" text-anchor="middle" font-family="sans-serif">${t}</text>`); };
@@ -10052,7 +10053,7 @@ function angArt(o) {
   q([P(w - T, y0, dR), P(w, y0, dR), P(w, y1, dR), P(w - T, y1, dR)], baseShade(eh, 0.1), esw);                                   // RH gable front edge
   q([P(w, y0, 0), P(w, y0, dR), P(w, y1, dR), P(w, y1, 0)], baseShade(col, 0.08));                                                 // RH gable, outside face
   if (o.fronts && CRV.door === 'hinged') {                                                                                         // the angled door, closed, on the gable fronts
-    const dz = 2; q([P(2, y0 + 2, dL + dz), P(w - 2, y0 + 2, dR + dz), P(w - 2, y1 - 2, dR + dz), P(2, y1 - 2, dL + dz)], baseShade(col, 0.22), 1.3);
+    const dz = 2; q([P(2, y0 + 2, dL + dz), P(w - 2, y0 + 2, dR + dz), P(w - 2, y1 - 2, dR + dz), P(2, y1 - 2, dL + dz)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.22), 1.3);
     const hx = CRV.hand === 'right' ? 40 : w - 40; ln(P(hx, y1 - 60, fz(hx) + dz), P(hx, y1 - 200, fz(hx) + dz), '#3a3631', 4);    // handle on the side away from the hinges
   }
   if (o.dims) { const ink = '#3b4a52', dm = (a, b, dx, dy, t) => { const A = { x: a.x + dx, y: a.y + dy }, B = { x: b.x + dx, y: b.y + dy }; pts.push(A, B); ln(a, A, ink, 1.2); ln(b, B, ink, 1.2); ln(A, B, ink, 1.6); out.push(`<text x="${f1((A.x + B.x) / 2)}" y="${f1((A.y + B.y) / 2 - 10)}" font-size="34" fill="${ink}" stroke="#f4f4f2" stroke-width="7" paint-order="stroke" text-anchor="middle" font-family="sans-serif">${t}</text>`); };
@@ -10678,7 +10679,7 @@ function ldyArt(o) {
   const shelf = (y, th, za, zz) => { za = za == null ? zb : za; zz = zz == null ? zf : zz; q([P(T, y, za), P(w - T, y, za), P(w - T, y, zz), P(T, y, zz)], baseShade(col, 0.16)); q([P(T, y - th, zz), P(w - T, y - th, zz), P(w - T, y, zz), P(T, y, zz)], baseShade(eh, 0.1), 1); };
   if (L.pos && !o.fronts) {                                                                                     // the pull-out shelf, pulled out, with its 140 front
     const y = L.ap + 40, zo = 220, ys = 13; shelf(y, T, zf - LDY_RUN + zo, zf + zo);
-    q([P(ys, L.ap + 2, zf + zo), P(w - ys, L.ap + 2, zf + zo), P(w - ys, L.ap + 142, zf + zo), P(ys, L.ap + 142, zf + zo)], baseShade(col, 0.24), 1.3);
+    q([P(ys, L.ap + 2, zf + zo), P(w - ys, L.ap + 2, zf + zo), P(w - ys, L.ap + 142, zf + zo), P(ys, L.ap + 142, zf + zo)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.24), 1.3);
   } else if (L.pos) shelf(L.ap + 40, T, zf - LDY_RUN, zf - 22);
   shelf(L.c1, LDY_CS); shelf(L.t0 + T, T);
   q([P(w - T, y0, zb), P(w, y0, zb), P(w, y1, zb), P(w - T, y1, zb)], baseShade(col, 0));
@@ -10686,7 +10687,7 @@ function ldyArt(o) {
   q([P(0, y1, 0), P(w, y1, 0), P(w, y1, zf), P(0, y1, zf)], baseShade(col, 0.28));
   q([P(0, y0, zf), P(T, y0, zf), P(T, y1, zf), P(0, y1, zf)], baseShade(eh, 0.1), 1); q([P(w - T, y0, zf), P(w, y0, zf), P(w, y1, zf), P(w - T, y1, zf)], baseShade(eh, 0.1), 1);
   if (o.fronts) {                                                                                   // the pull-out shelf front and the top door / HK flap, closed
-    const face = (a, b, hb) => { const ins = Math.min(45, (b - a) / 4); q([P(2, a, zf + 2), P(w - 2, a, zf + 2), P(w - 2, b, zf + 2), P(2, b, zf + 2)], baseShade(col, 0.24), 1.3); q([P(50, a + ins, zf + 2), P(w - 50, a + ins, zf + 2), P(w - 50, b - ins, zf + 2), P(50, b - ins, zf + 2)], baseShade(col, 0.08), 1); const hy = hb ? a + 20 : b - 20; ln(P(w / 2 - 70, hy, zf + 2), P(w / 2 + 70, hy, zf + 2), '#3a3631', 4); };   // hb: handle along the bottom edge (a door above eye level)
+    const face = (a, b, hb) => { const ins = Math.min(45, (b - a) / 4); q([P(2, a, zf + 2), P(w - 2, a, zf + 2), P(w - 2, b, zf + 2), P(2, b, zf + 2)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.24), 1.3); q([P(50, a + ins, zf + 2), P(w - 50, a + ins, zf + 2), P(w - 50, b - ins, zf + 2), P(50, b - ins, zf + 2)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.08), 1); const hy = hb ? a + 20 : b - 20; ln(P(w / 2 - 70, hy, zf + 2), P(w / 2 + 70, hy, zf + 2), '#3a3631', 4); };   // hb: handle along the bottom edge (a door above eye level)
     if (L.pos) face(L.ap + 2, L.ap + 142);
     face(L.t0 + 2, y1 - 2, true);
   }
@@ -10921,8 +10922,8 @@ function dlrArt(o) {
   if (o.doors) {
     const dd = dlrDoorOf(DS.rh, DS.lh, DS.d, DS.h), s1 = (dg - dd.w) / 2, s3 = s1 + dd.w, pr = 22, pair = dd.w > 600, half = (dd.w - 3) / 2;   // over 600: a pair of doors
     (pair ? [[s1, s1 + half, 'r'], [s3 - half, s3, 'l']] : [[s1, s3, DS.hand === 'left' ? 'l' : 'r']]).forEach(([a, b, hd]) => {
-      q([at(a, y0 + 2.5, pr), at(b, y0 + 2.5, pr), at(b, y1 - 2.5, pr), at(a, y1 - 2.5, pr)], baseShade(col, 0.24), 1.3);
-      q([at(a + 55, y0 + 90, pr), at(b - 55, y0 + 90, pr), at(b - 55, y1 - 90, pr), at(a + 55, y1 - 90, pr)], baseShade(col, 0.08), 1);
+      q([at(a, y0 + 2.5, pr), at(b, y0 + 2.5, pr), at(b, y1 - 2.5, pr), at(a, y1 - 2.5, pr)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.24), 1.3);
+      q([at(a + 55, y0 + 90, pr), at(b - 55, y0 + 90, pr), at(b - 55, y1 - 90, pr), at(a + 55, y1 - 90, pr)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.08), 1);
       const hs = hd === 'l' ? a + 45 : b - 45;                                         // the handle is on the side away from the hinges
       ln(at(hs, y0 + H / 2 - 90, pr), at(hs, y0 + H / 2 + 90, pr), '#3a3631', 4);
     });
@@ -11124,14 +11125,14 @@ function lshArt(o) {
   if (o.doors) {                                                                                                     // one door on each wing, each on two 155 degree hinges
     const dA = d + 22 + 2, dB = rh - 2, lA = d + 22 + 2, lB = lh - 2;                                                // each door starts 22 (the other door's thickness) + 2 clear of the corner and stops 2 short of its gable end, so the width is wing - depth - 24
     const dz = d + 22;                                                                                               // the doors stand 22 proud of the carcass fronts, so they meet at the corner with only the 2mm clearance
-    q([P(dA, y0 + 2.5, dz), P(dB, y0 + 2.5, dz), P(dB, y1 - 2.5 - gh, dz), P(dA, y1 - 2.5 - gh, dz)], baseShade(col, 0.24), 1.3);   // 715 high (less the Gola cut-out)
-    q([P(dA + 55, y0 + 78, dz), P(dB - 55, y0 + 78, dz), P(dB - 55, y1 - 78 - gh, dz), P(dA + 55, y1 - 78 - gh, dz)], baseShade(col, 0.08), 1);
+    q([P(dA, y0 + 2.5, dz), P(dB, y0 + 2.5, dz), P(dB, y1 - 2.5 - gh, dz), P(dA, y1 - 2.5 - gh, dz)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.24), 1.3);   // 715 high (less the Gola cut-out)
+    q([P(dA + 55, y0 + 78, dz), P(dB - 55, y0 + 78, dz), P(dB - 55, y1 - 78 - gh, dz), P(dA + 55, y1 - 78 - gh, dz)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.08), 1);
     // Handles: with 155 hinges each door hangs on its own outer gable, so both handles sit by the corner (the middle).
     // With bifold hinges the two doors fold as one: the hand is the side the hinges are on, and the handle is on the free door at the far end.
     const bif = S.hinge === 'bifold', hxR = bif ? (S.hand === 'left' ? rh - 90 : null) : d + 90, hzL = bif ? (S.hand === 'right' ? lh - 90 : null) : d + 90;
     if (!G && hxR !== null) ln(P(hxR, (y0 + y1) / 2 - 90, dz), P(hxR, (y0 + y1) / 2 + 90, dz), '#3a3631', 4);          // Gola is handleless
-    q([P(dz, y0 + 2.5, lA), P(dz, y0 + 2.5, lB), P(dz, y1 - 2.5 - gh, lB), P(dz, y1 - 2.5 - gh, lA)], baseShade(col, 0.24), 1.3);
-    q([P(dz, y0 + 78, lA + 55), P(dz, y0 + 78, lB - 55), P(dz, y1 - 78 - gh, lB - 55), P(dz, y1 - 78 - gh, lA + 55)], baseShade(col, 0.08), 1);
+    q([P(dz, y0 + 2.5, lA), P(dz, y0 + 2.5, lB), P(dz, y1 - 2.5 - gh, lB), P(dz, y1 - 2.5 - gh, lA)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.24), 1.3);
+    q([P(dz, y0 + 78, lA + 55), P(dz, y0 + 78, lB - 55), P(dz, y1 - 78 - gh, lB - 55), P(dz, y1 - 78 - gh, lA + 55)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.08), 1);
     if (!G && hzL !== null) ln(P(dz, (y0 + y1) / 2 - 90, hzL), P(dz, (y0 + y1) / 2 + 90, hzL), '#3a3631', 4);
   } else {                                                                                                           // open fronts: just the floor edge of each wing
     q([P(d, y0, d), P(rh, y0, d), P(rh, y0 + T, d), P(d, y0 + T, d)], baseShade(eh, 0.1), esw);
@@ -11497,8 +11498,8 @@ function dwArt(o) {
   const at = (s, y, out22) => P(L + u[0] * s + nn[0] * out22, y, D + u[1] * s + nn[1] * out22);
   if (o.doors) {
     const dd = dwDoor(), s1 = (dg - dd.w) / 2, s3 = s1 + dd.w, pr = 22;
-    q([at(s1, 2.5, pr), at(s3, 2.5, pr), at(s3, h - 2.5, pr), at(s1, h - 2.5, pr)], baseShade(col, 0.24), 1.3);
-    q([at(s1 + 55, 78, pr), at(s3 - 55, 78, pr), at(s3 - 55, h - 78, pr), at(s1 + 55, h - 78, pr)], baseShade(col, 0.08), 1);
+    q([at(s1, 2.5, pr), at(s3, 2.5, pr), at(s3, h - 2.5, pr), at(s1, h - 2.5, pr)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.24), 1.3);
+    q([at(s1 + 55, 78, pr), at(s3 - 55, 78, pr), at(s3 - 55, h - 78, pr), at(s1 + 55, h - 78, pr)], baseShade(ART_SKIN ? ART_SKIN.hex : col, 0.08), 1);
     const hs = DW.hand === 'left' ? s1 + 45 : s3 - 45;                                // the handle is on the side away from the hinges
     ln(at(hs, h / 2 - 90, pr), at(hs, h / 2 + 90, pr), '#3a3631', 4);
   } else {
@@ -12217,6 +12218,48 @@ function osDoorPrice(range, type, h, w, colour) {
   if (!fit.length) return { none: true };
   fit.sort((a, b) => a[ix] - b[ix] || a[0] * a[1] - b[0] * b[1]);
   const r = fit[0]; return { price: r[ix], h: r[0], w: r[1], est: primed ? false : !!r[5], primed };
+}/* ---------- More Details: the cabinet with its doors closed, in the door style and colour chosen (user, 26 Nov 2026) ----------
+   ART_SKIN is set only while that picture is drawn: the cabinet pictures then draw their doors closed, in the door colour, and baseArt's doors take
+   the style's look. DOOR_PROFILE: how each OS style looks (from the user's style pictures): shaker = a frame round a recessed panel (f = stile width),
+   groove = a slab with a cut line f in from the edge, slab = plain, hl = Arena's 40 mm handle cavity; grain, gloss, bevel, bead are extra details. */
+var ART_SKIN = null;                                                                   // var: the cabinet pictures earlier in the file read it
+const DOOR_PROFILE = { 'Arena': { t: 'hl' }, 'Belair': { t: 'slab' }, 'Hyde': { t: 'slab', grain: 1 }, 'Phoenix Gloss': { t: 'slab', gloss: 1 }, 'Gladstone': { t: 'groove', f: 28 }, 'Hartford': { t: 'groove', f: 60 }, 'Parker': { t: 'groove', f: 70 },
+  'Wellington': { t: 'shaker', f: 70, bead: 1 }, 'Brooklyn Ash': { t: 'shaker', f: 70, grain: 1 }, 'Campbell': { t: 'shaker', f: 75 }, 'Rainey': { t: 'shaker', f: 75, bead: 1 }, 'Edison Ash': { t: 'shaker', f: 84, bevel: 1 }, 'Monroe Ash': { t: 'shaker', f: 75, grain: 1 },
+  'Brooklyn Oak (sanded)': { t: 'shaker', f: 70, grain: 1 }, 'Monroe Oak (sanded)': { t: 'shaker', f: 75, grain: 1 } };
+function doorSkinNow() {
+  const d = UI.orderDoors; if (!d || !d.co || !d.style) return null;
+  const c = doorColOf(d.co, d.style, d.colour), s = doorStyleOf(d.co, d.style);
+  return { style: s ? s.name.replace(/ \(.*\)$/, '') : d.style, colour: c ? c.name : 'colour not chosen', hex: c ? c.hex : '#ece9e2', pf: DOOR_PROFILE[d.style] || { t: 'shaker', f: 70 } };
+}
+/* paints one closed door face: A(x, y) maps door millimetres (x across from the hinge side, y up from the bottom) to the picture */
+function skinPaint(q, ln, A, W, H, sk, handle) {
+  const pf = sk.pf || {}, c = sk.hex, R = (x0, y0, x1, y1) => [A(x0, y0), A(x1, y0), A(x1, y1), A(x0, y1)];
+  const box = (x0, y0, x1, y1, col, sw) => R(x0, y0, x1, y1).forEach((p, i, a) => ln(p, a[(i + 1) % 4], col, sw));
+  q(R(0, 0, W, H), baseShade(c, 0.1), 1.3);
+  if (pf.grain) for (let i = 1; i < 9; i++) { const x = W * i / 9; ln(A(x, 6), A(x + W * 0.02, H - 6), baseShade(c, -0.12), 0.7); }
+  const f = Math.min(pf.f || 0, W * 0.2, H * 0.2);
+  if (pf.t === 'shaker' && f > 10) {
+    q(R(f, f, W - f, H - f), baseShade(c, -0.06), 1);                                                  // the recessed centre panel
+    ln(A(f, f), A(W - f, f), baseShade(c, 0.3), 1.6);                                                    // light on the inner edge of the bottom rail
+    if (pf.bevel) box(f + 12, f + 12, W - f - 12, H - f - 12, baseShade(c, -0.2), 1);
+    if (pf.bead) box(f - 8, f - 8, W - f + 8, H - f + 8, baseShade(c, -0.28), 0.9);
+    if (pf.grain) for (let i = 1; i < 6; i++) { const x = f + (W - 2 * f) * i / 6; ln(A(x, f + 4), A(x, H - f - 4), baseShade(c, -0.16), 0.6); }
+  } else if (pf.t === 'groove' && f > 6) box(f, f, W - f, H - f, baseShade(c, -0.4), 1.6);
+  if (pf.gloss) { q([A(W * 0.18, H * 0.04), A(W * 0.34, H * 0.04), A(W * 0.82, H * 0.96), A(W * 0.66, H * 0.96)], 'rgba(255,255,255,0.10)', 0.01); q([A(W * 0.4, H * 0.04), A(W * 0.45, H * 0.04), A(W * 0.93, H * 0.96), A(W * 0.88, H * 0.96)], 'rgba(255,255,255,0.08)', 0.01); }   // gloss: soft reflections
+  if (pf.t === 'hl') { q(R(0, H - Math.min(40, H * 0.25), W, H), '#1c1c1c', 0.6); return; }               // Arena: handle cavity, no handle
+  if (handle) { const hx = W - Math.min(35, W * 0.12), hm = H / 2, hh = Math.min(90, H * 0.18); ln(A(hx, hm - hh), A(hx, hm + hh), '#3a3631', 4); }
+}
+/* the "with your doors" picture: the cabinet's own picture, drawn with ART_SKIN on, put above SPECIFICATION on its More Details page */
+function withDoorsView(html) {
+  const sk = doorSkinNow(); if (!sk) return html;
+  const cat = (UI.orderCat || '').replace(/details$/, ''), key = cat === 'drawer' ? 'dp:' + UI.dpId : cat === 'drs' ? 'dresser' : cat === 'wall' && WK === 'g' ? 'wallg' : cat;
+  let l = null; try { l = bkLine(key); } catch (e) { l = null; } if (!l || !doorRowsOf(Object.assign({}, l, { doors: l.doors || { co: 'x' } })).length) return html;   // no doors on this cabinet
+  const fns = Object.assign({}, NO_CARDS, { mtm: typeof mtmCard === 'function' ? () => mtmCard() : null, wall: () => wallCard(WK === 'g') }), fn = key.slice(0, 3) === 'dp:' ? () => dpCard(UI.dpId) : fns[key];
+  if (!fn) return html;
+  let card = ''; ART_SKIN = sk; try { card = fn(); } catch (e) { console.error(e); } finally { ART_SKIN = null; }
+  const svg = (card.match(/<svg[\s\S]*?<\/svg>/g) || []).find(s => s.includes('<polygon')); if (!svg) return html;
+  const panel = `<h3 style="margin:8px 0 0;letter-spacing:.08em">WITH YOUR DOORS</h3><div class="muted" style="font-size:13px">${esc('OS Doors · ' + sk.style + ' · ' + sk.colour)}, doors closed</div><div style="height:380px;border-radius:12px;padding:10px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${svg.replace(/style="[^"]*"/, 'style="width:100%;height:100%"')}</div>`;
+  const m = html.match(/<h3[^>]*>SPECIFICATION<\/h3>/); return m ? html.replace(m[0], panel + m[0]) : html;
 }/* the price of one door row under a cabinet: { each, total, txt, note } (each / total are null when it can't be priced) */
 function doorRowCost(d, r) {
   if (!d || !d.co) return { txt: '', note: '' };
@@ -13521,6 +13564,7 @@ CH.mtmSize = t => {
   c.ref();
 };
 function cOrders() {
+  if (/details$/.test(UI.orderCat || '') && !cOrders.inner) { cOrders.inner = true; try { return withDoorsView(cOrders()); } finally { cOrders.inner = false; } }   // More Details: add the cabinet with its doors closed, in the doors chosen
   if (UI.orderCat === 'drawerdetails') return dpDetails();
   if (UI.orderCat === 'basedetails') return baseDetails();
   if (UI.orderCat === 'robedetails') return robeDetails();
