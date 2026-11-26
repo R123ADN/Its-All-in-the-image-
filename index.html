@@ -12186,7 +12186,7 @@ const OS_LATER = {
   'Tribeca': ['Superior Matt White Grey', 'Superior Matt Light Grey', 'Superior Matt Dust Grey', 'Superior Matt Graphite', 'Superior Matt Black', 'Superior Matt Porcelain', 'Superior Matt Taupe Grey', 'Superior Matt Linen', 'Superior Matt Pebble', 'Superior Matt Stone Grey', 'Superior Matt Antique Rose', 'Superior Matt Reed Green', 'Superior Matt Heritage Green', 'Superior Matt Marine Blue', 'Superior Matt Indigo',
     'Light Casella Oak H1367 ST40', 'Natural Casella Oak H1385 ST40', 'Brown Casella Oak H1386 ST40', 'Marone Casella Oak H1369 ST40', 'Legno White', 'Legno White Grey', 'Legno Light Grey', 'Legno Dust Grey', 'Legno Graphite', 'Legno Black', 'Legno Linen', 'Legno Ivory', 'Legno Mussel', 'Legno Cashmere', 'Legno Taupe', 'Legno Reed Green', 'Legno Evergreen', 'Legno Indigo'],
 };
-DOOR_RANGE['OS Doors'] = { styles: Object.keys(OS_MTM).map(n => ({ id: n, name: n + (osEstimated(n) ? ' (painted price to be confirmed)' : ''), colours: osColours(n) })) };
+DOOR_RANGE['OS Doors'] = { styles: Object.keys(OS_MTM).map(n => ({ id: n, name: n + (osEstimated(n) ? ' (made to measure: Primed only)' : ''), colours: osColours(n) })) };
 /* OS standard sizes (kitchen), read column by column from the OS price list: p = Primed (ex stock), x = Colours Ex. Stock (Edison / Monroe), s = PTO standard size
    (painted to order) or, on the oak, Sanded Oak Ex. Stock. Belair, Gladstone, Hyde and Phoenix have no standard column: always made to measure. */
 const OS_STD = { 'Arena': { '115x596': { p: 20.75, s: 26.97 }, '140x296': { p: 18.53, s: 24.1 }, '140x396': { p: 18.87, s: 24.54 }, '140x446': { p: 20.03, s: 26.03 }, '140x496': { p: 20.67, s: 26.86 }, '140x596': { p: 22.47, s: 29.19 }, '140x796': { p: 29.54, s: 38.42 }, '140x896': { p: 31.34, s: 40.75 }, '140x996': { p: 33.16, s: 43.13 }, '175x396': { p: 21.12, s: 27.45 }, '175x496': { p: 23.66, s: 30.77 }, '175x596': { p: 24.92, s: 32.4 }, '283x496': { p: 33.45, s: 43.49 }, '283x596': { p: 37.02, s: 48.13 }, '283x796': { p: 44.06, s: 57.26 }, '283x896': { p: 47.59, s: 61.88 }, '283x996': { p: 51.16, s: 66.51 }, '355x496': { p: 37.94, s: 49.33 }, '355x596': { p: 42.3, s: 54.99 }, '355x796': { p: 51.1, s: 66.43 }, '355x896': { p: 55.48, s: 72.11 }, '355x996': { p: 59.89, s: 77.84 }, '450x596': { p: 49.36, s: 64.18 }, '495x596': { p: 52.68, s: 68.49 }, '570x296': { p: 37.43, s: 48.67 }, '570x396': { p: 42.01, s: 54.59 }, '570x446': { p: 47.87, s: 62.22 }, '570x496': { p: 48.56, s: 63.14 }, '570x596': { p: 55.15, s: 71.68 }, '645x596': { p: 69, s: 89.68 }, '715x146': { p: 29.98, s: 38.97 }, '715x246': { p: 39.56, s: 51.41 }, '715x296': { p: 43.04, s: 55.95 }, '715x346': { p: 48.71, s: 63.33 }, '715x396': { p: 52.37, s: 68.09 }, '715x446': { p: 55.18, s: 71.73 }, '715x496': { p: 55.8, s: 72.52 }, '715x546': { p: 62.29, s: 80.98 }, '715x596': { p: 69, s: 89.68 }, '895x296': { p: 49.99, s: 65 }, '895x396': { p: 60.72, s: 78.94 }, '895x446': { p: 66.14, s: 85.97 }, '895x496': { p: 71.55, s: 93.01 }, '895x596': { p: 77.84, s: 101.2 }, '980x596': { p: 88.55, s: 115.12 }, '1245x296': { p: 63.43, s: 82.46 }, '1245x396': { p: 78.38, s: 101.89 }, '1245x496': { p: 88.25, s: 114.71 }, '1245x596': { p: 108.22, s: 140.69 }, '1965x596': { p: 169.77, s: 220.73 } },
@@ -12221,10 +12221,12 @@ function osDoorPrice(range, type, h, w, colour) {
 function doorRowCost(d, r) {
   if (!d || !d.co) return { txt: '', note: '' };
   if (d.co !== 'OS Doors' || !d.styleId) return { txt: 'TBC', note: 'Door price to be confirmed' };
-  if (/curved/i.test(r.kind)) return { txt: 'Contact us for a quote', note: 'Curved doors are not on the MTM price list' };
+  const NA = why => ({ na: true, txt: 'Not available', note: why });                                    // the OS sheet has no price for it: tell the customer when they choose (user, 26 Nov 2026)
+  if (/curved/i.test(r.kind)) return NA('OS curved doors are not on the made-to-measure list');
   const type = d.type || 'Kitchen', p = osDoorPrice(d.styleId, type, r.h, r.w, d.colourId);
-  if (p.none) return { txt: 'Contact us for a quote', note: 'No ' + type.toLowerCase() + ' size on the ' + d.styleId + ' list is big enough' };
-  if (p.est) return { txt: 'Price to be confirmed', note: 'Priced as ' + p.h + ' x ' + p.w + '; painted MTM price to be confirmed by OS' };
+  if (!(OS_MTM[d.styleId] || {})[type]) return NA(d.styleId + ' has no ' + type.toLowerCase() + ' doors');
+  if (p.none) return NA('no ' + d.styleId + ' ' + type.toLowerCase() + ' size is big enough for ' + r.h + ' x ' + r.w);
+  if (p.est) return NA(r.h + ' x ' + r.w + ' is not a standard ' + d.styleId + ' size, and OS make ' + d.styleId + ' to measure in Primed (unfinished) only');
   const drill = d.drill !== false && /door/i.test(r.kind) && !/front|flap/i.test(r.kind) ? OS_DRILL : 0, each = r2(p.price + drill);
   return { each, total: r2(each * r.q), txt: GBP(r2(each * r.q)), note: (p.std ? 'Standard size ' + p.h + ' x ' + p.w + ', ' + p.std.replace('standard size, ', '') : 'Made to measure, priced as ' + p.h + ' x ' + p.w + (p.primed ? ' unfinished MTM' : ' MTM')) + ' (' + GBP(p.price) + (drill ? ' + ' + GBP(drill) + ' hinge drilling' : '') + (r.q > 1 ? ', x ' + r.q : '') + ')' };
 }
@@ -12275,7 +12277,15 @@ function ocDetail(it) {
 /* Basket for New Orders. No prices yet: it records what was picked, in which colour. */
 const basketCount = () => (UI.basket || []).reduce((n, l) => n + l.qty, 0);
 const bkPrice = key => { try { const l = bkLine(key), cu = l && costUnit(l); return cu ? `<div class="row" style="gap:8px;align-items:baseline;margin-top:6px"><span class="muted" style="font-size:13px">Price</span><b class="tnum" style="font-size:22px;letter-spacing:-.02em">${GBP(cu.price)}</b><span class="muted" style="font-size:13px">each, ex VAT</span></div>` : `<div class="row" style="gap:8px;align-items:baseline;margin-top:6px"><span class="muted" style="font-size:13px">Price</span><b style="font-size:15px">To be confirmed</b></div>`; } catch (e) { return ''; } };
-const bkRow = key => `${bkPrice(key)}<div class="row" style="gap:8px;margin-top:4px"><input class="input" id="bk-qty-${key.replace(':', '-')}" type="number" min="1" step="1" value="1" style="width:76px;flex:none" aria-label="Quantity"><button class="btn btn-primary" style="flex:1" data-act="bkAdd" data-k="${key}">${ic('basket', 16)} Add to basket</button></div>`;
+/* the cabinet card: say straight away if a door can't be made in the door style and colour chosen, and show the door price */
+function bkDoorNote(key) {
+  let l = null; try { l = bkLine(key); } catch (e) { return ''; } if (!l || !l.doors || l.doors.co !== 'OS Doors' || !l.doors.styleId) return '';
+  const dr = doorRowsPriced(l); if (!dr.length) return '';
+  const na = dr.filter(r => r.cost && r.cost.na), tot = doorsTotal(dr), who = esc(l.doors.style.replace(/ \(.*\)$/, '') + (l.doors.colourId ? ' · ' + l.doors.colour : ''));
+  if (na.length) return `<div style="margin-top:6px;padding:8px 10px;border-radius:8px;border:1px solid #d9822b;background:#d9822b1a;font-size:12.5px;line-height:1.45"><b>Door not available in ${who}:</b>${na.map(r => `<br>${esc(r.kind)} ${r.h} x ${r.w}: ${esc(r.cost.note)}.`).join('')}<br>Choose another colour or door style, or a standard size.</div>`;
+  return tot ? `<div class="muted" style="font-size:12.5px;margin-top:4px">Doors (${who}): <b>${GBP(tot)}</b>, OS list price</div>` : '';
+}
+const bkRow = key => `${bkPrice(key)}${bkDoorNote(key)}<div class="row" style="gap:8px;margin-top:4px"><input class="input" id="bk-qty-${key.replace(':', '-')}" type="number" min="1" step="1" value="1" style="width:76px;flex:none" aria-label="Quantity"><button class="btn btn-primary" style="flex:1" data-act="bkAdd" data-k="${key}">${ic('basket', 16)} Add to basket</button></div>`;
 /* The basket line for a card, built from the options picked now. Used by Add to basket and by the live price on every card. */
 function bkLine(key) {
   const col = orderColour();
