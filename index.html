@@ -9176,7 +9176,7 @@ const baseShade = (hex, t) => {
 /* A shaded isometric base unit on legs: door open to show the shelf, handle on
    the opening edge, and the back panel set in by the void. */
 function baseArt(w, d, h, hinge, vd, opts) {
-  const o = Object.assign({ doors: true, dims: false }, opts), T = 18, LEG = opts && opts.noLegs ? 0 : 150, y0 = LEG, y1 = LEG + h, single = (w <= 600 && !o.pair) || !!o.blank;
+  const o = Object.assign({ doors: true, dims: false }, opts), T = 18, LEG = opts && opts.noLegs ? 0 : opts && opts.plinth ? opts.plinth.h : (opts && opts.legH) || 150, y0 = LEG, y1 = LEG + h, single = (w <= 600 && !o.pair) || !!o.blank;
   const FL = single && hinge === 'right' && (o.doors || o.ffDoors || o.ffOpen) ? -1 : 1, TH = 108 * Math.PI / 180, col = o.col || ocHex(), FC = ART_SKIN ? ART_SKIN.hex : col;   // FC: the door / front colour (the chosen door colour in the More Details "with your doors" picture)
   // edging: the front edges of the panels take the edging colour, and a 2mm edge is drawn heavier than a 0.8mm one
   const eh = o.edgeCol || ((ocEdge() || {}).hex) || col, esw = ocEdgeType() === '0.8mm' ? 0.8 : 1.8;
@@ -9224,7 +9224,16 @@ function baseArt(w, d, h, hinge, vd, opts) {
     [xl, xr].forEach(x => { if (glass) qg([P(x, s, z0), P(x, s, z1), P(x, gh, z1), P(x, gh, z0)], 0.45); else { ln(P(x, gh, z0 + 20), P(x, gh, z1 - 8), '#6f767c', 3.4); ln(P(x, s, z1 - 8), P(x, gh, z1 - 8), '#6f767c', 3.4); ln(P(x, s, z0 + 20), P(x, gh, z0 + 20), '#6f767c', 3.4); } });
   };
   // adjustable plastic legs: a short black stem on a wide round foot
-  (o.noLegs ? [] : legSpots(w, d)).forEach(([x, z]) => {
+  if (o.plinth) {                                                                                   // a plinth instead of legs: gables to the floor with the plinth between them, or a plinth set back under the cabinet
+    const pz = o.plinth.floor ? d - 2 : d - 40, x0 = o.plinth.floor ? T : 20, x1 = o.plinth.floor ? w - T : w - 20;
+    q([P(x0, 0, pz), P(x1, 0, pz), P(x1, y0, pz), P(x0, y0, pz)], baseShade(FC, -0.05));
+    ln(P(x0, 1, pz), P(x1, 1, pz), baseShade(col, -0.5), 1.5);
+    if (o.plinth.floor) {
+      q([P(w, 0, 0), P(w, 0, d), P(w, y0, d), P(w, y0, 0)], baseShade(col, 0.08));                 // the right gable running down to the floor
+      [[0, T], [w - T, w]].forEach(([a, b]) => q([P(a, 0, d), P(b, 0, d), P(b, y0, d), P(a, y0, d)], baseShade(eh, 0.1), esw));   // the gable front edges below the base
+    }
+  }
+  (o.noLegs || o.plinth ? [] : legSpots(w, d)).forEach(([x, z]) => {
     const f = P(x, 12, z);
     ln(P(x, y0, z), P(x, 14, z), '#1d1d1d', 20);
     out.push(`<ellipse cx="${f.x.toFixed(1)}" cy="${f.y.toFixed(1)}" rx="30" ry="15" fill="#0e0e0e"/><ellipse cx="${f.x.toFixed(1)}" cy="${(f.y - 9).toFixed(1)}" rx="24" ry="10" fill="#2a2a2a"/>`);
@@ -9258,7 +9267,7 @@ function baseArt(w, d, h, hinge, vd, opts) {
     });
   };
   const bare = (!o.drawers || o.drawers.h) && !o.bins && !o.trays && !o.wine;     // a drawerline unit still has its shelf and centre posts; a bin unit has neither
-  if (bare && !o.noShelf) shelf(T, w - T);
+  if (bare && !o.noShelf) { if (o.robeDiv) { shelf(T, w / 2 - T / 2); shelf(w / 2 + T / 2, w - T); } else shelf(T, w - T); }   // a robe with a divider: shelves (and rail) in each section
   (o.fixedShelves || (o.fixedShelfAt != null ? [o.fixedShelfAt] : [])).forEach(ys => {                                    // fixed shelves, full depth to the front (one sitting on top of the drawers, or the two round an oven opening)
     q([P(T, ys, vd), P(w - T, ys, vd), P(w - T, ys, d), P(T, ys, d)], baseShade(col, 0.12));
     q([P(T, ys, d), P(w - T, ys, d), P(w - T, ys - T, d), P(T, ys - T, d)], baseShade(col, -0.05));                       // its front edge: the cabinet colour
@@ -9761,10 +9770,14 @@ const BIN_OPTS = {
         { label: '3 x 32L', name: 'Integra 600mm pull-out soft close waste bin 96L (3 x 32L)', p: 145.00, cols: [[32], [32], [32]] }]
 };
 Object.keys(BIN_OPTS).forEach(k => BIN_OPTS[k].push({ label: 'No bin', cols: null }));   // every width also comes with no bin fitted
-const binCode = w => 'BHL' + w + 'BS';                // BHL + width + BS, e.g. BHL600BS
+const binCode = w => (BIN.gola ? 'GBCHL' : 'BHL') + w + 'BS';                // BHL + width + BS, e.g. BHL600BS; Gola: GBCHL600BS (as the Gola base)
+/* Gola on the bin, slim pull-out, built-under oven housing and corner base (user, 27 Nov 2026): the same J profile cut-out as the normal base */
+const GOLA_KEYS = ['bin', 'spo', 'oven', 'corner'];
+const golaBox = k => `<label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" data-chg="golaOn" data-k="${k}" ${(noState(k) || {}).gola ? 'checked' : ''}><span>Gola (J profile cut-out)</span></label>`;
+CH.golaOn = t => { const st = noState(t.dataset.k); if (!st) return; st.gola = !!t.checked; const y = window.scrollY; render(); window.scrollTo(0, y); };
 const BIN_PULL = 300;                                            // how far the door and bins slide out in the card picture
 const binOpt = () => { const l = BIN_OPTS[BIN.w]; return l[BIN.opt] || l[0]; };
-const binArt = (extra) => baseArt(BIN.w, BIN.d, BASE_H, 'left', BIN.v, Object.assign({ bins: binOpt().cols, noShelf: !binOpt().cols }, extra));   // no bin: an empty cabinet behind an ordinary hinged door
+const binArt = (extra) => baseArt(BIN.w, BIN.d, BASE_H, 'left', BIN.v, Object.assign({ gola: !!BIN.gola, bins: binOpt().cols, noShelf: !binOpt().cols }, extra));   // no bin: an empty cabinet behind an ordinary hinged door
 const binPick = sel => `<div class="muted">Bin layout:</div><div class="row" style="gap:6px;flex-wrap:wrap">${BIN_OPTS[BIN.w].map((x, i) => `<button class="btn btn-secondary btn-sm" style="flex:1 1 auto;min-width:max-content;padding:0 10px;font-size:12px;white-space:nowrap;${sel(binOpt() === x)}" data-act="binOpt" data-i="${i}">${binOpt() === x ? '&#9745;' : '&#9744;'} ${x.label}</button>`).join('')}</div>`;
 function binCard() {
   const w = BIN.w;
@@ -9778,7 +9791,7 @@ function binCard() {
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${BIN_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="binW" data-w="${x}">${x}</button>`).join('')}</div>
     ${binPick(sel)}
-    ${bkRow('bin')}
+    ${golaBox('bin')}${bkRow('bin')}
   </article>`;
 }
 function binDetails() {
@@ -9804,7 +9817,7 @@ function binDetails() {
       <div>${row('CABINET', 'Code: ' + binCode(w))}${row('BINS', binOpt().cols ? binOpt().name : 'No bin')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${binPick(sel)}
       ${ocDetail(null)}
-      ${bkRow('bin')}
+      ${golaBox('bin')}${bkRow('bin')}
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
@@ -9813,8 +9826,8 @@ function binDetails() {
 /* Slim pull-out unit: 150 or 300 wide, code BHL + width + SPO. */
 const SPO = { w: 300, d: 570, v: 50, pull: true };                  // pull: false = without the pull-out, a plain door cabinet priced as the cabinet
 const SPO_WIDTHS = [150, 300];
-const spoCode = w => 'BHL' + w + 'SPO';
-const spoArt = extra => baseArt(SPO.w, SPO.d, BASE_H, 'left', SPO.v, Object.assign({ trays: SPO.pull !== false, noShelf: SPO.pull === false }, extra));
+const spoCode = w => (SPO.gola ? 'GBCHL' : 'BHL') + w + 'SPO';
+const spoArt = extra => baseArt(SPO.w, SPO.d, BASE_H, 'left', SPO.v, Object.assign({ gola: !!SPO.gola, trays: SPO.pull !== false, noShelf: SPO.pull === false }, extra));
 const spoPullPick = sel => `<div class="muted">Pull-out:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[[true, 'With pull-out'], [false, 'Without pull-out']].map(([v, t]) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;font-size:12px;white-space:nowrap;${sel((SPO.pull !== false) === v)}" data-act="spoPull" data-v="${v ? 'yes' : 'no'}">${(SPO.pull !== false) === v ? '&#9745;' : '&#9744;'} ${t}</button>`).join('')}</div>`;
 function spoCard() {
   const w = SPO.w;
@@ -9828,7 +9841,7 @@ function spoCard() {
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${SPO_WIDTHS.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x === w)}" data-act="spoW" data-w="${x}">${x}</button>`).join('')}</div>
     ${spoPullPick(sel)}
-    ${bkRow('spo')}
+    ${golaBox('spo')}${bkRow('spo')}
   </article>`;
 }
 function spoDetails() {
@@ -9853,7 +9866,7 @@ function spoDetails() {
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
       <div>${row('CABINET', 'Code: ' + spoCode(w))}${row('PULL-OUT', SPO.pull !== false ? 'Slim pull-out with 3 trays' : 'None, a plain door cabinet')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${ocDetail(null)}
-      ${bkRow('spo')}
+      ${golaBox('spo')}${bkRow('spo')}
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
@@ -10116,8 +10129,8 @@ CH.crvDim = t => { const k = t.dataset.k; const v = Math.round(+t.value); if (!i
    without a drawer underneath (Antaro, Legrabox or Merivo). Codes: 600_BUOH, 600_BUOHA, 600_BUOHL. */
 const OVEN = { drawer: false, sys: 'Antaro', w: 600, d: 570, v: 50 };
 const OVEN_DRAWER_H = 115;                                         // the shelf height below adds 150, the leg height the picture stands the unit on
-const ovenCode = () => !OVEN.drawer ? '600_BUOH' : '600_BUOH' + ({ Antaro: 'A', Legrabox: 'L', Merivo: 'M' })[OVEN.sys];
-const ovenArt = (extra, bare) => baseArt(OVEN.w, OVEN.d, BASE_H, 'left', OVEN.v, Object.assign(OVEN.drawer
+const ovenCode = () => (OVEN.gola ? 'G' : '') + (!OVEN.drawer ? '600_BUOH' : '600_BUOH' + ({ Antaro: 'A', Legrabox: 'L', Merivo: 'M' })[OVEN.sys]);   // Gola: G in front (my naming)
+const ovenArt = (extra, bare) => baseArt(OVEN.w, OVEN.d, BASE_H, 'left', OVEN.v, Object.assign({ gola: !!OVEN.gola }, OVEN.drawer
   ? { doors: false, noBack: true, shelfAt: 150 + 4 + OVEN_DRAWER_H + 14, drawers: { fronts: [1], open: [bare ? 0 : 170], h: OVEN_DRAWER_H, bottom: true }, noFronts: !!bare }
   : { doors: false, noBack: true, shelfN: 0, fixedShelfAt: 150 + 4 + OVEN_DRAWER_H + 14 }, extra));      // an oven housing has no back; the fixed shelf the oven stands on is always supplied, at the same height with or without the drawer
 function ovenPick(sel) {
@@ -10133,7 +10146,7 @@ function ovenCard() {
     <div style="height:250px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${ovenArt()}</div>
     <div class="row"><div><h3 style="margin:0">Built Under Oven Housing</h3><span class="mono">${ovenCode()}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="ovenMore">More Details ${ic('chevR', 14)}</button></div>
     ${ovenPick(sel)}
-    ${bkRow('oven')}
+    ${golaBox('oven')}${bkRow('oven')}
   </article>`;
 }
 function ovenDetails() {
@@ -10156,7 +10169,7 @@ function ovenDetails() {
       <div>${row('CABINET', 'Code: ' + ovenCode())}${row('DRAWER', OVEN.drawer ? OVEN.sys + ' drawer' + (OVEN.sys === 'Antaro' ? ', N height (68.5 mm), 450 mm runners' : '') : 'None')}${row('SHELF', 'Quantity: 1 x fixed shelf' + (OVEN.drawer ? ', on top of the drawer' : ', for the oven to stand on'))}${row('BACK', 'No back')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('PLINTH CLIPS', 'Quantity: ' + clipQty(w) + ' x plinth clips')}${row('CABINET COMPONENT', 'None')}</div>
       ${ovenPick(sel)}
       ${ocDetail(null)}
-      ${bkRow('oven')}
+      ${golaBox('oven')}${bkRow('oven')}
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
@@ -12014,11 +12027,11 @@ const CORNER_MIN_DOOR = 300;                                      // the door ca
 const cornerDoorMax = () => Math.min(DOOR_MAX, Math.floor(CORNER.w - CORNER_T - 50));   // leaves at least a 50mm blank
 const cornerDoor = () => Math.min(Math.max(CORNER.door, CORNER_MIN_DOOR), cornerDoorMax());
 const cornerBlank = () => Math.round((CORNER.w - cornerDoor() - CORNER_T) * 10) / 10;   // blank = cabinet width - door size - 18.2
-const cornerCode = () => 'BCHL' + CORNER.w + (CORNER.side === 'right' ? 'RB' : 'LB') + mtmTag('corner');
+const cornerCode = () => (CORNER.gola ? 'GBCHL' : 'BCHL') + CORNER.w + (CORNER.side === 'right' ? 'RB' : 'LB') + mtmTag('corner');
 const cornerArt = (extra) => {
   const w = CORNER.w, dr = cornerDoor(), right = CORNER.side === 'right';
   return baseArt(w, CORNER.d, BASE_H, 'left', CORNER.v, Object.assign({
-    blank: { side: CORNER.side, w: cornerBlank() }, noShelf: CORNER.carousel,
+    gola: !!CORNER.gola, blank: { side: CORNER.side, w: cornerBlank() }, noShelf: CORNER.carousel,
     carousel: CORNER.carousel ? { x0: right ? 20 : w - dr, x1: right ? dr - 70 : w - 20, pole: right ? dr - 95 : w - dr + 25 } : null   // pulled in on the blank side so the trays aren't hidden behind the blank panel
   }, extra));
 };
@@ -12042,7 +12055,7 @@ function cornerCard() {
     ${cornerPick(sel)}
     <div class="row" style="gap:10px">${num('d', 'Depth (mm)', CORNER.d)}${num('v', 'Void (mm)', CORNER.v)}</div>
     ${mtmBlock('corner')}
-    ${bkRow('corner')}
+    ${golaBox('corner')}${bkRow('corner')}
   </article>`;
 }
 function cornerDetails() {
@@ -12070,7 +12083,7 @@ function cornerDetails() {
       ${ocDetail(null)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', CORNER.v)}</div>
       ${mtmBlock('corner')}
-    ${bkRow('corner')}
+    ${golaBox('corner')}${bkRow('corner')}
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
@@ -12463,7 +12476,7 @@ function bkLine(key) {
     l = { name: 'Single Sink Base Unit', code: sinkCode(SINK.w), w: SINK.w, d: SINK.d, v: SINK.v, opt: (SINK.w <= 600 ? hingeText(SINK.hinge, SINK.w) : 'Pair of doors') + ', ' + SINK.rail + ' front top rail' + (SINK.liner ? ', sink liner' : '') + (SINK.backOff ? ', removable back' : '') + (SINK.gola ? ', Gola J profile cut-out ' + GOLA_CUT.d + ' x ' + GOLA_CUT.h + ' mm' : '') };
   } else if (key === 'robe') {
     const it = robeWidths().find(i => i.w === ROBE.w) || robeWidths()[0]; if (!it) return;
-    l = { name: 'Single Hanging Robe', code: it.code, w: +it.w, h: +it.h || 2150, d: ROBE.d, v: ROBE.v, opt: +it.w <= 600 ? ROBE.hinge.toUpperCase() + ' door hinge' : 'Pair of doors' };
+    l = { name: 'Single Hanging Robe', code: it.code, w: +it.w, h: +it.h || 2150, d: ROBE.d, v: ROBE.v, opt: 'Full top, ' + robeDoorText() + ', ' + robeInsideText() + ', ' + robeBaseText() };
   } else {
     const id = key.slice(3), tp = dpType(id), s = DPK[id]; if (!tp) return; dpSync(tp, s);
     const S = drwS(s.sys), hmm = h => h + ' ' + S.h[h].mm;
@@ -12471,6 +12484,7 @@ function bkLine(key) {
   }
   if (DRW_UNITS[key]) drwUSync(key);
   { const st = ({ base: BASE, sink: SINK, dl: DL, bin: BIN, spo: SPO, bel: BEL, wine: WINE, crv: CRV, oven: OVEN, ff: FF, ohl: OHL, lc: LC, pan: PAN, spt: SPT, lpl: LPL, tlr: TLR, ldy: LDY, bro: BRO, dlw: DLW, dlr: DLR, mtm: MTM, corner: CORNER, lsh: LSH, robe: ROBE, dresser: DRS, mwall: MW, blwall: BL, brg: BRG, cwall: CW, lwall: LW, dwall: DW, wwine: WWINE, awall: AW, wall: WALLS.w, wallg: WALLS.g })[key] || (key.slice(0, 3) === 'dp:' ? DPK[key.slice(3)] : null); l.spec = { k: key, s: JSON.parse(JSON.stringify(st || {})) }; const ee = ocEdge(); l.edgeType = ocEdgeType(); l.edgeColour = ee ? ee.name + ' · ' + ee.code : 'As cabinet colour'; }
+  if (GOLA_KEYS.includes(key) && (noState(key) || {}).gola) l.opt += ', Gola J profile cut-out ' + GOLA_CUT.d + ' x ' + GOLA_CUT.h + ' mm';
   if (!l.h) { if (['base', 'sink', 'dl', 'bin', 'spo', 'wine', 'crv', 'oven', 'corner', 'lsh'].includes(key) || key.slice(0, 3) === 'dp:') l.h = BASE_H; else if (key === 'bel') l.h = BEL.h; }
   if (DRW_UNITS[key]) { try { const r = poUnit(l); if (r && r.drw && r.drw.length) { const g = {}; r.drw.forEach(x => { const n = dpDrawerName(x); g[n] = (g[n] || 0) + 1; }); l.opt += ', ' + Object.entries(g).map(([n, c]) => c + ' x ' + n).join(', '); } if (r && r.ct) l.opt += ', ' + ctText(r.ct); } catch (e) { } }   // the drawer boxes the customer picked
   { const mk = key === 'robe' ? null : key, mc = mk && mtmCfg(mk); if (mc && mc.s.mtm) l.opt = 'MTM cabinet (made to measure), ' + l.w + ' wide x ' + l.d + ' deep, ' + l.opt; }
@@ -12992,7 +13006,23 @@ function poUnit(u) {
         { name: 'Back (wing 1)', l: H, w: rh - T }, { name: 'Back (wing 2)', l: H, w: lh - d }, { name: 'Shelf (wing 1)', l: rh - T - 1, w: Dp - 75, ef: rh - T, er: rh - T }, { name: 'Shelf (wing 2)', l: lh - d - 1, w: Dp - 75, ef: lh - d, er: lh - d }], doors: [[di, H - 5], [dl, H - 5]], hingesPerDoor: 2 });
     r.f.mp += 16; r.f.wd += 16; r.f.legs = 8; r.f.clips = clipQty(rh) + clipQty(lh) - 1; r.f.pegs += 8; return r;
   }
-  if (k === 'robe') return C({ top: 'full', back: true, shelves: 1, setback: 20, doors: doorSet(w, H, w > 600), legs: true, extra: [{ name: 'Hanging rail (tube)', l: w - 2 * T, w: 25, q: 1 }] });
+  if (k === 'robe') {
+    const pl = s.base === 'plinth', ph = s.plinthH || 150, floor = pl;                    // user, 27 Nov 2026: with a plinth the gables always run to the floor                 // user, 27 Nov 2026: 100 or 150 legs, or a plinth (gables to the floor, or the cabinet standing on the plinth)
+    /* user, 27 Nov 2026: no centre posts. Over 600 the customer can have a full-height divider; the customer picks how many shelves (in each section with a divider).
+       1 shelf = the top shelf with the hanging rail under it; more shelves are spaced evenly and there is no rail (my reading). */
+    const div = w > 600 && !!s.div, ns = Math.min(6, Math.max(1, s.shelves || 1)), Dp = d - v - T - fe, sd = d - v - T - 20, sec = div ? (w - 3 * T) / 2 : w - 2 * T;
+    const extra = [];
+    if (ns === 1) extra.push({ name: 'Hanging rail (tube)', l: sec, w: 25, q: div ? 2 : 1 });
+    if (div) extra.push({ name: 'Divider (full height)', l: H - 2 * T, w: Dp, q: 1, ef: H - 2 * T, er: 0 }, { name: 'Shelf', l: sec - 1, w: sd, q: 2 * ns, ef: sec - 1, er: sec - 1 });
+    if (pl) extra.push(floor ? { name: 'Plinth (front and back, between the gables)', l: w - 2 * T, w: ph, q: 2, ef: w - 2 * T, er: 0 } : { name: 'Plinth (front)', l: w, w: ph, q: 1, ef: w, er: 0 });
+    const r = C({ top: 'full', back: true, shelves: div ? 0 : ns, setback: 20, doors: (() => {          // full top; from 600 a pair and / or split doors (1245 on top)
+      const pair = w > 600 || (w === 600 && s.doors === 'pair'), split = w >= 600 && !!s.split, dw = pair ? Math.floor((w - 7) / 2) : w - 4;
+      return split ? (pair ? [[dw, 1245], [dw, 1245], [dw, H - 10 - 1245], [dw, H - 10 - 1245]] : [[dw, 1245], [dw, H - 10 - 1245]]) : doorSet(w, H, pair); })(), legs: !pl, extra });
+    if (floor) { const g = r.parts.find(p => p.name === 'Gable'); if (g) { g.l = poR(H + ph); g.ef = g.l; g.er = g.l + 2 * g.w; g.name = 'Gable (to the floor)'; } r.f.mp += 4; r.f.wd += 4; }   // the gables run down past the base to the floor; the plinth fits between them
+    else if (pl) { r.f.mp += 2; }
+    if (div) { r.f.mp += 4; r.f.wd += 4; r.f.pegs += 8 * ns; }                                          // the divider fixed top and bottom; 4 shelf pegs a shelf
+    return r;
+  }
   if (k.slice(0, 3) === 'dp:') {
     const t = dpType(k.slice(3)) || { fronts: [1] }, n = t.fronts.length;
     const avail = BASE_H - 5 - (n - 1) * 3, hs = t.hs ? t.hs : t.fronts.map(x => poR(avail * x));
@@ -13255,8 +13285,39 @@ CH.orderEdge = t => { UI.orderEdge = t.value; save(); const y = window.scrollY; 
 A.orderEdgeType = t => { UI.orderEdgeType = t.dataset.v; save(); const y = window.scrollY; render(); window.scrollTo(0, y); };
 /* Bedroom > Single Hanging Robe: same card as the bases, 300 to 1200 wide,
    2150 high, with a hanging rail under a top shelf. Widths come from the catalogue. */
-const ROBE = { w: 600, hinge: 'left', d: 600, v: 50 };
+const ROBE = { w: 600, hinge: 'left', d: 570, v: 50, doors: 'single', split: false, base: 'legs150', plinthH: 150, floor: true };
+/* user, 27 Nov 2026: every robe stands on 100 or 150 legs, or on a plinth; with a plinth the customer says whether the gables run to the floor */
+const robeBaseH = () => ROBE.base === 'plinth' ? (ROBE.plinthH || 150) : ROBE.base === 'legs100' ? 100 : 150;
+const robeBaseText = () => ROBE.base === 'plinth' ? robeBaseH() + ' mm plinth front and back, between the gables, gables to the floor' : robeBaseH() + ' mm legs';
+const robeBaseArt = () => ROBE.base === 'plinth' ? { plinth: { h: robeBaseH(), floor: true } } : { legH: robeBaseH() };
+function robeBasePick(sel) {
+  const b = (act, v, t, on) => robeBtn(sel, act, 'v', v, t, on);
+  const pl = ROBE.base === 'plinth';
+  return `<div class="muted">Base:</div>${robeGrid(3, b('robeBase', 'legs100', '100mm legs', ROBE.base === 'legs100') + b('robeBase', 'legs150', '150mm legs', ROBE.base === 'legs150' || !ROBE.base) + b('robeBase', 'plinth', 'Plinth', pl))}`
+    + (pl ? `<div class="muted">Plinth height:</div>${robeGrid(2, b('robePlH', '100', '100mm', robeBaseH() === 100) + b('robePlH', '150', '150mm', robeBaseH() === 150))}` : '');
+}
 const ROBE_H = 2150;
+/* user, 27 Nov 2026: a robe always has a full top (not rails like a base). From 600 wide the customer can pick a pair of doors, and split doors
+   (1245 on top + 895 below, as the 2150 larders); over 600 is always a pair. */
+const robePair = () => ROBE.w > 600 || (ROBE.w === 600 && ROBE.doors === 'pair');
+const robeSplit = () => ROBE.w >= 600 && !!ROBE.split;
+const robeDiv = () => ROBE.w > 600 && !!ROBE.div;
+const robeShelves = () => Math.min(6, Math.max(1, ROBE.shelves || 1));
+const robeInsideText = () => (robeDiv() ? 'Full-height divider, ' + robeShelves() + ' shel' + (robeShelves() > 1 ? 'ves' : 'f') + ' each side' : robeShelves() + ' shel' + (robeShelves() > 1 ? 'ves' : 'f')) + (robeShelves() === 1 ? ' with hanging rail' + (robeDiv() ? 's' : '') + ' under' : '');
+const robeArt = (w, extra) => baseArt(w, ROBE.d, ROBE_H, ROBE.hinge === 'right' ? 'right' : 'left', ROBE.v, Object.assign({ robe: robeShelves() === 1, fullTop: true, noRail: true, noPost: true, pair: robePair(), divider: robeDiv(), robeDiv: robeDiv() }, robeShelves() > 1 ? { shelfN: robeShelves() } : {}, robeBaseArt(), { splitDoors: robeSplit() ? { bot: ROBE_H - 10 - 1245 } : null }, extra));
+const robeDoorText = () => (robePair() ? 'Pair of doors' : ROBE.hinge.toUpperCase() + ' door hinge') + (robeSplit() ? ', split doors (1245 + ' + (ROBE_H - 10 - 1245) + ')' : '');
+/* option buttons in the same style as the other cards: a label over each group, two (or three) equal columns, text that fits */
+const robeBtn = (sel, act, attr, v, t, on) => `<button class="btn btn-secondary btn-sm" style="width:100%;min-width:0;padding:0 6px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${sel(on)}" data-act="${act}" data-${attr}="${v}">${on ? '&#9745;' : '&#9744;'} ${t}</button>`;
+const robeGrid = (n, s) => `<div style="display:grid;grid-template-columns:repeat(${n},1fr);gap:8px">${s}</div>`;
+function robeDoorPick(sel) {
+  const w = ROBE.w, pair = robePair(), b = (act, v, t, on) => robeBtn(sel, act, 'v', v, t, on);
+  return (w === 600 ? `<div class="muted">Doors:</div>${robeGrid(2, b('robeDoors', 'single', 'Single door', !pair) + b('robeDoors', 'pair', 'Pair of doors', pair))}` : '')
+    + (!pair ? `<div class="muted">Hinge:</div>${robeGrid(2, ['left', 'right'].map(hd => robeBtn(sel, 'robeHinge', 'h', hd, hd === 'left' ? 'Left hinge' : 'Right hinge', ROBE.hinge === hd)).join(''))}` : w > 600 ? '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors.</p>' : '')
+    + (w >= 600 ? `<div class="muted">Door height:</div>${robeGrid(2, b('robeSplit', 'no', 'Full height', !ROBE.split) + b('robeSplit', 'yes', 'Split 1245 + ' + (ROBE_H - 10 - 1245), !!ROBE.split))}` : '')
+    + (w > 600 ? `<div class="muted">Divider:</div>${robeGrid(2, b('robeDiv', 'no', 'No divider', !ROBE.div) + b('robeDiv', 'yes', 'Divider in the middle', !!ROBE.div))}` : '')
+    + `<div class="muted">Shelves${robeDiv() ? ' (each side)' : ''}:</div>${robeGrid(6, [1, 2, 3, 4, 5, 6].map(n => b('robeShelves', n, String(n), robeShelves() === n)).join(''))}
+    <div class="muted" style="font-size:12.5px">${esc(robeInsideText())}.</div>`;
+}
 const BEDROOM_OPTS = [{ id: 'robes', name: 'Single Hanging Robe', desc: 'Hanging rail and top shelf. Pick the width from 300 to 1200.', icon: 'cube' }];
 const robeWidths = () => DB.items.filter(i => i.active !== false && /^(SR|DR)\d+B$/.test(i.code) && i.w >= 300 && i.w <= 1200).sort((a, b) => a.w - b.w);
 function robeCard() {
@@ -13268,11 +13329,12 @@ function robeCard() {
   const num = (k, label, v) => `<label class="field" style="flex:1"><span class="lbl">${label}</span><input class="input" type="number" min="0" step="1" value="${v}" data-chg="robeDim" data-k="${k}"></label>`;
   return `<article class="card card-pad stack" id="rc" style="max-width:420px">
     <div class="row" style="gap:8px">${chip('H', ROBE_H)}${chip('W', w)}${chip('D', ROBE.d)}${chip('Void', ROBE.v)}</div>
-    <div style="height:380px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${baseArt(w, ROBE.d, ROBE_H, hinge, ROBE.v, { robe: true })}</div>
+    <div style="height:380px;border-radius:12px;padding:8px;background:radial-gradient(ellipse at 50% 40%,#ffffff 0%,#eeeeeb 70%,#e3e3df 100%)">${robeArt(w)}</div>
     <div class="row"><div><h3 style="margin:0">Single Hanging Robe</h3><span class="mono">${esc(it.code)}</span></div><span class="spacer"></span><button class="btn btn-ghost btn-sm" data-act="robeMore">More Details ${ic('chevR', 14)}</button></div>
     <div class="muted">Width:</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${sel(x.w === w)}" data-act="robeW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
-    ${single ? `<div class="row" style="gap:8px">${['left', 'right'].map(hd => `<button class="btn btn-secondary btn-sm" style="flex:1 1 0;min-width:0;padding:0 6px;font-size:11px;white-space:nowrap;${sel(hinge === hd)}" data-act="robeHinge" data-h="${hd}">${hd.toUpperCase()} DOOR HINGE</button>`).join('')}</div>` : '<p class="muted" style="margin:0">Over 600mm wide, so it takes a pair of doors and two centre posts (70 x 18mm).</p>'}
+    ${robeDoorPick(sel)}
+    ${robeBasePick(sel)}
     <div class="row" style="gap:10px">${num('d', 'Depth (mm)', ROBE.d)}${num('v', 'Void (mm)', ROBE.v)}</div>
     ${bkRow('robe')}
   </article>`;
@@ -13287,9 +13349,9 @@ function robeDetails() {
   return `<button class="btn btn-ghost btn-sm" data-act="orderBack" style="margin:-6px 0 10px -8px">${ic('arrowL', 16)} Hanging Robes</button>
   <div class="two-col" style="align-items:start">
     <div class="stack">
-      ${panel(baseArt(w, d, ROBE_H, 'left', ROBE.v, { doors: false, robe: true }), 460)}
+      ${panel(robeArt(w, { doors: false }), 460)}
       <h3 style="margin:8px 0 0;letter-spacing:.08em">SPECIFICATION</h3>
-      <div>${row('Cabinet code', esc(it.code))}${row('Width', w + ' mm')}${row('Height (with legs)', (ROBE_H + 150) + ' mm')}${row('Height (without legs)', ROBE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', ROBE.v + ' mm')}${row('Leg height', '150 mm')}</div>
+      <div>${row('Cabinet code', esc(it.code))}${row('Width', w + ' mm')}${row('Height (overall)', (ROBE_H + robeBaseH()) + ' mm')}${row('Height (cabinet)', ROBE_H + ' mm')}${row('Depth', d + ' mm')}${row('Void', ROBE.v + ' mm')}${row('Base', robeBaseText())}</div>
     </div>
     <div class="stack">
       <h1 style="margin:0">${w}MM SINGLE HANGING ROBE</h1>
@@ -13298,14 +13360,16 @@ function robeDetails() {
       <div class="muted">Available widths:</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">${list.map(x => `<button class="btn btn-secondary btn-sm" style="${x.w === w ? 'border-bottom:3px solid var(--ink)' : ''}" data-act="robeW" data-w="${x.w}">${x.w}</button>`).join('')}</div>
       <h3 style="margin:12px 0 0;letter-spacing:.08em">CONFIGURE UNIT</h3>
-      <div>${row('CABINET', 'Code: ' + esc(it.code))}${row('HANGING RAIL', 'Quantity: 1')}${row('TOP SHELF', 'Quantity: 1')}${row('LEGS', 'Quantity: ' + legQty(w) + ' x legs')}${row('CABINET COMPONENT', posts ? 'Quantity: 2 x centre support post (70 x 18 mm)' : 'None')}</div>
+      <div>${row('CABINET', 'Code: ' + esc(it.code))}${row('TOP', 'Full top panel')}${row('INSIDE', robeInsideText())}${row('DOORS', robeDoorText())}${row(ROBE.base === 'plinth' ? 'PLINTH' : 'LEGS', ROBE.base === 'plinth' ? robeBaseText() : 'Quantity: ' + legQty(w) + ' x ' + robeBaseH() + ' mm legs')}${row('CABINET COMPONENT', robeDiv() ? '1 x full-height divider (18 mm)' : 'None (no centre posts)')}</div>
+      ${robeDoorPick(on => on ? 'border-bottom:3px solid var(--ink)' : '')}
+      ${robeBasePick(on => on ? 'border-bottom:3px solid var(--ink)' : '')}
       ${ocDetail(it)}
       <div class="row" style="gap:10px">${num('d', 'Depth (mm)', d)}${num('v', 'Void (mm)', ROBE.v)}</div>
       ${bkRow('robe')}
     </div>
   </div>
   <h3 style="margin:24px 0 8px;letter-spacing:.08em">TECHNICAL IMAGE</h3>
-  <div style="max-width:620px">${panel(baseArt(w, d, ROBE_H, 'left', ROBE.v, { doors: false, dims: true, robe: true }), 560)}</div>`;
+  <div style="max-width:620px">${panel(robeArt(w, { doors: false, dims: true }), 560)}</div>`;
 }
 /* Kitchen > Drawer Packs: same card as the bases, with a drawer system choice
    (Antaro or Legrabox) instead of door hinges. */
@@ -13723,6 +13787,13 @@ const robeRefresh = () => { const el = $('#rc'); if (el) el.outerHTML = robeCard
 A.robeMore = () => { UI.orderCat = 'robedetails'; render(); window.scrollTo(0, 0); };
 A.robeW = t => { ROBE.w = +t.dataset.w; robeRefresh(); };
 A.robeHinge = t => { ROBE.hinge = t.dataset.h; robeRefresh(); };
+A.robeDoors = t => { ROBE.doors = t.dataset.v === 'pair' ? 'pair' : 'single'; robeRefresh(); };
+A.robeSplit = t => { ROBE.split = t.dataset.v === 'yes'; robeRefresh(); };
+A.robeDiv = t => { ROBE.div = t.dataset.v === 'yes'; robeRefresh(); };
+A.robeShelves = t => { ROBE.shelves = +t.dataset.v || 1; robeRefresh(); };
+A.robeBase = t => { ROBE.base = t.dataset.v; robeRefresh(); };
+A.robePlH = t => { ROBE.plinthH = +t.dataset.v === 100 ? 100 : 150; robeRefresh(); };
+A.robeFloor = t => { ROBE.floor = t.dataset.v !== 'no'; robeRefresh(); };
 CH.robeDim = t => { const k = t.dataset.k; let v = Math.round(+t.value); if (!isFinite(v)) v = ROBE[k]; if (k === 'd') v = Math.min(800, Math.max(300, v)); else v = Math.min(Math.max(0, v), ROBE.d - 200); ROBE[k] = v; robeRefresh(); };
 A.orders = () => { UI.orderCat = null; go(UI.route.startsWith('a-') ? 'a-orders' : 'c-orders'); };      // the Admin portal has its own New Orders and Basket pages, with the same cabinets
 A.cabRoom = t => {
